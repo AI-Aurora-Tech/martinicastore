@@ -2520,3 +2520,14 @@ button {
   .checkout__field--street, .checkout__field--city { grid-column: span 2; }
   .checkout__pay { grid-template-columns: 1fr; }
 }
+
+.checkout__mailerr {
+  font-size: 0.76rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin: 0.4rem 0 0;
+  word-break: break-word;
+}

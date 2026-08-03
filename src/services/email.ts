@@ -19,7 +19,21 @@ export async function sendOrderEmail(orderId: string | null): Promise<EmailResul
     const { error } = await supabase.functions.invoke('send-order-email', {
       body: { orderId },
     })
-    if (error) return { sent: false, error: error.message }
+    if (error) {
+      let detail = error.message
+      // FunctionsHttpError expõe a resposta em `context`; lê o {error} do corpo.
+      const ctx = (error as { context?: unknown }).context
+      if (ctx && typeof (ctx as Response).json === 'function') {
+        try {
+          const body = await (ctx as Response).json()
+          if (body?.error) detail = body.error
+        } catch {
+          /* corpo não-JSON */
+        }
+      }
+      console.warn('[email] função retornou erro:', detail)
+      return { sent: false, error: detail }
+    }
     return { sent: true, error: null }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao enviar e-mail.'
