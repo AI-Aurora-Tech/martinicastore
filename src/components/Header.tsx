@@ -7,9 +7,10 @@ interface Props {
   onSelect: (id: CategoryId | 'todos') => void
   query: string
   onQuery: (q: string) => void
+  onOpenPDV: () => void
 }
 
-export function Header({ active, onSelect, query, onQuery }: Props) {
+export function Header({ active, onSelect, query, onQuery, onOpenPDV }: Props) {
   const { count, openCart } = useCart()
 
   return (
@@ -49,6 +50,13 @@ export function Header({ active, onSelect, query, onQuery }: Props) {
         </form>
 
         <div className="header__actions">
+          <button type="button" className="header__pdv" onClick={onOpenPDV} title="Abrir Ponto de Venda">
+            <span aria-hidden="true">🧾</span>
+            <span className="header__pdv-text">
+              <small>Caixa</small>
+              <strong>PDV</strong>
+            </span>
+          </button>
           <a className="header__account" href="#conta">
             <span aria-hidden="true">👤</span>
             <span className="header__account-text">

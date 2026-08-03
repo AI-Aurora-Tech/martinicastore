@@ -3,7 +3,7 @@ import type { Category, Product } from '../types'
 export const CLUB = {
   name: 'Martinica FC',
   store: 'Martinica Store',
-  primary: '#d6001c',
+  primary: '#ff6a00',
   dark: '#111111',
   gold: '#f5b301',
   founded: 1926,
@@ -29,7 +29,7 @@ export const products: Product[] = [
     kind: 'jersey',
     price: 349.9,
     oldPrice: 399.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     badge: 'Lançamento',
     description:
       'A nova camisa titular do Martinica FC para a temporada 2026. Tecido leve com tecnologia de secagem rápida e escudo bordado.',
@@ -44,10 +44,10 @@ export const products: Product[] = [
     kind: 'jersey',
     price: 349.9,
     oldPrice: 399.9,
-    colors: ['#f4f4f4', '#d6001c'],
+    colors: ['#f4f4f4', '#ff6a00'],
     badge: 'Lançamento',
     description:
-      'O manto branco do Timão da Martinica. Design clássico com detalhes em vermelho e gola em ribana.',
+      'O manto branco do Timão da Martinica. Design clássico com detalhes em laranja e gola em ribana.',
     sizes: SIZES,
     rating: 4.8,
     reviews: 341,
@@ -72,7 +72,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 299.9,
-    colors: ['#d6001c', '#f4f4f4'],
+    colors: ['#ff6a00', '#f4f4f4'],
     description:
       'Reviva a glória do título de 1990 com esta camisa retrô em algodão premium e escudo da época.',
     sizes: SIZES,
@@ -99,7 +99,7 @@ export const products: Product[] = [
     kind: 'jersey',
     price: 339.9,
     oldPrice: 389.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     badge: 'Baby look',
     description:
       'Modelagem baby look feminina da camisa titular, com caimento ajustado e o mesmo tecido de alta performance.',
@@ -115,7 +115,7 @@ export const products: Product[] = [
     kind: 'jacket',
     price: 429.9,
     oldPrice: 499.9,
-    colors: ['#111111', '#d6001c'],
+    colors: ['#111111', '#ff6a00'],
     badge: 'Mais vendido',
     description:
       'A mesma jaqueta usada pela comissão técnica à beira do campo. Impermeável, com capuz e bolsos com zíper.',
@@ -129,7 +129,7 @@ export const products: Product[] = [
     category: 'agasalhos',
     kind: 'jacket',
     price: 279.9,
-    colors: ['#2b2b2b', '#d6001c'],
+    colors: ['#2b2b2b', '#ff6a00'],
     description:
       'Moletom flanelado com bolso canguru e escudo bordado no peito. Conforto para torcer em qualquer clima.',
     sizes: SIZES,
@@ -157,7 +157,7 @@ export const products: Product[] = [
     kind: 'shoe',
     price: 459.9,
     oldPrice: 549.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     badge: 'Oferta',
     description:
       'Chuteira society com solado de borracha antiderrapante e cabedal leve. Aderência total no gramado sintético.',
@@ -171,7 +171,7 @@ export const products: Product[] = [
     category: 'calcados',
     kind: 'shoe',
     price: 389.9,
-    colors: ['#111111', '#d6001c'],
+    colors: ['#111111', '#ff6a00'],
     description:
       'Tênis casual com solado confortável e detalhes nas cores do Martinica. Perfeito para o dia a dia.',
     sizes: SHOE_SIZES,
@@ -185,7 +185,7 @@ export const products: Product[] = [
     kind: 'shoe',
     price: 119.9,
     oldPrice: 149.9,
-    colors: ['#d6001c', '#f4f4f4'],
+    colors: ['#ff6a00', '#f4f4f4'],
     description:
       'Chinelo slide com escudo em alto-relevo e palmilha macia. O queridinho da torcida para o verão.',
     sizes: SHOE_SIZES,
@@ -199,7 +199,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'cap',
     price: 129.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     badge: 'Mais vendido',
     description:
       'Boné de aba curva com escudo bordado e ajuste traseiro. Um clássico para levar o clube em qualquer lugar.',
@@ -212,7 +212,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'scarf',
     price: 89.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     description:
       'Cachecol de tricô com o nome do clube e escudo. Feito para cantar nas arquibancadas nos dias frios.',
     rating: 4.9,
@@ -225,7 +225,7 @@ export const products: Product[] = [
     kind: 'backpack',
     price: 219.9,
     oldPrice: 259.9,
-    colors: ['#111111', '#d6001c'],
+    colors: ['#111111', '#ff6a00'],
     description:
       'Mochila com compartimento para notebook, bolso térmico e alças acolchoadas. Resistente e cheia de estilo.',
     rating: 4.6,
@@ -237,7 +237,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'ball',
     price: 199.9,
-    colors: ['#f4f4f4', '#d6001c'],
+    colors: ['#f4f4f4', '#ff6a00'],
     badge: 'Oficial',
     description:
       'Bola oficial de campo, costurada, tamanho 5 e certificada. A mesma usada nos jogos em casa.',
@@ -251,7 +251,7 @@ export const products: Product[] = [
     category: 'torcedor',
     kind: 'mug',
     price: 59.9,
-    colors: ['#d6001c', '#f4f4f4'],
+    colors: ['#ff6a00', '#f4f4f4'],
     description:
       'Caneca de cerâmica com escudo do Martinica FC. Comece o dia com a energia da torcida.',
     rating: 4.8,
@@ -277,7 +277,7 @@ export const products: Product[] = [
     category: 'torcedor',
     kind: 'scarf',
     price: 79.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     description:
       'Bandeira grande em tecido resistente para pendurar em casa ou levar ao estádio. Cores vivas e escudo central.',
     rating: 4.9,
@@ -290,7 +290,7 @@ export const products: Product[] = [
     category: 'pet',
     kind: 'pet',
     price: 79.9,
-    colors: ['#d6001c', '#111111'],
+    colors: ['#ff6a00', '#111111'],
     badge: 'Fofura',
     description:
       'Camisa para cães e gatos com o escudo do clube. Seu melhor amigo também é da Martinica!',
@@ -305,7 +305,7 @@ export const products: Product[] = [
     kind: 'pet',
     price: 44.9,
     oldPrice: 59.9,
-    colors: ['#111111', '#d6001c'],
+    colors: ['#111111', '#ff6a00'],
     description:
       'Bandana ajustável com o escudo do Martinica. Estilo e conforto para o pet mais torcedor da vizinhança.',
     sizes: ['P', 'M', 'G'],

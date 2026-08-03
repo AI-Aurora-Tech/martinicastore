@@ -5,10 +5,12 @@ import { Benefits } from './components/Benefits'
 import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
+import { PDV } from './components/PDV'
 import { categories, products } from './data/products'
 import type { CategoryId } from './types'
 
 export default function App() {
+  const [view, setView] = useState<'loja' | 'pdv'>('loja')
   const [active, setActive] = useState<CategoryId | 'todos'>('todos')
   const [query, setQuery] = useState('')
 
@@ -44,6 +46,10 @@ export default function App() {
       ? 'Destaques da loja'
       : activeLabel
 
+  if (view === 'pdv') {
+    return <PDV onExit={() => setView('loja')} />
+  }
+
   return (
     <div id="topo">
       <Header
@@ -51,6 +57,7 @@ export default function App() {
         onSelect={selectCategory}
         query={query}
         onQuery={setQuery}
+        onOpenPDV={() => setView('pdv')}
       />
 
       {active === 'todos' && !query.trim() && <Hero onShop={selectCategory} />}

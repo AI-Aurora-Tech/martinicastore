@@ -8,7 +8,11 @@ clube, preços em Real e carrinho de compras funcional.
 
 > Projeto de demonstração. O clube, o CNPJ e os produtos são fictícios.
 
+Identidade visual em **laranja e preto**.
+
 ## ✨ Funcionalidades
+
+### 🏬 Loja (frente de loja / e-commerce)
 
 - **Vitrine de produtos** com 21 itens em 6 categorias (Camisas, Agasalhos,
   Calçados, Acessórios, Torcedor e Pet).
@@ -24,6 +28,22 @@ clube, preços em Real e carrinho de compras funcional.
 - **Ilustrações vetoriais (SVG)** geradas por tipo de produto — sem dependência
   de imagens externas.
 - **Design responsivo** (desktop, tablet e mobile) e acessível.
+
+### 🧾 PDV (Ponto de Venda / caixa)
+
+Acessível pelo botão **"Caixa · PDV"** no topo da loja. É a tela do operador
+para registrar vendas presenciais:
+
+- **Catálogo de toque** com busca por nome/código e filtro por categoria —
+  um clique adiciona o item à venda.
+- **Cupom da venda ao vivo**: itens, ajuste de quantidade, remoção e total.
+- **Desconto** manual em R$ sobre a venda.
+- **Formas de pagamento**: Dinheiro (com valor recebido, atalhos de cédula e
+  cálculo automático de **troco**), Cartão (seleção de **parcelas**) e Pix
+  (**5% de desconto** automático).
+- **Finalização** com **comprovante não fiscal** numerado (data/hora, itens,
+  total, forma de pagamento e troco) e opção de **imprimir**.
+- Numeração sequencial de vendas persistida em `localStorage`.
 
 ## 🧱 Stack
 
@@ -67,6 +87,7 @@ src/
     ├── ProductImage.tsx    # ilustrações SVG por tipo de produto
     ├── StarRating.tsx      # avaliações em estrelas
     ├── CartDrawer.tsx      # sacola lateral
+    ├── PDV.tsx             # Ponto de Venda (caixa) + comprovante
     └── Footer.tsx          # rodapé, newsletter e pagamentos
 ```
 

@@ -45,7 +45,7 @@ export function Hero({ onShop }: Props) {
           <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
             <path
               d="M70 44 L52 32 L24 54 L38 92 L58 82 L58 210 Q100 224 142 210 L142 82 L162 92 L176 54 L148 32 L130 44 Q100 66 70 44 Z"
-              fill="#d6001c"
+              fill="#ff6a00"
               stroke="#111"
               strokeWidth="5"
               strokeLinejoin="round"
