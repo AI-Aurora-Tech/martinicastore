@@ -36,6 +36,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.9,
     reviews: 512,
+    stock: 24,
   },
   {
     id: 'cam-02',
@@ -51,6 +52,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.8,
     reviews: 341,
+    stock: 8,
   },
   {
     id: 'cam-03',
@@ -65,6 +67,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 5,
     reviews: 188,
+    stock: 15,
   },
   {
     id: 'cam-04',
@@ -78,6 +81,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.7,
     reviews: 96,
+    stock: 40,
   },
   {
     id: 'cam-05',
@@ -91,6 +95,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.6,
     reviews: 54,
+    stock: 3,
   },
   {
     id: 'cam-06',
@@ -106,6 +111,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.9,
     reviews: 203,
+    stock: 60,
   },
 
   {
@@ -122,6 +128,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.8,
     reviews: 267,
+    stock: 12,
   },
   {
     id: 'aga-02',
@@ -135,6 +142,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.7,
     reviews: 158,
+    stock: 33,
   },
   {
     id: 'aga-03',
@@ -148,6 +156,7 @@ export const products: Product[] = [
     sizes: SIZES,
     rating: 4.6,
     reviews: 74,
+    stock: 5,
   },
 
   {
@@ -164,6 +173,7 @@ export const products: Product[] = [
     sizes: SHOE_SIZES,
     rating: 4.8,
     reviews: 132,
+    stock: 27,
   },
   {
     id: 'cal-02',
@@ -177,6 +187,7 @@ export const products: Product[] = [
     sizes: SHOE_SIZES,
     rating: 4.5,
     reviews: 88,
+    stock: 9,
   },
   {
     id: 'cal-03',
@@ -191,6 +202,7 @@ export const products: Product[] = [
     sizes: SHOE_SIZES,
     rating: 4.7,
     reviews: 245,
+    stock: 48,
   },
 
   {
@@ -205,6 +217,7 @@ export const products: Product[] = [
       'Boné de aba curva com escudo bordado e ajuste traseiro. Um clássico para levar o clube em qualquer lugar.',
     rating: 4.8,
     reviews: 312,
+    stock: 18,
   },
   {
     id: 'ace-02',
@@ -217,6 +230,7 @@ export const products: Product[] = [
       'Cachecol de tricô com o nome do clube e escudo. Feito para cantar nas arquibancadas nos dias frios.',
     rating: 4.9,
     reviews: 176,
+    stock: 0,
   },
   {
     id: 'ace-03',
@@ -230,6 +244,7 @@ export const products: Product[] = [
       'Mochila com compartimento para notebook, bolso térmico e alças acolchoadas. Resistente e cheia de estilo.',
     rating: 4.6,
     reviews: 91,
+    stock: 21,
   },
   {
     id: 'ace-04',
@@ -243,6 +258,7 @@ export const products: Product[] = [
       'Bola oficial de campo, costurada, tamanho 5 e certificada. A mesma usada nos jogos em casa.',
     rating: 4.9,
     reviews: 148,
+    stock: 14,
   },
 
   {
@@ -256,6 +272,7 @@ export const products: Product[] = [
       'Caneca de cerâmica com escudo do Martinica FC. Comece o dia com a energia da torcida.',
     rating: 4.8,
     reviews: 421,
+    stock: 52,
   },
   {
     id: 'tor-02',
@@ -270,6 +287,7 @@ export const products: Product[] = [
       'Garrafa térmica em inox que mantém a temperatura por até 12h. Leve o Martinica para todos os lugares.',
     rating: 4.7,
     reviews: 133,
+    stock: 7,
   },
   {
     id: 'tor-03',
@@ -282,6 +300,7 @@ export const products: Product[] = [
       'Bandeira grande em tecido resistente para pendurar em casa ou levar ao estádio. Cores vivas e escudo central.',
     rating: 4.9,
     reviews: 210,
+    stock: 30,
   },
 
   {
@@ -297,6 +316,7 @@ export const products: Product[] = [
     sizes: ['PP', 'P', 'M', 'G'],
     rating: 4.9,
     reviews: 187,
+    stock: 4,
   },
   {
     id: 'pet-02',
@@ -311,6 +331,7 @@ export const products: Product[] = [
     sizes: ['P', 'M', 'G'],
     rating: 4.8,
     reviews: 64,
+    stock: 6,
   },
 ]
 

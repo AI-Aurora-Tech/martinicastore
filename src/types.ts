@@ -32,6 +32,10 @@ export interface Product {
   sizes?: string[]
   rating: number
   reviews: number
+  /** Quantidade em estoque. `undefined` = não controlado. */
+  stock?: number
+  /** Produto visível na loja. `undefined`/true = ativo. */
+  active?: boolean
 }
 
 export interface CartItem {

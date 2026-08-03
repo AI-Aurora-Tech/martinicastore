@@ -29,6 +29,7 @@ create table if not exists public.products (
   sizes        text[],
   rating       numeric(2, 1) not null default 5 check (rating >= 0 and rating <= 5),
   reviews      int  not null default 0,
+  stock        int  not null default 0 check (stock >= 0),
   active       boolean not null default true,
   sort         int  not null default 0,
   created_at   timestamptz not null default now()
@@ -108,11 +109,21 @@ alter table public.sale_items  enable row level security;
 alter table public.orders      enable row level security;
 alter table public.order_items enable row level security;
 
--- Catálogo: leitura pública (loja é aberta); escrita apenas via service role.
+-- Catálogo: leitura pública (loja é aberta).
 create policy "catalog_public_read_categories"
   on public.categories for select using (true);
 create policy "catalog_public_read_products"
   on public.products for select using (true);
+
+-- Catálogo/estoque: escrita (admin) por qualquer usuário autenticado.
+-- Em produção, restrinja a um papel de admin (ex.: coluna role em profiles
+-- ou verificação de auth.jwt() ->> 'role').
+create policy "products_write_authenticated"
+  on public.products for all to authenticated
+  using (true) with check (true);
+create policy "categories_write_authenticated"
+  on public.categories for all to authenticated
+  using (true) with check (true);
 
 -- PDV: apenas operadores autenticados registram/veem vendas.
 create policy "sales_insert_authenticated"
@@ -139,3 +150,33 @@ create policy "order_items_select_authenticated"
 
 -- Nota: para produção, considere trocar as inserções diretas de pedidos por
 -- uma função SECURITY DEFINER (RPC) que valide itens/preços no servidor.
+
+-- ===========================================================================
+-- Baixa automática de estoque
+-- Cada item de venda (PDV) ou de pedido (loja) reduz o estoque do produto.
+-- Roda como SECURITY DEFINER para poder atualizar products sob RLS.
+-- O estoque nunca fica negativo (piso em 0).
+-- ===========================================================================
+create or replace function public.decrement_stock()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.products
+     set stock = greatest(0, stock - new.quantity)
+   where id = new.product_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sale_items_stock on public.sale_items;
+create trigger trg_sale_items_stock
+  after insert on public.sale_items
+  for each row execute function public.decrement_stock();
+
+drop trigger if exists trg_order_items_stock on public.order_items;
+create trigger trg_order_items_stock
+  after insert on public.order_items
+  for each row execute function public.decrement_stock();

@@ -5,13 +5,15 @@ import { Benefits } from './components/Benefits'
 import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
-import { PDVGate } from './components/PDVGate'
+import { AuthGate } from './components/AuthGate'
+import { PDV } from './components/PDV'
+import { Admin } from './components/Admin'
 import { useCatalog } from './context/CatalogContext'
 import type { CategoryId } from './types'
 
 export default function App() {
   const { products, categories, loading } = useCatalog()
-  const [view, setView] = useState<'loja' | 'pdv'>('loja')
+  const [view, setView] = useState<'loja' | 'pdv' | 'admin'>('loja')
   const [active, setActive] = useState<CategoryId | 'todos'>('todos')
   const [query, setQuery] = useState('')
 
@@ -27,12 +29,13 @@ export default function App() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return products.filter((p) => {
+      const isActive = p.active !== false
       const byCategory = active === 'todos' || p.category === active
       const bySearch =
         q === '' ||
         p.name.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q)
-      return byCategory && bySearch
+      return isActive && byCategory && bySearch
     })
   }, [products, active, query])
 
@@ -48,7 +51,23 @@ export default function App() {
       : activeLabel
 
   if (view === 'pdv') {
-    return <PDVGate onExit={() => setView('loja')} />
+    return (
+      <AuthGate subtitle="Acesso ao Ponto de Venda" onExit={() => setView('loja')}>
+        {(operator, logout) => (
+          <PDV operator={operator} onLogout={logout} onExit={() => setView('loja')} />
+        )}
+      </AuthGate>
+    )
+  }
+
+  if (view === 'admin') {
+    return (
+      <AuthGate subtitle="Painel administrativo" onExit={() => setView('loja')}>
+        {(operator, logout) => (
+          <Admin operator={operator} onLogout={logout} onExit={() => setView('loja')} />
+        )}
+      </AuthGate>
+    )
   }
 
   return (
@@ -59,6 +78,7 @@ export default function App() {
         query={query}
         onQuery={setQuery}
         onOpenPDV={() => setView('pdv')}
+        onOpenAdmin={() => setView('admin')}
       />
 
       {active === 'todos' && !query.trim() && <Hero onShop={selectCategory} />}

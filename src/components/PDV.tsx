@@ -39,7 +39,7 @@ interface Receipt {
 }
 
 export function PDV({ onExit, operator, onLogout }: Props) {
-  const { products, categories } = useCatalog()
+  const { products, categories, decrementStockLocal } = useCatalog()
   const [lines, setLines] = useState<SaleLine[]>([])
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
@@ -86,6 +86,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
     lines.length > 0 && (payment !== 'dinheiro' || received >= total)
 
   function addProduct(p: Product) {
+    if (p.stock != null && p.stock <= 0) return
     setLines((prev) => {
       const found = prev.find((l) => l.product.id === p.id)
       if (found) {
@@ -141,6 +142,10 @@ export function PDV({ onExit, operator, onLogout }: Props) {
       setSaveError(error)
       return
     }
+
+    decrementStockLocal(
+      lines.map((l) => ({ id: l.product.id, quantity: l.quantity })),
+    )
 
     setReceipt({
       number: number ?? 0,
@@ -218,19 +223,37 @@ export function PDV({ onExit, operator, onLogout }: Props) {
           </div>
 
           <div className="pdv__products">
-            {catalog.map((p) => (
-              <button key={p.id} className="pdv__product" onClick={() => addProduct(p)}>
-                <span
-                  className="pdv__product-img"
-                  style={{ background: `${p.colors[0]}18` }}
+            {catalog.map((p) => {
+              const soldOut = p.stock != null && p.stock <= 0
+              const low = p.stock != null && p.stock > 0 && p.stock <= 5
+              return (
+                <button
+                  key={p.id}
+                  className={`pdv__product ${soldOut ? 'pdv__product--out' : ''}`}
+                  onClick={() => addProduct(p)}
+                  disabled={soldOut}
                 >
-                  <ProductImage kind={p.kind} colors={p.colors} />
-                </span>
-                <span className="pdv__product-name">{p.name}</span>
-                <span className="pdv__product-price">{BRL.format(p.price)}</span>
-                <span className="pdv__product-add">+ Adicionar</span>
-              </button>
-            ))}
+                  <span
+                    className="pdv__product-img"
+                    style={{ background: `${p.colors[0]}18` }}
+                  >
+                    <ProductImage kind={p.kind} colors={p.colors} />
+                  </span>
+                  <span className="pdv__product-name">{p.name}</span>
+                  <span className="pdv__product-price">{BRL.format(p.price)}</span>
+                  {p.stock != null && (
+                    <span
+                      className={`pdv__product-stock ${soldOut ? 'is-out' : low ? 'is-low' : ''}`}
+                    >
+                      {soldOut ? 'Esgotado' : `${p.stock} em estoque`}
+                    </span>
+                  )}
+                  <span className="pdv__product-add">
+                    {soldOut ? 'Indisponível' : '+ Adicionar'}
+                  </span>
+                </button>
+              )
+            })}
             {catalog.length === 0 && (
               <p className="pdv__noresult">Nenhum produto encontrado.</p>
             )}

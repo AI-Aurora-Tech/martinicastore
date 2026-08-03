@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCart } from '../context/CartContext'
+import { useCatalog } from '../context/CatalogContext'
 import { BRL } from '../data/products'
 import { ProductImage } from './ProductImage'
 import { createOrder } from '../services/orders'
@@ -9,6 +10,7 @@ const FREE_SHIPPING = 299
 export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, setQuantity, subtotal, count, clear } =
     useCart()
+  const { decrementStockLocal } = useCatalog()
   const [done, setDone] = useState(false)
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
   const [placing, setPlacing] = useState(false)
@@ -39,6 +41,9 @@ export function CartDrawer() {
       return
     }
 
+    decrementStockLocal(
+      items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
+    )
     setOrderNumber(number)
     setDone(true)
     clear()

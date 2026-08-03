@@ -23,7 +23,7 @@ out.push(
 )
 out.push('')
 out.push(
-  'insert into public.products (id, name, category_id, kind, price, old_price, color_main, color_accent, badge, description, sizes, rating, reviews, sort) values',
+  'insert into public.products (id, name, category_id, kind, price, old_price, color_main, color_accent, badge, description, sizes, rating, reviews, stock, sort) values',
 )
 out.push(
   products
@@ -42,6 +42,7 @@ out.push(
         sqlArr(p.sizes),
         p.rating,
         p.reviews,
+        p.stock ?? 0,
         i,
       ]
       return `  (${vals.join(', ')})`
@@ -51,7 +52,8 @@ out.push(
     '  name = excluded.name, category_id = excluded.category_id, kind = excluded.kind,\n' +
     '  price = excluded.price, old_price = excluded.old_price, color_main = excluded.color_main,\n' +
     '  color_accent = excluded.color_accent, badge = excluded.badge, description = excluded.description,\n' +
-    '  sizes = excluded.sizes, rating = excluded.rating, reviews = excluded.reviews, sort = excluded.sort;',
+    '  sizes = excluded.sizes, rating = excluded.rating, reviews = excluded.reviews,\n' +
+    '  stock = excluded.stock, sort = excluded.sort;',
 )
 out.push('')
 console.log(out.join('\n'))

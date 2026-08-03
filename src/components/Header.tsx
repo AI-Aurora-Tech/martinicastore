@@ -9,9 +9,10 @@ interface Props {
   query: string
   onQuery: (q: string) => void
   onOpenPDV: () => void
+  onOpenAdmin: () => void
 }
 
-export function Header({ active, onSelect, query, onQuery, onOpenPDV }: Props) {
+export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmin }: Props) {
   const { count, openCart } = useCart()
   const { categories } = useCatalog()
 
@@ -52,6 +53,13 @@ export function Header({ active, onSelect, query, onQuery, onOpenPDV }: Props) {
         </form>
 
         <div className="header__actions">
+          <button type="button" className="header__pdv" onClick={onOpenAdmin} title="Painel administrativo / estoque">
+            <span aria-hidden="true">📦</span>
+            <span className="header__pdv-text">
+              <small>Gestão</small>
+              <strong>Admin</strong>
+            </span>
+          </button>
           <button type="button" className="header__pdv" onClick={onOpenPDV} title="Abrir Ponto de Venda">
             <span aria-hidden="true">🧾</span>
             <span className="header__pdv-text">

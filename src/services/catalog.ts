@@ -19,6 +19,8 @@ interface ProductRow {
   sizes: string[] | null
   rating: number | string
   reviews: number
+  stock: number | null
+  active: boolean | null
 }
 
 interface CategoryRow {
@@ -40,6 +42,8 @@ function toProduct(r: ProductRow): Product {
     sizes: r.sizes ?? undefined,
     rating: Number(r.rating),
     reviews: r.reviews,
+    stock: r.stock == null ? undefined : Number(r.stock),
+    active: r.active ?? true,
   }
 }
 
@@ -65,9 +69,8 @@ export async function loadCatalog(): Promise<Catalog> {
       supabase
         .from('products')
         .select(
-          'id,name,category_id,kind,price,old_price,color_main,color_accent,badge,description,sizes,rating,reviews',
+          'id,name,category_id,kind,price,old_price,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active',
         )
-        .eq('active', true)
         .order('sort', { ascending: true }),
     ])
 
