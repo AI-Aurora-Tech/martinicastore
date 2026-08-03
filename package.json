@@ -9,9 +9,11 @@
     "build": "tsc -b && vite build",
     "build:standalone": "tsc -b && vite build --config vite.standalone.config.ts",
     "preview": "vite preview",
+    "gen:seed": "node --experimental-strip-types scripts/gen-seed.ts > supabase/seed.sql",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

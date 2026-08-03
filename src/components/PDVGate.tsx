@@ -1,69 +1,80 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { PDV } from './PDV'
+import {
+  authMode,
+  getCurrentOperator,
+  signIn,
+  signOut,
+  type Operator,
+} from '../services/auth'
 
 interface Props {
   onExit: () => void
 }
 
-/** Operadores de demonstração autorizados a usar o caixa. */
-const OPERATORS = [
-  { user: 'caixa01', pass: '1234', name: 'Operador — Caixa 01' },
-  { user: 'gerente', pass: 'martinica', name: 'Gerente da Loja' },
-]
-
-const SESSION_KEY = 'martinica-pdv-operator'
-
 /**
- * "Porteiro" do PDV: exige usuário e senha antes de liberar o Ponto de Venda.
- * O componente <PDV> (com seus próprios hooks) só é montado após a autenticação,
- * evitando qualquer problema de ordem de hooks.
+ * "Porteiro" do PDV: exige login antes de liberar o Ponto de Venda. Usa o
+ * Supabase Auth quando configurado (e-mail/senha) ou credenciais mock no modo
+ * demo. O componente <PDV> (com seus próprios hooks) só é montado após a
+ * autenticação, evitando qualquer problema de ordem de hooks.
  */
 export function PDVGate({ onExit }: Props) {
-  const [operator, setOperator] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem(SESSION_KEY)
-    } catch {
-      return null
-    }
-  })
-  const [user, setUser] = useState('')
-  const [pass, setPass] = useState('')
+  const [operator, setOperator] = useState<Operator | null>(null)
+  const [checking, setChecking] = useState(true)
+  const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [showPass, setShowPass] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e: FormEvent) {
+  // Recupera sessão existente ao montar.
+  useEffect(() => {
+    let alive = true
+    getCurrentOperator().then((op) => {
+      if (!alive) return
+      setOperator(op)
+      setChecking(false)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const found = OPERATORS.find(
-      (o) => o.user === user.trim().toLowerCase() && o.pass === pass,
-    )
-    if (!found) {
-      setError('Usuário ou senha inválidos.')
-      setPass('')
+    if (submitting) return
+    setSubmitting(true)
+    setError('')
+    const { operator: op, error: err } = await signIn(login, password)
+    setSubmitting(false)
+    if (err || !op) {
+      setError(err ?? 'Falha na autenticação.')
+      setPassword('')
       return
     }
-    try {
-      sessionStorage.setItem(SESSION_KEY, found.name)
-    } catch {
-      /* ignore */
-    }
-    setOperator(found.name)
-    setError('')
-    setUser('')
-    setPass('')
+    setOperator(op)
+    setLogin('')
+    setPassword('')
   }
 
-  function handleLogout() {
-    try {
-      sessionStorage.removeItem(SESSION_KEY)
-    } catch {
-      /* ignore */
-    }
+  async function handleLogout() {
+    await signOut()
     setOperator(null)
+  }
+
+  if (checking) {
+    return (
+      <div className="pdvlogin">
+        <div className="pdvlogin__loading">Carregando caixa…</div>
+      </div>
+    )
   }
 
   if (operator) {
     return <PDV operator={operator} onLogout={handleLogout} onExit={onExit} />
   }
+
+  const isSupabase = authMode === 'supabase'
 
   return (
     <div className="pdvlogin">
@@ -81,15 +92,15 @@ export function PDVGate({ onExit }: Props) {
         </p>
 
         <label className="pdvlogin__field">
-          <span>Usuário</span>
+          <span>{isSupabase ? 'E-mail' : 'Usuário'}</span>
           <input
-            type="text"
+            type={isSupabase ? 'email' : 'text'}
             autoFocus
             autoComplete="username"
-            placeholder="ex.: caixa01"
-            value={user}
+            placeholder={isSupabase ? 'operador@martinica.com' : 'ex.: caixa01'}
+            value={login}
             onChange={(e) => {
-              setUser(e.target.value)
+              setLogin(e.target.value)
               setError('')
             }}
             required
@@ -103,9 +114,9 @@ export function PDVGate({ onExit }: Props) {
               type={showPass ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="••••••"
-              value={pass}
+              value={password}
               onChange={(e) => {
-                setPass(e.target.value)
+                setPassword(e.target.value)
                 setError('')
               }}
               required
@@ -122,19 +133,30 @@ export function PDVGate({ onExit }: Props) {
 
         {error && <p className="pdvlogin__error" role="alert">⚠️ {error}</p>}
 
-        <button type="submit" className="btn btn--primary btn--block pdvlogin__submit">
-          Entrar no caixa
+        <button
+          type="submit"
+          className="btn btn--primary btn--block pdvlogin__submit"
+          disabled={submitting}
+        >
+          {submitting ? 'Entrando…' : 'Entrar no caixa'}
         </button>
 
         <button type="button" className="pdvlogin__back" onClick={onExit}>
           ← Voltar à loja
         </button>
 
-        <div className="pdvlogin__demo">
-          <strong>Credenciais de demonstração</strong>
-          <span>caixa01 / 1234</span>
-          <span>gerente / martinica</span>
-        </div>
+        {isSupabase ? (
+          <div className="pdvlogin__demo">
+            <strong>Conectado ao Supabase</strong>
+            <span>Use um operador criado em Authentication → Users.</span>
+          </div>
+        ) : (
+          <div className="pdvlogin__demo">
+            <strong>Modo demo — credenciais de teste</strong>
+            <span>caixa01 / 1234</span>
+            <span>gerente / martinica</span>
+          </div>
+        )}
       </form>
     </div>
   )

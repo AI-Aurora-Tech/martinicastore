@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BRL, categories, products } from '../data/products'
+import { BRL } from '../data/products'
 import type { CategoryId, Product } from '../types'
 import { ProductImage } from './ProductImage'
+import { useCatalog } from '../context/CatalogContext'
+import { createSale } from '../services/sales'
+import type { Operator } from '../services/auth'
 
 interface Props {
   onExit: () => void
-  operator: string
+  operator: Operator
   onLogout: () => void
 }
 
@@ -22,8 +25,6 @@ const PAYMENTS: { id: Payment; label: string; icon: string }[] = [
   { id: 'pix', label: 'Pix', icon: '⚡' },
 ]
 
-const SEQ_KEY = 'martinica-pdv-seq'
-
 interface Receipt {
   number: number
   when: string
@@ -38,6 +39,7 @@ interface Receipt {
 }
 
 export function PDV({ onExit, operator, onLogout }: Props) {
+  const { products, categories } = useCatalog()
   const [lines, setLines] = useState<SaleLine[]>([])
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
@@ -47,6 +49,8 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const [installments, setInstallments] = useState(1)
   const [clock, setClock] = useState(() => new Date())
   const [receipt, setReceipt] = useState<Receipt | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = window.setInterval(() => setClock(new Date()), 1000)
@@ -63,7 +67,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
         p.id.toLowerCase().includes(q)
       return okCat && okText
     })
-  }, [query, cat])
+  }, [products, query, cat])
 
   const subtotal = useMemo(
     () => lines.reduce((s, l) => s + l.product.price * l.quantity, 0),
@@ -109,17 +113,37 @@ export function PDV({ onExit, operator, onLogout }: Props) {
     setPayment('dinheiro')
   }
 
-  function finishSale() {
-    if (!canFinish) return
-    let seq = 1
-    try {
-      seq = (Number(localStorage.getItem(SEQ_KEY)) || 0) + 1
-      localStorage.setItem(SEQ_KEY, String(seq))
-    } catch {
-      /* ignore */
+  async function finishSale() {
+    if (!canFinish || saving) return
+    setSaving(true)
+    setSaveError(null)
+
+    const { number, error } = await createSale({
+      operator,
+      subtotal,
+      discount,
+      total,
+      payment,
+      received,
+      change: Math.max(0, change),
+      installments,
+      items: lines.map((l) => ({
+        productId: l.product.id,
+        name: l.product.name,
+        unitPrice: l.product.price,
+        quantity: l.quantity,
+      })),
+    })
+
+    setSaving(false)
+
+    if (error) {
+      setSaveError(error)
+      return
     }
+
     setReceipt({
-      number: seq,
+      number: number ?? 0,
       when: new Date().toLocaleString('pt-BR'),
       lines,
       subtotal,
@@ -147,7 +171,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
           <span aria-hidden="true">👤</span>
           <div>
             <small>Operador</small>
-            <strong>{operator}</strong>
+            <strong>{operator.name}</strong>
           </div>
         </div>
         <div className="pdv__clock">
@@ -347,14 +371,19 @@ export function PDV({ onExit, operator, onLogout }: Props) {
               )}
             </dl>
 
+            {saveError && (
+              <p className="pdv__saveerror" role="alert">
+                ⚠️ {saveError}
+              </p>
+            )}
             <button
               className="btn btn--primary btn--block pdv__finish"
-              disabled={!canFinish}
+              disabled={!canFinish || saving}
               onClick={finishSale}
             >
-              Finalizar venda · {BRL.format(total)}
+              {saving ? 'Registrando…' : `Finalizar venda · ${BRL.format(total)}`}
             </button>
-            {lines.length > 0 && (
+            {lines.length > 0 && !saving && (
               <button className="pdv__cancel" onClick={resetSale}>
                 Cancelar venda
               </button>

@@ -1659,3 +1659,50 @@ button {
 @media (max-width: 560px) {
   .pdv__operator { display: none; }
 }
+
+/* ---------- Estados: skeleton, erros e loading ---------- */
+.card--skeleton .card__media {
+  background: var(--line);
+}
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, #eceef1 25%, #f6f7f9 37%, #eceef1 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.3s ease infinite;
+  border-radius: 6px;
+  height: 14px;
+}
+.skeleton--line { width: 100%; margin-bottom: 0.5rem; }
+.skeleton--short { width: 55%; }
+.skeleton--btn { height: 38px; border-radius: 999px; margin-top: 0.6rem; }
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+.pdv__saveerror,
+.drawer__ordererror {
+  margin: 0 0 0.6rem;
+  color: var(--red);
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #fff4ec;
+  border: 1px solid #ffd9bf;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.drawer__ordernum {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.drawer__ordernum strong {
+  color: var(--red);
+  font-variant-numeric: tabular-nums;
+}
+.pdvlogin__loading {
+  color: #fff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1rem 1.6rem;
+  border-radius: 12px;
+}

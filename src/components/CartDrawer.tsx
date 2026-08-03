@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useCart } from '../context/CartContext'
 import { BRL } from '../data/products'
 import { ProductImage } from './ProductImage'
+import { createOrder } from '../services/orders'
 
 const FREE_SHIPPING = 299
 
@@ -9,11 +10,36 @@ export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, setQuantity, subtotal, count, clear } =
     useCart()
   const [done, setDone] = useState(false)
+  const [orderNumber, setOrderNumber] = useState<number | null>(null)
+  const [placing, setPlacing] = useState(false)
+  const [orderError, setOrderError] = useState<string | null>(null)
 
   const missing = Math.max(0, FREE_SHIPPING - subtotal)
   const progress = Math.min(100, (subtotal / FREE_SHIPPING) * 100)
+  const shipping = subtotal >= FREE_SHIPPING || subtotal === 0 ? 0 : 29.9
 
-  function checkout() {
+  async function checkout() {
+    if (placing) return
+    setPlacing(true)
+    setOrderError(null)
+
+    const { number, error } = await createOrder({
+      subtotal,
+      discount: 0,
+      shipping,
+      total: subtotal + shipping,
+      payment: 'pix',
+      items,
+    })
+
+    setPlacing(false)
+
+    if (error) {
+      setOrderError(error)
+      return
+    }
+
+    setOrderNumber(number)
     setDone(true)
     clear()
   }
@@ -41,6 +67,11 @@ export function CartDrawer() {
           <div className="drawer__empty">
             <span className="drawer__empty-icon">🎉</span>
             <h3>Pedido confirmado!</h3>
+            {orderNumber != null && (
+              <p className="drawer__ordernum">
+                Pedido nº <strong>{String(orderNumber).padStart(6, '0')}</strong>
+              </p>
+            )}
             <p>
               Obrigado por torcer com a gente. Você receberá o código de
               rastreio por e-mail em instantes.
@@ -49,6 +80,7 @@ export function CartDrawer() {
               className="btn btn--primary"
               onClick={() => {
                 setDone(false)
+                setOrderNumber(null)
                 closeCart()
               }}
             >
@@ -137,8 +169,17 @@ export function CartDrawer() {
               <p className="drawer__pix">
                 ou {BRL.format(subtotal * 0.95)} à vista no Pix (5% off)
               </p>
-              <button className="btn btn--primary btn--block" onClick={checkout}>
-                Finalizar compra
+              {orderError && (
+                <p className="drawer__ordererror" role="alert">
+                  ⚠️ {orderError}
+                </p>
+              )}
+              <button
+                className="btn btn--primary btn--block"
+                onClick={checkout}
+                disabled={placing}
+              >
+                {placing ? 'Processando…' : 'Finalizar compra'}
               </button>
               <button className="drawer__continue" onClick={closeCart}>
                 Continuar comprando
