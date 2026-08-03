@@ -1,0 +1,46 @@
+export type ProductKind =
+  | 'jersey'
+  | 'jacket'
+  | 'cap'
+  | 'ball'
+  | 'scarf'
+  | 'mug'
+  | 'backpack'
+  | 'shoe'
+  | 'shorts'
+  | 'pet'
+
+export type CategoryId =
+  | 'camisas'
+  | 'agasalhos'
+  | 'acessorios'
+  | 'calcados'
+  | 'torcedor'
+  | 'pet'
+
+export interface Product {
+  id: string
+  name: string
+  category: CategoryId
+  kind: ProductKind
+  price: number
+  /** Preço "de" (antes do desconto). Opcional. */
+  oldPrice?: number
+  colors: [string, string]
+  badge?: string
+  description: string
+  sizes?: string[]
+  rating: number
+  reviews: number
+}
+
+export interface CartItem {
+  product: Product
+  size?: string
+  quantity: number
+}
+
+export interface Category {
+  id: CategoryId
+  label: string
+}

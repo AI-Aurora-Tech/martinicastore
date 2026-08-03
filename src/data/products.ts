@@ -1,0 +1,320 @@
+import type { Category, Product } from '../types'
+
+export const CLUB = {
+  name: 'Martinica FC',
+  store: 'Martinica Store',
+  primary: '#ff6a00',
+  dark: '#111111',
+  gold: '#f5b301',
+  founded: 1926,
+}
+
+export const categories: Category[] = [
+  { id: 'camisas', label: 'Camisas' },
+  { id: 'agasalhos', label: 'Agasalhos' },
+  { id: 'calcados', label: 'Calçados' },
+  { id: 'acessorios', label: 'Acessórios' },
+  { id: 'torcedor', label: 'Torcedor' },
+  { id: 'pet', label: 'Pet' },
+]
+
+const SIZES = ['P', 'M', 'G', 'GG', 'XGG']
+const SHOE_SIZES = ['38', '39', '40', '41', '42', '43', '44']
+
+export const products: Product[] = [
+  {
+    id: 'cam-01',
+    name: 'Camisa Oficial I 2026 — Torcedor',
+    category: 'camisas',
+    kind: 'jersey',
+    price: 349.9,
+    oldPrice: 399.9,
+    colors: ['#ff6a00', '#111111'],
+    badge: 'Lançamento',
+    description:
+      'A nova camisa titular do Martinica FC para a temporada 2026. Tecido leve com tecnologia de secagem rápida e escudo bordado.',
+    sizes: SIZES,
+    rating: 4.9,
+    reviews: 512,
+  },
+  {
+    id: 'cam-02',
+    name: 'Camisa Oficial II 2026 — Torcedor',
+    category: 'camisas',
+    kind: 'jersey',
+    price: 349.9,
+    oldPrice: 399.9,
+    colors: ['#f4f4f4', '#ff6a00'],
+    badge: 'Lançamento',
+    description:
+      'O manto branco do Timão da Martinica. Design clássico com detalhes em laranja e gola em ribana.',
+    sizes: SIZES,
+    rating: 4.8,
+    reviews: 341,
+  },
+  {
+    id: 'cam-03',
+    name: 'Camisa Oficial III 2026 — Edição Ouro',
+    category: 'camisas',
+    kind: 'jersey',
+    price: 379.9,
+    colors: ['#111111', '#f5b301'],
+    badge: 'Edição limitada',
+    description:
+      'Terceiro uniforme em preto e dourado, homenagem ao centenário do clube. Produção limitada.',
+    sizes: SIZES,
+    rating: 5,
+    reviews: 188,
+  },
+  {
+    id: 'cam-04',
+    name: 'Camisa Retrô 1990 — Campeão',
+    category: 'camisas',
+    kind: 'jersey',
+    price: 299.9,
+    colors: ['#ff6a00', '#f4f4f4'],
+    description:
+      'Reviva a glória do título de 1990 com esta camisa retrô em algodão premium e escudo da época.',
+    sizes: SIZES,
+    rating: 4.7,
+    reviews: 96,
+  },
+  {
+    id: 'cam-05',
+    name: 'Camisa Goleiro 2026',
+    category: 'camisas',
+    kind: 'jersey',
+    price: 329.9,
+    colors: ['#1f8f4e', '#111111'],
+    description:
+      'Uniforme oficial de goleiro em verde, com proteção UV e recortes ergonômicos para o mergulho perfeito.',
+    sizes: SIZES,
+    rating: 4.6,
+    reviews: 54,
+  },
+  {
+    id: 'cam-06',
+    name: 'Camisa Feminina Oficial I 2026',
+    category: 'camisas',
+    kind: 'jersey',
+    price: 339.9,
+    oldPrice: 389.9,
+    colors: ['#ff6a00', '#111111'],
+    badge: 'Baby look',
+    description:
+      'Modelagem baby look feminina da camisa titular, com caimento ajustado e o mesmo tecido de alta performance.',
+    sizes: SIZES,
+    rating: 4.9,
+    reviews: 203,
+  },
+
+  {
+    id: 'aga-01',
+    name: 'Jaqueta Corta-Vento Comissão Técnica',
+    category: 'agasalhos',
+    kind: 'jacket',
+    price: 429.9,
+    oldPrice: 499.9,
+    colors: ['#111111', '#ff6a00'],
+    badge: 'Mais vendido',
+    description:
+      'A mesma jaqueta usada pela comissão técnica à beira do campo. Impermeável, com capuz e bolsos com zíper.',
+    sizes: SIZES,
+    rating: 4.8,
+    reviews: 267,
+  },
+  {
+    id: 'aga-02',
+    name: 'Moletom Canguru Escudo Bordado',
+    category: 'agasalhos',
+    kind: 'jacket',
+    price: 279.9,
+    colors: ['#2b2b2b', '#ff6a00'],
+    description:
+      'Moletom flanelado com bolso canguru e escudo bordado no peito. Conforto para torcer em qualquer clima.',
+    sizes: SIZES,
+    rating: 4.7,
+    reviews: 158,
+  },
+  {
+    id: 'aga-03',
+    name: 'Calça de Treino Oficial 2026',
+    category: 'agasalhos',
+    kind: 'shorts',
+    price: 249.9,
+    colors: ['#111111', '#f5b301'],
+    description:
+      'Calça de treino em tecido dry com punho ajustável e listras laterais nas cores do clube.',
+    sizes: SIZES,
+    rating: 4.6,
+    reviews: 74,
+  },
+
+  {
+    id: 'cal-01',
+    name: 'Chuteira Society Martinica Pro',
+    category: 'calcados',
+    kind: 'shoe',
+    price: 459.9,
+    oldPrice: 549.9,
+    colors: ['#ff6a00', '#111111'],
+    badge: 'Oferta',
+    description:
+      'Chuteira society com solado de borracha antiderrapante e cabedal leve. Aderência total no gramado sintético.',
+    sizes: SHOE_SIZES,
+    rating: 4.8,
+    reviews: 132,
+  },
+  {
+    id: 'cal-02',
+    name: 'Tênis Casual Torcedor',
+    category: 'calcados',
+    kind: 'shoe',
+    price: 389.9,
+    colors: ['#111111', '#ff6a00'],
+    description:
+      'Tênis casual com solado confortável e detalhes nas cores do Martinica. Perfeito para o dia a dia.',
+    sizes: SHOE_SIZES,
+    rating: 4.5,
+    reviews: 88,
+  },
+  {
+    id: 'cal-03',
+    name: 'Chinelo Slide Escudo',
+    category: 'calcados',
+    kind: 'shoe',
+    price: 119.9,
+    oldPrice: 149.9,
+    colors: ['#ff6a00', '#f4f4f4'],
+    description:
+      'Chinelo slide com escudo em alto-relevo e palmilha macia. O queridinho da torcida para o verão.',
+    sizes: SHOE_SIZES,
+    rating: 4.7,
+    reviews: 245,
+  },
+
+  {
+    id: 'ace-01',
+    name: 'Boné Aba Curva Oficial',
+    category: 'acessorios',
+    kind: 'cap',
+    price: 129.9,
+    colors: ['#ff6a00', '#111111'],
+    badge: 'Mais vendido',
+    description:
+      'Boné de aba curva com escudo bordado e ajuste traseiro. Um clássico para levar o clube em qualquer lugar.',
+    rating: 4.8,
+    reviews: 312,
+  },
+  {
+    id: 'ace-02',
+    name: 'Cachecol Torcida Fanático',
+    category: 'acessorios',
+    kind: 'scarf',
+    price: 89.9,
+    colors: ['#ff6a00', '#111111'],
+    description:
+      'Cachecol de tricô com o nome do clube e escudo. Feito para cantar nas arquibancadas nos dias frios.',
+    rating: 4.9,
+    reviews: 176,
+  },
+  {
+    id: 'ace-03',
+    name: 'Mochila Esportiva Martinica',
+    category: 'acessorios',
+    kind: 'backpack',
+    price: 219.9,
+    oldPrice: 259.9,
+    colors: ['#111111', '#ff6a00'],
+    description:
+      'Mochila com compartimento para notebook, bolso térmico e alças acolchoadas. Resistente e cheia de estilo.',
+    rating: 4.6,
+    reviews: 91,
+  },
+  {
+    id: 'ace-04',
+    name: 'Bola Oficial de Campo 2026',
+    category: 'acessorios',
+    kind: 'ball',
+    price: 199.9,
+    colors: ['#f4f4f4', '#ff6a00'],
+    badge: 'Oficial',
+    description:
+      'Bola oficial de campo, costurada, tamanho 5 e certificada. A mesma usada nos jogos em casa.',
+    rating: 4.9,
+    reviews: 148,
+  },
+
+  {
+    id: 'tor-01',
+    name: 'Caneca Escudo 350ml',
+    category: 'torcedor',
+    kind: 'mug',
+    price: 59.9,
+    colors: ['#ff6a00', '#f4f4f4'],
+    description:
+      'Caneca de cerâmica com escudo do Martinica FC. Comece o dia com a energia da torcida.',
+    rating: 4.8,
+    reviews: 421,
+  },
+  {
+    id: 'tor-02',
+    name: 'Garrafa Térmica 500ml',
+    category: 'torcedor',
+    kind: 'mug',
+    price: 99.9,
+    oldPrice: 129.9,
+    colors: ['#111111', '#f5b301'],
+    badge: 'Oferta',
+    description:
+      'Garrafa térmica em inox que mantém a temperatura por até 12h. Leve o Martinica para todos os lugares.',
+    rating: 4.7,
+    reviews: 133,
+  },
+  {
+    id: 'tor-03',
+    name: 'Bandeira Oficial 1,40m',
+    category: 'torcedor',
+    kind: 'scarf',
+    price: 79.9,
+    colors: ['#ff6a00', '#111111'],
+    description:
+      'Bandeira grande em tecido resistente para pendurar em casa ou levar ao estádio. Cores vivas e escudo central.',
+    rating: 4.9,
+    reviews: 210,
+  },
+
+  {
+    id: 'pet-01',
+    name: 'Camisa Pet do Torcedor',
+    category: 'pet',
+    kind: 'pet',
+    price: 79.9,
+    colors: ['#ff6a00', '#111111'],
+    badge: 'Fofura',
+    description:
+      'Camisa para cães e gatos com o escudo do clube. Seu melhor amigo também é da Martinica!',
+    sizes: ['PP', 'P', 'M', 'G'],
+    rating: 4.9,
+    reviews: 187,
+  },
+  {
+    id: 'pet-02',
+    name: 'Bandana Pet Escudo',
+    category: 'pet',
+    kind: 'pet',
+    price: 44.9,
+    oldPrice: 59.9,
+    colors: ['#111111', '#ff6a00'],
+    description:
+      'Bandana ajustável com o escudo do Martinica. Estilo e conforto para o pet mais torcedor da vizinhança.',
+    sizes: ['P', 'M', 'G'],
+    rating: 4.8,
+    reviews: 64,
+  },
+]
+
+export const BRL = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
