@@ -5,6 +5,8 @@ import { ProductImage } from './ProductImage'
 
 interface Props {
   onExit: () => void
+  operator: string
+  onLogout: () => void
 }
 
 interface SaleLine {
@@ -35,7 +37,7 @@ interface Receipt {
   installments: number
 }
 
-export function PDV({ onExit }: Props) {
+export function PDV({ onExit, operator, onLogout }: Props) {
   const [lines, setLines] = useState<SaleLine[]>([])
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
@@ -141,12 +143,22 @@ export function PDV({ onExit }: Props) {
             <small>Ponto de Venda — Caixa 01</small>
           </div>
         </div>
+        <div className="pdv__operator" title="Operador conectado">
+          <span aria-hidden="true">👤</span>
+          <div>
+            <small>Operador</small>
+            <strong>{operator}</strong>
+          </div>
+        </div>
         <div className="pdv__clock">
           <span>{clock.toLocaleDateString('pt-BR')}</span>
           <strong>{clock.toLocaleTimeString('pt-BR')}</strong>
         </div>
         <button className="pdv__exit" onClick={onExit}>
           ← Voltar à loja
+        </button>
+        <button className="pdv__logout" onClick={onLogout} title="Encerrar sessão do operador">
+          ⎋ Sair
         </button>
       </header>
 

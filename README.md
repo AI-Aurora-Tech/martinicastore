@@ -34,6 +34,10 @@ Identidade visual em **laranja e preto**.
 Acessível pelo botão **"Caixa · PDV"** no topo da loja. É a tela do operador
 para registrar vendas presenciais:
 
+- **Login de operador** (usuário e senha) protege o caixa: só entra quem tem
+  credencial. Sessão mantida em `sessionStorage`, com botão **Sair** e o nome
+  do operador exibido no topo. Credenciais de demonstração: `caixa01` / `1234`
+  e `gerente` / `martinica`.
 - **Catálogo de toque** com busca por nome/código e filtro por categoria —
   um clique adiciona o item à venda.
 - **Cupom da venda ao vivo**: itens, ajuste de quantidade, remoção e total.
@@ -87,6 +91,7 @@ src/
     ├── ProductImage.tsx    # ilustrações SVG por tipo de produto
     ├── StarRating.tsx      # avaliações em estrelas
     ├── CartDrawer.tsx      # sacola lateral
+    ├── PDVGate.tsx         # login do PDV (usuário e senha)
     ├── PDV.tsx             # Ponto de Venda (caixa) + comprovante
     └── Footer.tsx          # rodapé, newsletter e pagamentos
 ```

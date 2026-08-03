@@ -5,7 +5,7 @@ import { Benefits } from './components/Benefits'
 import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
-import { PDV } from './components/PDV'
+import { PDVGate } from './components/PDVGate'
 import { categories, products } from './data/products'
 import type { CategoryId } from './types'
 
@@ -47,7 +47,7 @@ export default function App() {
       : activeLabel
 
   if (view === 'pdv') {
-    return <PDV onExit={() => setView('loja')} />
+    return <PDVGate onExit={() => setView('loja')} />
   }
 
   return (

@@ -1499,3 +1499,163 @@ button {
   .pdv__clock { display: none; }
   .pdv__products { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---------- PDV: operador + logout no topo ---------- */
+.pdv__operator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 1.1rem;
+}
+.pdv__operator div {
+  line-height: 1.05;
+}
+.pdv__operator small {
+  display: block;
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.5px;
+}
+.pdv__operator strong {
+  font-size: 0.82rem;
+}
+.pdv__logout {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.pdv__logout:hover {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+/* ---------- PDV: tela de login ---------- */
+.pdvlogin {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 106, 0, 0.22), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(255, 106, 0, 0.16), transparent 45%),
+    var(--ink);
+}
+.pdvlogin__card {
+  width: min(400px, 100%);
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 1.8rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.pdvlogin__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.pdvlogin__brand strong {
+  display: block;
+  letter-spacing: 1px;
+}
+.pdvlogin__brand small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.pdvlogin__hint {
+  margin: 0.2rem 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.pdvlogin__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.pdvlogin__field > span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.pdvlogin__field input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  font-size: 1rem;
+  outline: none;
+}
+.pdvlogin__field input:focus {
+  border-color: var(--red);
+}
+.pdvlogin__pass {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pdvlogin__pass input {
+  flex: 1;
+}
+.pdvlogin__pass button {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  font-size: 1.1rem;
+}
+.pdvlogin__error {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #fff4ec;
+  border: 1px solid #ffd9bf;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.pdvlogin__submit {
+  margin-top: 0.3rem;
+  padding: 0.85rem;
+}
+.pdvlogin__back {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+.pdvlogin__back:hover {
+  color: var(--red);
+}
+.pdvlogin__demo {
+  margin-top: 0.4rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.pdvlogin__demo strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  margin-bottom: 0.2rem;
+}
+.pdvlogin__demo span {
+  font-family: 'Courier New', monospace;
+}
+
+@media (max-width: 560px) {
+  .pdv__operator { display: none; }
+}
