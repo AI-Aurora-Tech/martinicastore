@@ -2007,3 +2007,113 @@ button {
   .admin__stats { grid-template-columns: 1fr 1fr; }
   .admin__form-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Admin: imagem do produto ---------- */
+.admin__thumb {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  overflow: hidden;
+  cursor: pointer;
+  display: block;
+}
+.admin__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.admin__thumb .admin__dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+.admin__thumb-cam {
+  font-size: 0.85rem;
+  filter: grayscale(0.2);
+  opacity: 0.9;
+}
+.admin__thumb input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.admin__thumb::after {
+  content: '✎';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.6rem;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface);
+}
+
+.admin__imgfield-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 0.4rem;
+}
+.admin__imgfield-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+.admin__imgpreview {
+  width: 84px;
+  height: 84px;
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.admin__imgpreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.admin__imgfield-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+.admin__imgbtn {
+  color: var(--ink);
+  border-color: var(--line);
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.admin__imgbtn:hover { background: var(--bg); }
+.admin__imgremove {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  padding: 0;
+}
+.admin__imgremove:hover { color: var(--red); }
+.admin__imgfield-actions small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+}

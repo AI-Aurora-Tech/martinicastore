@@ -23,7 +23,7 @@ out.push(
 )
 out.push('')
 out.push(
-  'insert into public.products (id, name, category_id, kind, price, old_price, color_main, color_accent, badge, description, sizes, rating, reviews, stock, sort) values',
+  'insert into public.products (id, name, category_id, kind, price, old_price, color_main, color_accent, badge, description, sizes, rating, reviews, stock, image_url, sort) values',
 )
 out.push(
   products
@@ -43,6 +43,7 @@ out.push(
         p.rating,
         p.reviews,
         p.stock ?? 0,
+        sqlStr(p.image),
         i,
       ]
       return `  (${vals.join(', ')})`

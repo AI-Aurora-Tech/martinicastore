@@ -36,6 +36,8 @@ export interface Product {
   stock?: number
   /** Produto visível na loja. `undefined`/true = ativo. */
   active?: boolean
+  /** URL (ou data URL) da foto do produto. Sem valor = usa a ilustração SVG. */
+  image?: string
 }
 
 export interface CartItem {

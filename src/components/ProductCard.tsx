@@ -36,7 +36,13 @@ export function ProductCard({ product }: Props) {
         {product.badge && !soldOut && <span className="card__badge">{product.badge}</span>}
         {discount > 0 && !soldOut && <span className="card__discount">-{discount}%</span>}
         {soldOut && <span className="card__soldout">Esgotado</span>}
-        <ProductImage kind={product.kind} colors={product.colors} className="card__img" />
+        <ProductImage
+          kind={product.kind}
+          colors={product.colors}
+          image={product.image}
+          alt={product.name}
+          className="card__img"
+        />
       </div>
 
       <div className="card__body">

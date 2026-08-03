@@ -70,7 +70,12 @@ mesmas credenciais do PDV). É onde você **gerencia o estoque**:
   - **ativar/desativar** o produto na loja;
   - **excluir** produto.
 - **Novo produto** via formulário (código, nome, categoria, tipo, preço,
-  estoque, descrição).
+  estoque, descrição) com **upload de imagem JPG/PNG** (até 3 MB) e
+  pré-visualização. Também é possível **trocar a foto** de um produto existente
+  clicando na miniatura da linha. Sem imagem, o produto usa a ilustração SVG.
+  - No modo Supabase a imagem vai para o **Storage** (bucket público
+    `product-images`) e a URL fica em `products.image_url`; no modo demo vira um
+    data URL em memória.
 - **Baixa automática de estoque**: cada venda no PDV e cada pedido na loja
   reduzem o estoque do produto (no banco, via *trigger*; na tela, em tempo real).
   Produtos esgotados aparecem como **"Esgotado"** na loja e no PDV.

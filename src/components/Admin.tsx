@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CLUB } from '../data/products'
 import type { CategoryId, Product, ProductKind } from '../types'
 import { useCatalog } from '../context/CatalogContext'
-import { deleteProduct, saveProduct, setStock } from '../services/admin'
+import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
 import type { Operator } from '../services/auth'
 
 interface Props {
@@ -57,6 +57,15 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     removeLocal(p.id)
     const { error: err } = await deleteProduct(p.id)
     if (err) setError(err)
+  }
+
+  async function changeImage(p: Product, file: File) {
+    const { url, error: err } = await uploadProductImage(file)
+    if (err || !url) {
+      setError(err ?? 'Falha ao enviar a imagem.')
+      return
+    }
+    await persist({ ...p, image: url })
   }
 
   return (
@@ -150,6 +159,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                   onChangeStock={(v) => changeStock(p, v)}
                   onSavePrice={(price) => persist({ ...p, price })}
                   onToggleActive={(active) => persist({ ...p, active })}
+                  onUploadImage={(file) => changeImage(p, file)}
                   onDelete={() => remove(p)}
                 />
               ))}
@@ -186,11 +196,12 @@ interface RowProps {
   onChangeStock: (value: number) => void
   onSavePrice: (price: number) => void
   onToggleActive: (active: boolean) => void
+  onUploadImage: (file: File) => void
   onDelete: () => void
 }
 
 function AdminRow({
-  product, categoryLabel, onChangeStock, onSavePrice, onToggleActive, onDelete,
+  product, categoryLabel, onChangeStock, onSavePrice, onToggleActive, onUploadImage, onDelete,
 }: RowProps) {
   const stock = product.stock ?? 0
   const [priceInput, setPriceInput] = useState(String(product.price))
@@ -219,7 +230,24 @@ function AdminRow({
     <tr className={product.active === false ? 'admin__row--inactive' : ''}>
       <td>
         <div className="admin__prod">
-          <span className="admin__dot" style={{ background: product.colors[0] }} />
+          <label className="admin__thumb" title="Enviar/trocar imagem (JPG ou PNG)">
+            {product.image ? (
+              <img src={product.image} alt={product.name} />
+            ) : (
+              <span className="admin__dot" style={{ background: product.colors[0] }}>
+                <span className="admin__thumb-cam" aria-hidden="true">📷</span>
+              </span>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onUploadImage(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
           <div>
             <strong>{product.name}</strong>
             <small>{product.id}</small>
@@ -288,7 +316,21 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
   const [price, setPrice] = useState('')
   const [stock, setStock] = useState('0')
   const [description, setDescription] = useState('')
+  const [image, setImage] = useState<string | undefined>(undefined)
+  const [imgBusy, setImgBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImgBusy(true)
+    setErr('')
+    const { url, error } = await uploadProductImage(file)
+    setImgBusy(false)
+    if (error || !url) return setErr(error ?? 'Falha ao enviar a imagem.')
+    setImage(url)
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -311,6 +353,7 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
       reviews: 0,
       stock: Math.max(0, Math.round(Number(stock) || 0)),
       active: true,
+      image,
     })
   }
 
@@ -319,6 +362,30 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
       <form className="admin__modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h3>Novo produto</h3>
         <div className="admin__form-grid">
+          <div className="admin__form-full admin__imgfield">
+            <span className="admin__imgfield-label">Imagem do produto</span>
+            <div className="admin__imgfield-row">
+              <div className="admin__imgpreview">
+                {image ? (
+                  <img src={image} alt="Pré-visualização" />
+                ) : (
+                  <span aria-hidden="true">🖼️</span>
+                )}
+              </div>
+              <div className="admin__imgfield-actions">
+                <label className="btn btn--ghost admin__imgbtn">
+                  {imgBusy ? 'Enviando…' : image ? 'Trocar imagem' : 'Escolher imagem'}
+                  <input type="file" accept="image/png,image/jpeg" onChange={handleFile} hidden />
+                </label>
+                {image && (
+                  <button type="button" className="admin__imgremove" onClick={() => setImage(undefined)}>
+                    Remover
+                  </button>
+                )}
+                <small>JPG ou PNG, até 3 MB. Opcional — sem imagem usa a ilustração.</small>
+              </div>
+            </div>
+          </div>
           <label>Código (id)<input value={id} onChange={(e) => setId(e.target.value)} placeholder="ex.: cam-07" /></label>
           <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" /></label>
           <label>Categoria
