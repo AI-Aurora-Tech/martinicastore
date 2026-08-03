@@ -19,6 +19,7 @@ export interface OrderInput {
 
 export interface OrderResult {
   number: number | null
+  id: string | null
   error: string | null
 }
 
@@ -43,7 +44,7 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
         quantity: i.quantity,
       })),
     })
-    return { number, error: null }
+    return { number, id: null, error: null }
   }
 
   try {
@@ -87,10 +88,10 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
     const { error: itemsError } = await supabase.from('order_items').insert(items)
     if (itemsError) throw itemsError
 
-    return { number: data.number as number, error: null }
+    return { number: data.number as number, id: data.id as string, error: null }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro ao registrar pedido.'
     console.error('[orders] erro ao gravar pedido:', err)
-    return { number: null, error: message }
+    return { number: null, id: null, error: message }
   }
 }

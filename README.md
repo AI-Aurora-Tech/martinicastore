@@ -112,6 +112,34 @@ mesmo se o custo mudar depois):
 - No modo Supabase lê de `sales`/`orders`; no modo demo, das vendas guardadas no
   navegador (para o relatório funcionar mesmo sem backend).
 
+### 📧 E-mail de confirmação do pedido
+
+O envio de e-mail **não acontece no navegador** — quem envia é uma **Supabase
+Edge Function** (`supabase/functions/send-order-email`) que lê o pedido no banco
+(service role) e envia via [Resend](https://resend.com/). O checkout chama a
+função depois de gravar o pedido (best-effort: se falhar, a compra continua e a
+tela avisa que o e-mail não saiu).
+
+Para ativar:
+
+1. Crie uma conta no **Resend** e gere uma **API key**. Para enviar a e-mails
+   quaisquer, **verifique um domínio**; para teste, o remetente
+   `onboarding@resend.dev` só envia para o e-mail dono da conta Resend.
+2. Deploy da função (precisa da [Supabase CLI](https://supabase.com/docs/guides/cli)):
+   ```bash
+   supabase functions deploy send-order-email
+   ```
+3. Configure os segredos:
+   ```bash
+   supabase secrets set RESEND_API_KEY=re_xxx
+   supabase secrets set STORE_FROM_EMAIL="Martinica Store <pedidos@seudominio.com>"
+   supabase secrets set STORE_NOTIFY_EMAIL="loja@seudominio.com"   # opcional (cópia p/ loja)
+   ```
+   `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente da função.
+
+> No **modo demo** (sem Supabase) não há backend de e-mail — o pedido é só
+> registrado localmente e a tela não promete envio de e-mail.
+
 ## 🗄️ Banco de dados (Supabase)
 
 A aplicação funciona em dois modos, decididos automaticamente pela presença das
