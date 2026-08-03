@@ -51,6 +51,22 @@ function toProduct(r: ProductRow): Product {
   }
 }
 
+/** Extrai uma mensagem legível de erros do Supabase (PostgrestError) ou genéricos. */
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object') {
+    const e = err as { message?: string; details?: string; hint?: string; code?: string }
+    const parts = [e.message, e.details, e.hint, e.code && `(código ${e.code})`].filter(Boolean)
+    if (parts.length) return parts.join(' — ')
+    try {
+      return JSON.stringify(err)
+    } catch {
+      return 'Erro desconhecido.'
+    }
+  }
+  return String(err)
+}
+
 export interface Catalog {
   products: Product[]
   categories: Category[]
@@ -102,8 +118,12 @@ export async function loadCatalog(): Promise<Catalog> {
       source: 'supabase',
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
     console.warn('[catalog] falha ao carregar do Supabase, usando seed local.', err)
-    return { products: seedProducts, categories: seedCategories, source: 'demo', error: message }
+    return {
+      products: seedProducts,
+      categories: seedCategories,
+      source: 'demo',
+      error: formatError(err),
+    }
   }
 }
