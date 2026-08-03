@@ -25,6 +25,7 @@ function toRow(p: Product) {
     stock: p.stock ?? 0,
     active: p.active ?? true,
     image_url: p.image ?? null,
+    weight: p.weight ?? 300,
   }
 }
 

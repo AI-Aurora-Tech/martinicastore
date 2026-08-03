@@ -8,12 +8,13 @@ import { Footer } from './components/Footer'
 import { AuthGate } from './components/AuthGate'
 import { PDV } from './components/PDV'
 import { Admin } from './components/Admin'
+import { Checkout } from './components/Checkout'
 import { useCatalog } from './context/CatalogContext'
 import type { CategoryId } from './types'
 
 export default function App() {
   const { products, categories, loading } = useCatalog()
-  const [view, setView] = useState<'loja' | 'pdv' | 'admin'>('loja')
+  const [view, setView] = useState<'loja' | 'pdv' | 'admin' | 'checkout'>('loja')
   const [active, setActive] = useState<CategoryId | 'todos'>('todos')
   const [query, setQuery] = useState('')
 
@@ -68,6 +69,10 @@ export default function App() {
         )}
       </AuthGate>
     )
+  }
+
+  if (view === 'checkout') {
+    return <Checkout onExit={() => setView('loja')} />
   }
 
   return (
@@ -140,7 +145,7 @@ export default function App() {
       </main>
 
       <Footer />
-      <CartDrawer />
+      <CartDrawer onCheckout={() => setView('checkout')} />
     </div>
   )
 }

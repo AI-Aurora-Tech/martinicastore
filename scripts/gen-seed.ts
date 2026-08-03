@@ -23,7 +23,7 @@ out.push(
 )
 out.push('')
 out.push(
-  'insert into public.products (id, name, category_id, kind, price, old_price, cost, color_main, color_accent, badge, description, sizes, rating, reviews, stock, image_url, sort) values',
+  'insert into public.products (id, name, category_id, kind, price, old_price, cost, color_main, color_accent, badge, description, sizes, rating, reviews, stock, weight, image_url, sort) values',
 )
 out.push(
   products
@@ -44,6 +44,7 @@ out.push(
         p.rating,
         p.reviews,
         p.stock ?? 0,
+        p.weight ?? 300,
         sqlStr(p.image),
         i,
       ]

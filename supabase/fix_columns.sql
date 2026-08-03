@@ -19,6 +19,7 @@ alter table public.products add column if not exists reviews      int  not null 
 alter table public.products add column if not exists stock        int  not null default 0;
 alter table public.products add column if not exists active       boolean not null default true;
 alter table public.products add column if not exists image_url    text;
+alter table public.products add column if not exists weight       int  not null default 300;
 alter table public.products add column if not exists sort         int  not null default 0;
 
 -- sales / itens

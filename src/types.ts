@@ -40,6 +40,35 @@ export interface Product {
   active?: boolean
   /** URL (ou data URL) da foto do produto. Sem valor = usa a ilustração SVG. */
   image?: string
+  /** Peso em gramas (para cálculo de frete). Padrão 300 g quando ausente. */
+  weight?: number
+}
+
+export interface Address {
+  cep: string
+  street: string
+  number: string
+  complement?: string
+  neighborhood: string
+  city: string
+  uf: string
+}
+
+export interface Customer {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  address?: Address
+}
+
+export type ShippingService = 'PAC' | 'SEDEX'
+
+export interface ShippingOption {
+  service: ShippingService
+  price: number
+  days: number
+  free?: boolean
 }
 
 export interface CartItem {

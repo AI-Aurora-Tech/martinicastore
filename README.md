@@ -27,7 +27,25 @@ Identidade visual em **laranja e preto**.
 - **Preços** com preço "de/por", cálculo de desconto (%) e parcelamento.
 - **Ilustrações vetoriais (SVG)** geradas por tipo de produto — sem dependência
   de imagens externas.
+- **Conta do comprador** (Supabase Auth): cadastro/login pelo topo da loja, com
+  endereço salvo no perfil para as próximas compras.
+- **Checkout com entrega pelos Correios**: cadastro obrigatório, busca de
+  endereço por **CEP (ViaCEP)** e cálculo de frete **PAC/SEDEX** (estimativa por
+  região + peso), com prazos; escolha da forma de pagamento e resumo do pedido.
 - **Design responsivo** (desktop, tablet e mobile) e acessível.
+
+### 🚚 Entrega (Correios) e checkout
+
+- O comprador cria conta / entra (obrigatório para finalizar).
+- Informa o **CEP** → o endereço é preenchido via **ViaCEP** e o frete é
+  calculado: **PAC** e **SEDEX**, com preço e prazo em dias úteis.
+- Frete **grátis (PAC)** acima de R$ 299.
+- O cálculo é uma **estimativa** por região (UF) + **peso do produto** (definido
+  no Admin, padrão 300 g), em `src/services/shipping.ts`. Para preços exatos,
+  troque `quoteShipping` pela API oficial (Correios/Melhor Envio) mantendo a
+  mesma interface.
+- O pedido grava endereço, serviço e prazo em `orders` (e o comprador em
+  `customer_id`).
 
 ### 🧾 PDV (Ponto de Venda / caixa)
 
@@ -109,12 +127,17 @@ variáveis de ambiente:
 1. Crie um projeto em [supabase.com](https://supabase.com/) (gratuito).
 2. Em **SQL Editor**, rode, nesta ordem:
    - `supabase/migrations/0001_init.sql` (cria tabelas + RLS)
+   - `supabase/migrations/0002_customers_shipping.sql` (clientes, endereço no
+     pedido e peso do produto) — aditiva e re-executável.
    - **Para começar com seus produtos reais (recomendado):**
      `supabase/seed_categories.sql` — cria só as categorias, catálogo vazio.
    - **Ou, para começar com os produtos de exemplo:**
      `supabase/seed.sql` — categorias + 21 produtos de demonstração.
 3. Em **Authentication → Users**, crie ao menos um operador (e-mail + senha)
-   para acessar o PDV.
+   para acessar o PDV/Admin.
+   - **Compradores** se cadastram sozinhos pela loja. Para o cadastro entrar
+     direto (sem confirmação por e-mail), desative em **Authentication →
+     Providers → Email → Confirm email** (ou o comprador confirma pelo e-mail).
 4. Copie `.env.example` para `.env` e preencha com os dados de
    **Project Settings → API**:
    ```bash
@@ -210,6 +233,8 @@ src/
 │   ├── orders.ts             # grava pedidos da loja
 │   ├── admin.ts              # CRUD de produtos + estoque + upload de imagem
 │   ├── reports.ts            # agrega faturamento/custo/lucro
+│   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
+│   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
 ├── data/products.ts          # seed/fallback + config do clube + BRL
 ├── context/
@@ -222,7 +247,9 @@ src/
     ├── ProductCard.tsx       # card de produto
     ├── ProductImage.tsx      # ilustrações SVG por tipo de produto
     ├── StarRating.tsx        # avaliações em estrelas
-    ├── CartDrawer.tsx        # sacola lateral + checkout (grava pedido)
+    ├── CartDrawer.tsx        # sacola lateral (abre o checkout)
+    ├── Checkout.tsx          # checkout: conta + endereço + frete + pagamento
+    ├── CustomerAuth.tsx      # form de cadastro/login do comprador
     ├── AuthGate.tsx          # login reutilizável (PDV e Admin)
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
     ├── Admin.tsx             # painel de estoque e produtos (custo/margem)

@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { CLUB } from '../data/products'
 import type { CategoryId } from '../types'
 import { useCart } from '../context/CartContext'
 import { useCatalog } from '../context/CatalogContext'
+import { useCustomer } from '../context/CustomerContext'
+import { CustomerAuth } from './CustomerAuth'
 
 interface Props {
   active: CategoryId | 'todos'
@@ -15,6 +18,8 @@ interface Props {
 export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmin }: Props) {
   const { count, openCart } = useCart()
   const { categories } = useCatalog()
+  const { customer, signOut } = useCustomer()
+  const [showAuth, setShowAuth] = useState(false)
 
   return (
     <header className="header">
@@ -67,13 +72,26 @@ export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmi
               <strong>PDV</strong>
             </span>
           </button>
-          <a className="header__account" href="#conta">
-            <span aria-hidden="true">👤</span>
-            <span className="header__account-text">
-              <small>Bem-vindo</small>
-              <strong>Entrar / Cadastrar</strong>
-            </span>
-          </a>
+          {customer ? (
+            <div className="header__account header__account--in">
+              <span aria-hidden="true">👤</span>
+              <span className="header__account-text">
+                <small>Olá,</small>
+                <strong>{customer.name.split(' ')[0]}</strong>
+              </span>
+              <button className="header__logout" onClick={() => signOut()} title="Sair da conta">
+                Sair
+              </button>
+            </div>
+          ) : (
+            <button className="header__account" onClick={() => setShowAuth(true)}>
+              <span aria-hidden="true">👤</span>
+              <span className="header__account-text">
+                <small>Bem-vindo</small>
+                <strong>Entrar / Cadastrar</strong>
+              </span>
+            </button>
+          )}
           <button type="button" className="header__cart" onClick={openCart}>
             <span aria-hidden="true">🛍️</span>
             <span>Sacola</span>
@@ -100,6 +118,22 @@ export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmi
         ))}
         <span className="nav__promo">🔥 Ofertas da Semana</span>
       </nav>
+
+      {showAuth && (
+        <div className="authmodal" onClick={() => setShowAuth(false)}>
+          <div className="authmodal__card" onClick={(e) => e.stopPropagation()}>
+            <button className="authmodal__close" onClick={() => setShowAuth(false)} aria-label="Fechar">✕</button>
+            <div className="authmodal__brand">
+              <span className="brand__mark" aria-hidden="true">M</span>
+              <div>
+                <strong>Minha conta</strong>
+                <small>Entre ou cadastre-se</small>
+              </div>
+            </div>
+            <CustomerAuth onDone={() => setShowAuth(false)} />
+          </div>
+        </div>
+      )}
     </header>
   )
 }
