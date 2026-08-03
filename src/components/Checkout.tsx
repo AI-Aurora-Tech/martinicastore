@@ -14,6 +14,8 @@ import {
   quoteShipping,
 } from '../services/shipping'
 import { createOrder } from '../services/orders'
+import { sendOrderEmail } from '../services/email'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
   onExit: () => void
@@ -43,6 +45,7 @@ export function Checkout({ onExit }: Props) {
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState('')
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
 
   const weight = useMemo(() => cartWeight(items), [items])
 
@@ -102,7 +105,7 @@ export function Checkout({ onExit }: Props) {
     }
     setPlacing(true)
     await saveAddress(addr)
-    const { number, error: err } = await createOrder({
+    const { number, id, error: err } = await createOrder({
       customerId: customer?.id,
       customerName: customer?.name,
       customerEmail: customer?.email,
@@ -116,9 +119,15 @@ export function Checkout({ onExit }: Props) {
       address: addr,
       items,
     })
-    setPlacing(false)
-    if (err) return setError(err)
+    if (err) {
+      setPlacing(false)
+      return setError(err)
+    }
     decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity })))
+    // Dispara o e-mail de confirmação (best-effort — não bloqueia a compra).
+    const { sent } = await sendOrderEmail(id)
+    setEmailSent(sent)
+    setPlacing(false)
     setOrderNumber(number)
     clear()
   }
@@ -134,8 +143,14 @@ export function Checkout({ onExit }: Props) {
           <h2>Pedido confirmado!</h2>
           {orderNumber > 0 && <p>Pedido nº <strong>{String(orderNumber).padStart(6, '0')}</strong></p>}
           <p className="checkout__done-sub">
-            Enviamos a confirmação para <strong>{customer?.email}</strong>. Entrega
-            via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.
+            {emailSent ? (
+              <>Enviamos a confirmação para <strong>{customer?.email}</strong>. </>
+            ) : isSupabaseConfigured ? (
+              <>Seu pedido foi registrado (o e-mail de confirmação não pôde ser enviado agora). </>
+            ) : (
+              <>Seu pedido foi registrado. </>
+            )}
+            Entrega via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.
           </p>
           <button className="btn btn--primary" onClick={onExit}>Voltar à loja</button>
         </div>
