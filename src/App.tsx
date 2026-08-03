@@ -6,10 +6,11 @@ import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
 import { PDVGate } from './components/PDVGate'
-import { categories, products } from './data/products'
+import { useCatalog } from './context/CatalogContext'
 import type { CategoryId } from './types'
 
 export default function App() {
+  const { products, categories, loading } = useCatalog()
   const [view, setView] = useState<'loja' | 'pdv'>('loja')
   const [active, setActive] = useState<CategoryId | 'todos'>('todos')
   const [query, setQuery] = useState('')
@@ -33,7 +34,7 @@ export default function App() {
         p.description.toLowerCase().includes(q)
       return byCategory && bySearch
     })
-  }, [active, query])
+  }, [products, active, query])
 
   const activeLabel =
     active === 'todos'
@@ -83,12 +84,26 @@ export default function App() {
         <div className="vitrine__head">
           <h2>{heading}</h2>
           <span className="vitrine__count">
-            {filtered.length}{' '}
-            {filtered.length === 1 ? 'produto' : 'produtos'}
+            {loading
+              ? 'Carregando…'
+              : `${filtered.length} ${filtered.length === 1 ? 'produto' : 'produtos'}`}
           </span>
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="grid">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="card card--skeleton" aria-hidden="true">
+                <div className="card__media" />
+                <div className="card__body">
+                  <span className="skeleton skeleton--line" />
+                  <span className="skeleton skeleton--line skeleton--short" />
+                  <span className="skeleton skeleton--btn" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="vitrine__empty">
             <p>Nenhum produto encontrado. 😕</p>
             <button className="btn btn--primary" onClick={() => selectCategory('todos')}>

@@ -1,6 +1,7 @@
-import { categories, CLUB } from '../data/products'
+import { CLUB } from '../data/products'
 import type { CategoryId } from '../types'
 import { useCart } from '../context/CartContext'
+import { useCatalog } from '../context/CatalogContext'
 
 interface Props {
   active: CategoryId | 'todos'
@@ -12,6 +13,7 @@ interface Props {
 
 export function Header({ active, onSelect, query, onQuery, onOpenPDV }: Props) {
   const { count, openCart } = useCart()
+  const { categories } = useCatalog()
 
   return (
     <header className="header">

@@ -14,6 +14,11 @@ dist-standalone
 *.local
 *.tsbuildinfo
 
+# Env / secrets (mantenha apenas o .env.example versionado)
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
