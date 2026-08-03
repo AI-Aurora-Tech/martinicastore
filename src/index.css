@@ -2278,3 +2278,14 @@ button {
   .reports__kpis, .reports__subkpis { grid-template-columns: 1fr 1fr; }
   .reports__grid { grid-template-columns: 1fr; }
 }
+
+.admin__banner--ok {
+  background: #eafaf0;
+  border-color: #b7e3c7;
+}
+.admin__banner code {
+  background: rgba(0,0,0,0.06);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
