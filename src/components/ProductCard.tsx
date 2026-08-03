@@ -19,18 +19,23 @@ export function ProductCard({ product }: Props) {
     : 0
 
   const installment = product.price / 10
+  const soldOut = product.stock != null && product.stock <= 0
+  const lowStock =
+    product.stock != null && product.stock > 0 && product.stock <= 5
 
   function handleAdd() {
+    if (soldOut) return
     addItem(product, size)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1200)
   }
 
   return (
-    <article className="card">
+    <article className={`card ${soldOut ? 'card--out' : ''}`}>
       <div className="card__media" style={{ background: `${product.colors[0]}14` }}>
-        {product.badge && <span className="card__badge">{product.badge}</span>}
-        {discount > 0 && <span className="card__discount">-{discount}%</span>}
+        {product.badge && !soldOut && <span className="card__badge">{product.badge}</span>}
+        {discount > 0 && !soldOut && <span className="card__discount">-{discount}%</span>}
+        {soldOut && <span className="card__soldout">Esgotado</span>}
         <ProductImage kind={product.kind} colors={product.colors} className="card__img" />
       </div>
 
@@ -47,6 +52,9 @@ export function ProductCard({ product }: Props) {
         <p className="card__installment">
           ou 10x de {BRL.format(installment)} sem juros
         </p>
+        {lowStock && (
+          <p className="card__lowstock">🔥 Últimas {product.stock} unidades!</p>
+        )}
 
         {product.sizes && (
           <div className="card__sizes" role="group" aria-label="Escolha o tamanho">
@@ -68,8 +76,9 @@ export function ProductCard({ product }: Props) {
           type="button"
           className={`btn btn--primary card__add ${added ? 'card__add--done' : ''}`}
           onClick={handleAdd}
+          disabled={soldOut}
         >
-          {added ? '✓ Adicionado' : 'Adicionar à sacola'}
+          {soldOut ? 'Esgotado' : added ? '✓ Adicionado' : 'Adicionar à sacola'}
         </button>
       </div>
     </article>

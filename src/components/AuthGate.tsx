@@ -1,5 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { PDV } from './PDV'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import {
   authMode,
   getCurrentOperator,
@@ -9,16 +8,18 @@ import {
 } from '../services/auth'
 
 interface Props {
+  /** Texto pequeno no cartão de login (ex.: "Acesso ao Ponto de Venda"). */
+  subtitle: string
   onExit: () => void
+  children: (operator: Operator, logout: () => Promise<void>) => ReactNode
 }
 
 /**
- * "Porteiro" do PDV: exige login antes de liberar o Ponto de Venda. Usa o
- * Supabase Auth quando configurado (e-mail/senha) ou credenciais mock no modo
- * demo. O componente <PDV> (com seus próprios hooks) só é montado após a
- * autenticação, evitando qualquer problema de ordem de hooks.
+ * Porteiro de autenticação reutilizável. Exige login (Supabase Auth quando
+ * configurado, ou credenciais mock no modo demo) e só então renderiza o
+ * conteúdo protegido — que recebe o operador e a função de logout.
  */
-export function PDVGate({ onExit }: Props) {
+export function AuthGate({ subtitle, onExit, children }: Props) {
   const [operator, setOperator] = useState<Operator | null>(null)
   const [checking, setChecking] = useState(true)
   const [login, setLogin] = useState('')
@@ -27,7 +28,6 @@ export function PDVGate({ onExit }: Props) {
   const [showPass, setShowPass] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  // Recupera sessão existente ao montar.
   useEffect(() => {
     let alive = true
     getCurrentOperator().then((op) => {
@@ -65,13 +65,13 @@ export function PDVGate({ onExit }: Props) {
   if (checking) {
     return (
       <div className="pdvlogin">
-        <div className="pdvlogin__loading">Carregando caixa…</div>
+        <div className="pdvlogin__loading">Carregando…</div>
       </div>
     )
   }
 
   if (operator) {
-    return <PDV operator={operator} onLogout={handleLogout} onExit={onExit} />
+    return <>{children(operator, handleLogout)}</>
   }
 
   const isSupabase = authMode === 'supabase'
@@ -82,13 +82,13 @@ export function PDVGate({ onExit }: Props) {
         <div className="pdvlogin__brand">
           <span className="brand__mark" aria-hidden="true">M</span>
           <div>
-            <strong>MARTINICA · PDV</strong>
-            <small>Acesso ao Ponto de Venda</small>
+            <strong>MARTINICA</strong>
+            <small>{subtitle}</small>
           </div>
         </div>
 
         <p className="pdvlogin__hint">
-          Informe suas credenciais de operador para abrir o caixa.
+          Informe suas credenciais para continuar.
         </p>
 
         <label className="pdvlogin__field">
@@ -138,7 +138,7 @@ export function PDVGate({ onExit }: Props) {
           className="btn btn--primary btn--block pdvlogin__submit"
           disabled={submitting}
         >
-          {submitting ? 'Entrando…' : 'Entrar no caixa'}
+          {submitting ? 'Entrando…' : 'Entrar'}
         </button>
 
         <button type="button" className="pdvlogin__back" onClick={onExit}>

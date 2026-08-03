@@ -56,6 +56,25 @@ para registrar vendas presenciais:
 - [Supabase](https://supabase.com/) — Postgres + Auth (backend real)
 - CSS puro (sem framework), com variáveis de tema e grid responsivo
 
+### 📦 Admin — Estoque & Produtos
+
+Acessível pelo botão **"Gestão · Admin"** no topo da loja (protegido por login,
+mesmas credenciais do PDV). É onde você **gerencia o estoque**:
+
+- Painel com **resumo** (total de produtos, unidades em estoque, itens com
+  estoque baixo e esgotados).
+- **Tabela de produtos** com busca e filtro por categoria:
+  - ajuste de **estoque** (botões −/+ ou digitando), com destaque para estoque
+    baixo (≤ 5) e esgotado;
+  - edição de **preço** inline;
+  - **ativar/desativar** o produto na loja;
+  - **excluir** produto.
+- **Novo produto** via formulário (código, nome, categoria, tipo, preço,
+  estoque, descrição).
+- **Baixa automática de estoque**: cada venda no PDV e cada pedido na loja
+  reduzem o estoque do produto (no banco, via *trigger*; na tela, em tempo real).
+  Produtos esgotados aparecem como **"Esgotado"** na loja e no PDV.
+
 ## 🗄️ Banco de dados (Supabase)
 
 A aplicação funciona em dois modos, decididos automaticamente pela presença das
@@ -87,9 +106,12 @@ variáveis de ambiente:
 
 ### Modelo de dados
 
-- `categories`, `products` — catálogo (leitura pública via RLS).
+- `categories`, `products` — catálogo (leitura pública; escrita pelo Admin
+  autenticado). `products.stock` guarda o estoque.
 - `sales`, `sale_items` — vendas do PDV (somente operador autenticado grava).
 - `orders`, `order_items` — pedidos da loja (checkout da sacola).
+- *Triggers* em `sale_items` e `order_items` **abatem o estoque** de
+  `products` automaticamente a cada item vendido.
 
 O seed é gerado a partir de `src/data/products.ts` com `npm run gen:seed`.
 
@@ -126,9 +148,10 @@ src/
 ├── lib/supabase.ts           # cliente Supabase (+ isSupabaseConfigured)
 ├── services/
 │   ├── catalog.ts            # produtos/categorias (Supabase ou seed)
-│   ├── auth.ts               # login do PDV (Supabase Auth ou mock)
+│   ├── auth.ts               # login (Supabase Auth ou mock)
 │   ├── sales.ts              # grava vendas do PDV
-│   └── orders.ts             # grava pedidos da loja
+│   ├── orders.ts             # grava pedidos da loja
+│   └── admin.ts              # CRUD de produtos + estoque
 ├── data/products.ts          # seed/fallback + config do clube + BRL
 ├── context/
 │   ├── CatalogContext.tsx    # carrega o catálogo uma vez
@@ -141,8 +164,9 @@ src/
     ├── ProductImage.tsx      # ilustrações SVG por tipo de produto
     ├── StarRating.tsx        # avaliações em estrelas
     ├── CartDrawer.tsx        # sacola lateral + checkout (grava pedido)
-    ├── PDVGate.tsx           # login do PDV (Supabase Auth / demo)
+    ├── AuthGate.tsx          # login reutilizável (PDV e Admin)
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
+    ├── Admin.tsx             # painel de estoque e produtos
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```
 
