@@ -156,6 +156,11 @@ Checklist:
 5. Dúvida se está tudo certo? Rode **`supabase/check_setup.sql`** para um
    diagnóstico (tabelas, policies, categorias, produtos e usuários).
 
+Se o erro mencionar **coluna inexistente** (ex.: `column products.cost does not
+exist`, código `42703`), suas tabelas foram criadas por uma versão antiga do
+schema. Rode **`supabase/fix_columns.sql`** — ele adiciona as colunas que
+faltam (`cost`, `stock`, `active`, `image_url`, `unit_cost`…) sem apagar dados.
+
 ### Modelo de dados
 
 - `categories`, `products` — catálogo (leitura pública; escrita pelo Admin
