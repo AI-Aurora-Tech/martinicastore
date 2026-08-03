@@ -141,6 +141,21 @@ delete from public.products;   -- mantém as categorias
 > migração `0001_init.sql` foi executada (tabelas + policies de RLS) e se a
 > `VITE_SUPABASE_URL`/`ANON_KEY` no `.env` estão corretas.
 
+#### RLS ligado mas nada funciona?
+
+RLS **ligado sem policies bloqueia tudo** (leitura volta vazia, escrita dá erro).
+Checklist:
+
+1. Rode **`supabase/policies.sql`** — recria todas as policies (é seguro rodar
+   várias vezes). Isso cobre leitura pública do catálogo, escrita do admin,
+   vendas/pedidos e o Storage de imagens.
+2. Rode **`supabase/seed_categories.sql`** (as categorias precisam existir).
+3. Crie um **usuário** em **Authentication → Users → Add user** (marque
+   *Auto Confirm User*) — é com ele que você loga no Admin/PDV.
+4. Confirme `.env` e **reinicie** o `npm run dev` (o Vite só lê o `.env` ao subir).
+5. Dúvida se está tudo certo? Rode **`supabase/check_setup.sql`** para um
+   diagnóstico (tabelas, policies, categorias, produtos e usuários).
+
 ### Modelo de dados
 
 - `categories`, `products` — catálogo (leitura pública; escrita pelo Admin
