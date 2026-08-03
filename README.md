@@ -116,25 +116,20 @@ mesmo se o custo mudar depois):
 
 O envio de e-mail **não acontece no navegador** — quem envia é uma **Supabase
 Edge Function** (`supabase/functions/send-order-email`) que lê o pedido no banco
-(service role) e envia via [Resend](https://resend.com/). O checkout chama a
-função depois de gravar o pedido (best-effort: se falhar, a compra continua e a
-tela avisa que o e-mail não saiu).
+(service role) e envia por **Gmail (SMTP)** ou **[Resend](https://resend.com/)**.
+O checkout chama a função depois de gravar o pedido (best-effort: se falhar, a
+compra continua e a tela avisa o motivo).
 
-Para ativar:
+Resumo (passo a passo completo em
+[`supabase/functions/send-order-email/SETUP.md`](supabase/functions/send-order-email/SETUP.md)):
 
-1. Crie uma conta no **Resend** e gere uma **API key**. Para enviar a e-mails
-   quaisquer, **verifique um domínio**; para teste, o remetente
-   `onboarding@resend.dev` só envia para o e-mail dono da conta Resend.
-2. Deploy da função (precisa da [Supabase CLI](https://supabase.com/docs/guides/cli)):
-   ```bash
-   supabase functions deploy send-order-email
-   ```
-3. Configure os segredos:
-   ```bash
-   supabase secrets set RESEND_API_KEY=re_xxx
-   supabase secrets set STORE_FROM_EMAIL="Martinica Store <pedidos@seudominio.com>"
-   supabase secrets set STORE_NOTIFY_EMAIL="loja@seudominio.com"   # opcional (cópia p/ loja)
-   ```
+1. Publique a função — CLI `supabase functions deploy send-order-email` **ou**
+   pelo Dashboard (Edge Functions → Create → colar o `index.ts`).
+2. Configure os segredos do provedor escolhido:
+   - **Gmail:** `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Senha de app do Google, exige
+     2FA), `STORE_FROM_NAME` e `STORE_NOTIFY_EMAIL` (opcionais).
+   - **Resend:** `RESEND_API_KEY` (e `STORE_FROM_EMAIL`).
+   - Se ambos existirem, o Gmail tem preferência.
    `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente da função.
 
 > No **modo demo** (sem Supabase) não há backend de e-mail — o pedido é só

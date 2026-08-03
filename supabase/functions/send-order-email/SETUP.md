@@ -1,23 +1,45 @@
 # Configurar o e-mail de confirmação do pedido
 
-Passo a passo para ativar o envio do e-mail (Edge Function `send-order-email`
-+ Resend). Tempo: ~15 min.
+A Edge Function `send-order-email` envia o e-mail. Você pode usar o **Gmail**
+(mais simples se você já tem uma conta) **ou** o **Resend**. Escolha UMA opção
+na Parte 1. Tempo: ~15 min.
 
 ---
 
-## Parte 1 — Resend (serviço de e-mail)
+## Parte 1 — Escolha o provedor de e-mail
+
+### Opção A — Gmail (usar seu e-mail do Google)
+
+Usa o SMTP do Gmail com uma **Senha de app** (não é a sua senha normal).
+
+1. A conta Google precisa ter a **Verificação em duas etapas (2FA) ativada**:
+   https://myaccount.google.com/security → **Verificação em duas etapas** → ative.
+2. Crie uma **Senha de app**: https://myaccount.google.com/apppasswords
+   - Nome do app: `Martinica Store` → **Criar**.
+   - O Google mostra uma senha de **16 letras** (ex.: `abcd efgh ijkl mnop`).
+     **Copie** — é ela que vai no segredo `GMAIL_APP_PASSWORD` (pode colar com
+     ou sem espaços).
+3. Segredos que você vai configurar na Parte 2:
+   - `GMAIL_USER` = `sualoja@gmail.com`
+   - `GMAIL_APP_PASSWORD` = a senha de app de 16 letras
+   - `STORE_FROM_NAME` = `Martinica Store` (opcional, nome exibido)
+   - `STORE_NOTIFY_EMAIL` = e-mail p/ receber cópia oculta (opcional)
+
+> Observações do Gmail: o remetente é sempre o seu endereço `@gmail.com`
+> (o Google não deixa "falsificar" outro). Limite ~500 e-mails/dia (Gmail
+> gratuito) ou 2000/dia (Google Workspace) — suficiente para uma loja pequena.
+
+### Opção B — Resend
 
 1. Crie uma conta em **https://resend.com** (tem plano gratuito).
-2. No painel do Resend, vá em **API Keys → Create API Key**.
-   - Nome: `martinica-store` · Permission: **Sending access**.
-   - **Copie a chave** (começa com `re_...`). Ela só aparece uma vez.
-3. Remetente (**From**) — escolha uma opção:
-   - **Teste rápido (sem domínio):** use `onboarding@resend.dev`. Limitação:
-     só envia para **o e-mail dono da conta Resend**. Ótimo para testar.
-   - **Produção (recomendado):** **Domains → Add Domain**, informe seu domínio
-     (ex.: `seudominio.com`) e adicione no seu provedor de DNS os registros
-     **SPF/DKIM** que o Resend mostrar. Depois de "Verified", você pode enviar
-     de `pedidos@seudominio.com` para qualquer cliente.
+2. **API Keys → Create API Key** → permissão **Sending access** → **copie a
+   chave** (`re_...`, aparece só uma vez).
+3. Remetente (**From**):
+   - **Teste:** `onboarding@resend.dev` (só envia para o e-mail dono da conta).
+   - **Produção:** **Domains → Add Domain** + registros SPF/DKIM no seu DNS.
+4. Segredos: `RESEND_API_KEY` e (opcional) `STORE_FROM_EMAIL`.
+
+> Se você configurar Gmail **e** Resend, o Gmail tem preferência.
 
 ---
 
@@ -39,15 +61,18 @@ Você pode fazer pela **CLI** (recomendado) **ou** pelo **Dashboard**.
    ```bash
    supabase functions deploy send-order-email
    ```
-4. Configure os segredos:
+4. Configure os segredos — **Gmail**:
+   ```bash
+   supabase secrets set GMAIL_USER="sualoja@gmail.com"
+   supabase secrets set GMAIL_APP_PASSWORD="abcd efgh ijkl mnop"
+   supabase secrets set STORE_FROM_NAME="Martinica Store"        # opcional
+   supabase secrets set STORE_NOTIFY_EMAIL="loja@gmail.com"      # opcional
+   ```
+   …**ou Resend**:
    ```bash
    supabase secrets set RESEND_API_KEY=re_suachave
    supabase secrets set STORE_FROM_EMAIL="Martinica Store <pedidos@seudominio.com>"
-   # opcional: cópia de cada pedido para a loja
-   supabase secrets set STORE_NOTIFY_EMAIL="loja@seudominio.com"
    ```
-   > Para teste sem domínio, use:
-   > `STORE_FROM_EMAIL="Martinica Store <onboarding@resend.dev>"`
    > `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem automaticamente.
 
 ### Opção B — Dashboard (sem instalar CLI)
@@ -56,10 +81,10 @@ Você pode fazer pela **CLI** (recomendado) **ou** pelo **Dashboard**.
 2. Nome: `send-order-email`. Cole o conteúdo de
    `supabase/functions/send-order-email/index.ts` e **Deploy**.
 3. Em **Edge Functions → Secrets** (ou **Project Settings → Edge Functions**),
-   adicione:
-   - `RESEND_API_KEY` = `re_suachave`
-   - `STORE_FROM_EMAIL` = `Martinica Store <pedidos@seudominio.com>`
-   - `STORE_NOTIFY_EMAIL` = `loja@seudominio.com` (opcional)
+   adicione os do seu provedor:
+   - **Gmail:** `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `STORE_FROM_NAME` (opcional),
+     `STORE_NOTIFY_EMAIL` (opcional)
+   - **Resend:** `RESEND_API_KEY`, `STORE_FROM_EMAIL` (opcional)
 
 ---
 
@@ -90,11 +115,13 @@ Resposta esperada: `{"ok":true}`.
 
 | Sintoma | Causa provável | Solução |
 |--------|----------------|---------|
-| Tela diz "e-mail não pôde ser enviado" | função não deployada ou segredo faltando | confira o deploy e `RESEND_API_KEY` |
-| `Resend 403 / domain not verified` | remetente de domínio não verificado | verifique o domínio no Resend ou use `onboarding@resend.dev` |
-| E-mail não chega (com `onboarding@resend.dev`) | esse remetente só envia p/ o dono da conta | verifique um domínio próprio |
-| `RESEND_API_KEY não configurada` | segredo ausente | `supabase secrets set RESEND_API_KEY=...` |
-| Logs da função | — | **Edge Functions → send-order-email → Logs** |
+| "Failed to send a request to the Edge Function" | função **não publicada** | faça o deploy da função |
+| `Nenhum provedor configurado` | faltam os segredos | configure Gmail **ou** Resend |
+| `Username and Password not accepted` (Gmail) | senha errada ou sem 2FA | use a **Senha de app** (não a senha normal) e ative a 2FA |
+| `Invalid login` / `535` (Gmail) | `GMAIL_APP_PASSWORD` incorreta | gere outra senha de app e reconfigure |
+| `Resend 403 / domain not verified` | remetente não verificado | verifique o domínio ou use `onboarding@resend.dev` |
+| E-mail não chega (com `onboarding@resend.dev`) | só envia p/ o dono da conta | verifique um domínio próprio |
+| Ver o erro exato | — | **Edge Functions → send-order-email → Logs** |
 
 > A compra **nunca trava** por causa do e-mail: se o envio falhar, o pedido é
 > gravado normalmente e a tela avisa que o e-mail não saiu.
