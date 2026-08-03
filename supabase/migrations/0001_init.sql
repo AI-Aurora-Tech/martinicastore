@@ -22,6 +22,7 @@ create table if not exists public.products (
   kind         text not null,
   price        numeric(10, 2) not null check (price >= 0),
   old_price    numeric(10, 2) check (old_price >= 0),
+  cost         numeric(10, 2) not null default 0 check (cost >= 0),
   color_main   text not null default '#ff6a00',
   color_accent text not null default '#111111',
   badge        text,
@@ -63,6 +64,7 @@ create table if not exists public.sale_items (
   product_id text not null,
   name       text not null,
   unit_price numeric(10, 2) not null,
+  unit_cost  numeric(10, 2) not null default 0,
   quantity   int not null check (quantity > 0),
   line_total numeric(10, 2) not null
 );
@@ -94,6 +96,7 @@ create table if not exists public.order_items (
   name       text not null,
   size       text,
   unit_price numeric(10, 2) not null,
+  unit_cost  numeric(10, 2) not null default 0,
   quantity   int not null check (quantity > 0),
   line_total numeric(10, 2) not null
 );

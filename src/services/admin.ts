@@ -14,6 +14,7 @@ function toRow(p: Product) {
     kind: p.kind,
     price: p.price,
     old_price: p.oldPrice ?? null,
+    cost: p.cost ?? 0,
     color_main: p.colors[0],
     color_accent: p.colors[1],
     badge: p.badge ?? null,

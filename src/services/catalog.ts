@@ -12,6 +12,7 @@ interface ProductRow {
   kind: string
   price: number | string
   old_price: number | string | null
+  cost: number | string | null
   color_main: string
   color_accent: string
   badge: string | null
@@ -37,6 +38,7 @@ function toProduct(r: ProductRow): Product {
     kind: r.kind as ProductKind,
     price: Number(r.price),
     oldPrice: r.old_price == null ? undefined : Number(r.old_price),
+    cost: r.cost == null ? undefined : Number(r.cost),
     colors: [r.color_main, r.color_accent],
     badge: r.badge ?? undefined,
     description: r.description,
@@ -71,7 +73,7 @@ export async function loadCatalog(): Promise<Catalog> {
       supabase
         .from('products')
         .select(
-          'id,name,category_id,kind,price,old_price,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active,image_url',
+          'id,name,category_id,kind,price,old_price,cost,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active,image_url',
         )
         .order('sort', { ascending: true }),
     ])

@@ -28,6 +28,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 349.9,
+    cost: 157.45,
     oldPrice: 399.9,
     colors: ['#ff6a00', '#111111'],
     badge: 'Lançamento',
@@ -44,6 +45,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 349.9,
+    cost: 157.45,
     oldPrice: 399.9,
     colors: ['#f4f4f4', '#ff6a00'],
     badge: 'Lançamento',
@@ -60,6 +62,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 379.9,
+    cost: 170.95,
     colors: ['#111111', '#f5b301'],
     badge: 'Edição limitada',
     description:
@@ -75,6 +78,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 299.9,
+    cost: 134.95,
     colors: ['#ff6a00', '#f4f4f4'],
     description:
       'Reviva a glória do título de 1990 com esta camisa retrô em algodão premium e escudo da época.',
@@ -89,6 +93,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 329.9,
+    cost: 148.45,
     colors: ['#1f8f4e', '#111111'],
     description:
       'Uniforme oficial de goleiro em verde, com proteção UV e recortes ergonômicos para o mergulho perfeito.',
@@ -103,6 +108,7 @@ export const products: Product[] = [
     category: 'camisas',
     kind: 'jersey',
     price: 339.9,
+    cost: 152.95,
     oldPrice: 389.9,
     colors: ['#ff6a00', '#111111'],
     badge: 'Baby look',
@@ -120,6 +126,7 @@ export const products: Product[] = [
     category: 'agasalhos',
     kind: 'jacket',
     price: 429.9,
+    cost: 193.45,
     oldPrice: 499.9,
     colors: ['#111111', '#ff6a00'],
     badge: 'Mais vendido',
@@ -136,6 +143,7 @@ export const products: Product[] = [
     category: 'agasalhos',
     kind: 'jacket',
     price: 279.9,
+    cost: 125.95,
     colors: ['#2b2b2b', '#ff6a00'],
     description:
       'Moletom flanelado com bolso canguru e escudo bordado no peito. Conforto para torcer em qualquer clima.',
@@ -150,6 +158,7 @@ export const products: Product[] = [
     category: 'agasalhos',
     kind: 'shorts',
     price: 249.9,
+    cost: 112.45,
     colors: ['#111111', '#f5b301'],
     description:
       'Calça de treino em tecido dry com punho ajustável e listras laterais nas cores do clube.',
@@ -165,6 +174,7 @@ export const products: Product[] = [
     category: 'calcados',
     kind: 'shoe',
     price: 459.9,
+    cost: 206.95,
     oldPrice: 549.9,
     colors: ['#ff6a00', '#111111'],
     badge: 'Oferta',
@@ -181,6 +191,7 @@ export const products: Product[] = [
     category: 'calcados',
     kind: 'shoe',
     price: 389.9,
+    cost: 175.45,
     colors: ['#111111', '#ff6a00'],
     description:
       'Tênis casual com solado confortável e detalhes nas cores do Martinica. Perfeito para o dia a dia.',
@@ -195,6 +206,7 @@ export const products: Product[] = [
     category: 'calcados',
     kind: 'shoe',
     price: 119.9,
+    cost: 53.96,
     oldPrice: 149.9,
     colors: ['#ff6a00', '#f4f4f4'],
     description:
@@ -211,6 +223,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'cap',
     price: 129.9,
+    cost: 58.46,
     colors: ['#ff6a00', '#111111'],
     badge: 'Mais vendido',
     description:
@@ -225,6 +238,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'scarf',
     price: 89.9,
+    cost: 40.46,
     colors: ['#ff6a00', '#111111'],
     description:
       'Cachecol de tricô com o nome do clube e escudo. Feito para cantar nas arquibancadas nos dias frios.',
@@ -238,6 +252,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'backpack',
     price: 219.9,
+    cost: 98.95,
     oldPrice: 259.9,
     colors: ['#111111', '#ff6a00'],
     description:
@@ -252,6 +267,7 @@ export const products: Product[] = [
     category: 'acessorios',
     kind: 'ball',
     price: 199.9,
+    cost: 89.95,
     colors: ['#f4f4f4', '#ff6a00'],
     badge: 'Oficial',
     description:
@@ -267,6 +283,7 @@ export const products: Product[] = [
     category: 'torcedor',
     kind: 'mug',
     price: 59.9,
+    cost: 26.95,
     colors: ['#ff6a00', '#f4f4f4'],
     description:
       'Caneca de cerâmica com escudo do Martinica FC. Comece o dia com a energia da torcida.',
@@ -280,6 +297,7 @@ export const products: Product[] = [
     category: 'torcedor',
     kind: 'mug',
     price: 99.9,
+    cost: 44.96,
     oldPrice: 129.9,
     colors: ['#111111', '#f5b301'],
     badge: 'Oferta',
@@ -295,6 +313,7 @@ export const products: Product[] = [
     category: 'torcedor',
     kind: 'scarf',
     price: 79.9,
+    cost: 35.96,
     colors: ['#ff6a00', '#111111'],
     description:
       'Bandeira grande em tecido resistente para pendurar em casa ou levar ao estádio. Cores vivas e escudo central.',
@@ -309,6 +328,7 @@ export const products: Product[] = [
     category: 'pet',
     kind: 'pet',
     price: 79.9,
+    cost: 35.96,
     colors: ['#ff6a00', '#111111'],
     badge: 'Fofura',
     description:
@@ -324,6 +344,7 @@ export const products: Product[] = [
     category: 'pet',
     kind: 'pet',
     price: 44.9,
+    cost: 20.20,
     oldPrice: 59.9,
     colors: ['#111111', '#ff6a00'],
     description:

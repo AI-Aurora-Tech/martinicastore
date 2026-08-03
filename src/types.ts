@@ -26,6 +26,8 @@ export interface Product {
   price: number
   /** Preço "de" (antes do desconto). Opcional. */
   oldPrice?: number
+  /** Preço de custo (para relatórios de lucro/margem). */
+  cost?: number
   colors: [string, string]
   badge?: string
   description: string

@@ -132,6 +132,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
         productId: l.product.id,
         name: l.product.name,
         unitPrice: l.product.price,
+        unitCost: l.product.cost ?? 0,
         quantity: l.quantity,
       })),
     })
