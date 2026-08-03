@@ -46,6 +46,7 @@ export function Checkout({ onExit }: Props) {
   const [error, setError] = useState('')
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
   const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const weight = useMemo(() => cartWeight(items), [items])
 
@@ -125,8 +126,9 @@ export function Checkout({ onExit }: Props) {
     }
     decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity })))
     // Dispara o e-mail de confirmação (best-effort — não bloqueia a compra).
-    const { sent } = await sendOrderEmail(id)
+    const { sent, error: mailErr } = await sendOrderEmail(id)
     setEmailSent(sent)
+    setEmailError(mailErr)
     setPlacing(false)
     setOrderNumber(number)
     clear()
@@ -152,6 +154,9 @@ export function Checkout({ onExit }: Props) {
             )}
             Entrega via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.
           </p>
+          {!emailSent && isSupabaseConfigured && emailError && (
+            <p className="checkout__mailerr">Diagnóstico do e-mail: {emailError}</p>
+          )}
           <button className="btn btn--primary" onClick={onExit}>Voltar à loja</button>
         </div>
       </div>
