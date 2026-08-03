@@ -14,6 +14,8 @@ interface CatalogContextValue {
   categories: Category[]
   loading: boolean
   source: 'supabase' | 'demo'
+  /** Erro de leitura do Supabase (quando configurado mas a busca falhou). */
+  error?: string
   /** Recarrega o catálogo do backend. */
   refresh: () => void
   /** Insere ou atualiza um produto na lista em memória (reflexo imediato na UI). */
@@ -31,6 +33,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<'supabase' | 'demo'>('demo')
+  const [error, setError] = useState<string | undefined>(undefined)
 
   const load = useCallback(() => {
     let alive = true
@@ -40,6 +43,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       setProducts(c.products)
       setCategories(c.categories)
       setSource(c.source)
+      setError(c.error)
       setLoading(false)
     })
     return () => {
@@ -84,6 +88,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         categories,
         loading,
         source,
+        error,
         refresh: load,
         upsertLocal,
         removeLocal,

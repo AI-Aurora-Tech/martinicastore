@@ -5,6 +5,7 @@ import { useCatalog } from '../context/CatalogContext'
 import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
 import type { Operator } from '../services/auth'
 import { Reports } from './Reports'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
   operator: Operator
@@ -19,7 +20,7 @@ const KINDS: ProductKind[] = [
 ]
 
 export function Admin({ operator, onExit, onLogout }: Props) {
-  const { products, categories, source, upsertLocal, removeLocal } = useCatalog()
+  const { products, categories, source, error: catalogError, upsertLocal, removeLocal } = useCatalog()
   const [tab, setTab] = useState<'estoque' | 'relatorios'>('estoque')
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
@@ -109,7 +110,25 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           </button>
         </nav>
 
-        {source === 'demo' && (
+        {source === 'supabase' && (
+          <div className="admin__banner admin__banner--ok">
+            ✅ <strong>Conectado ao Supabase</strong> — os produtos e vendas são
+            os dados reais do seu banco.
+            {products.length === 0 && (
+              <> Catálogo vazio: use <strong>+ Novo produto</strong> para começar
+              a cadastrar.</>
+            )}
+          </div>
+        )}
+        {source === 'demo' && isSupabaseConfigured && (
+          <div className="admin__banner admin__banner--error">
+            ⚠️ <strong>Supabase configurado, mas a leitura falhou</strong> — exibindo
+            dados locais. Verifique se você rodou a migração
+            (<code>0001_init.sql</code>) e as policies de RLS.
+            {catalogError && <> Detalhe: {catalogError}</>}
+          </div>
+        )}
+        {source === 'demo' && !isSupabaseConfigured && (
           <div className="admin__banner">
             ⚠️ <strong>Modo demo</strong> — alterações e vendas valem só nesta
             sessão (guardadas no navegador). Configure o Supabase (veja o README)

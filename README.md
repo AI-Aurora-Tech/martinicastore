@@ -109,7 +109,10 @@ variáveis de ambiente:
 1. Crie um projeto em [supabase.com](https://supabase.com/) (gratuito).
 2. Em **SQL Editor**, rode, nesta ordem:
    - `supabase/migrations/0001_init.sql` (cria tabelas + RLS)
-   - `supabase/seed.sql` (popula categorias e produtos)
+   - **Para começar com seus produtos reais (recomendado):**
+     `supabase/seed_categories.sql` — cria só as categorias, catálogo vazio.
+   - **Ou, para começar com os produtos de exemplo:**
+     `supabase/seed.sql` — categorias + 21 produtos de demonstração.
 3. Em **Authentication → Users**, crie ao menos um operador (e-mail + senha)
    para acessar o PDV.
 4. Copie `.env.example` para `.env` e preencha com os dados de
@@ -122,6 +125,21 @@ variáveis de ambiente:
 
 > A `anon key` é pública por design (protegida por Row Level Security) e pode ir
 > para o front-end. **Nunca** use a `service_role` key no cliente.
+
+#### Começar a cadastrar os produtos reais
+
+Com o Supabase conectado, a loja usa **sempre os dados do banco** — mesmo vazio.
+Entre em **Gestão · Admin** (o topo mostra "✅ Conectado ao Supabase") e use
+**+ Novo produto** para cadastrar. Se você já tinha rodado o `seed.sql` e quer
+remover os produtos de exemplo, rode uma vez no SQL Editor:
+
+```sql
+delete from public.products;   -- mantém as categorias
+```
+
+> Se o Admin mostrar "Supabase configurado, mas a leitura falhou", confira se a
+> migração `0001_init.sql` foi executada (tabelas + policies de RLS) e se a
+> `VITE_SUPABASE_URL`/`ANON_KEY` no `.env` estão corretas.
 
 ### Modelo de dados
 

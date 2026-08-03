@@ -56,11 +56,17 @@ export interface Catalog {
   categories: Category[]
   /** 'supabase' quando os dados vieram do banco; 'demo' quando são o seed local. */
   source: 'supabase' | 'demo'
+  /** Mensagem de erro quando estava configurado mas a leitura falhou. */
+  error?: string
 }
 
 /**
- * Carrega catálogo (categorias + produtos). Usa o Supabase quando configurado;
- * caso contrário — ou em caso de erro — cai para o seed local.
+ * Carrega catálogo (categorias + produtos).
+ * - Sem Supabase configurado: usa o seed local (modo demo).
+ * - Com Supabase: usa SEMPRE os dados reais do banco, inclusive quando ainda
+ *   não há produtos (loja/estoque vazios são o esperado até você cadastrar).
+ *   Só cai para o seed se a leitura realmente falhar (erro de conexão/policy),
+ *   e nesse caso devolve a mensagem de erro para exibir um aviso.
  */
 export async function loadCatalog(): Promise<Catalog> {
   if (!isSupabaseConfigured || !supabase) {
@@ -87,13 +93,17 @@ export async function loadCatalog(): Promise<Catalog> {
     }))
     const products = (prods.data as ProductRow[]).map(toProduct)
 
-    // Se o banco ainda estiver vazio, usa o seed para não exibir loja vazia.
-    if (products.length === 0 || categories.length === 0) {
-      return { products: seedProducts, categories: seedCategories, source: 'demo' }
+    // Dados reais do banco — mesmo que `products` esteja vazio.
+    // As categorias caem para a lista padrão apenas se ainda não houver
+    // nenhuma cadastrada, para o formulário do Admin continuar utilizável.
+    return {
+      products,
+      categories: categories.length > 0 ? categories : seedCategories,
+      source: 'supabase',
     }
-    return { products, categories, source: 'supabase' }
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.warn('[catalog] falha ao carregar do Supabase, usando seed local.', err)
-    return { products: seedProducts, categories: seedCategories, source: 'demo' }
+    return { products: seedProducts, categories: seedCategories, source: 'demo', error: message }
   }
 }
