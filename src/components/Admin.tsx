@@ -389,6 +389,7 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
   const [price, setPrice] = useState('')
   const [costV, setCostV] = useState('')
   const [stock, setStock] = useState('0')
+  const [weight, setWeight] = useState('300')
   const [description, setDescription] = useState('')
   const [image, setImage] = useState<string | undefined>(undefined)
   const [imgBusy, setImgBusy] = useState(false)
@@ -427,6 +428,7 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
       reviews: 0,
       cost: Math.max(0, Number(costV.replace(',', '.')) || 0),
       stock: Math.max(0, Math.round(Number(stock) || 0)),
+      weight: Math.max(1, Math.round(Number(weight) || 300)),
       active: true,
       image,
     })
@@ -476,6 +478,7 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
           <label>Preço de venda (R$)<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" /></label>
           <label>Preço de custo (R$)<input inputMode="decimal" value={costV} onChange={(e) => setCostV(e.target.value)} placeholder="0,00" /></label>
           <label>Estoque<input inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} /></label>
+          <label>Peso (g) — frete<input inputMode="numeric" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
           <label className="admin__form-full">Descrição
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </label>

@@ -1,52 +1,22 @@
-import { useState } from 'react'
 import { useCart } from '../context/CartContext'
-import { useCatalog } from '../context/CatalogContext'
 import { BRL } from '../data/products'
 import { ProductImage } from './ProductImage'
-import { createOrder } from '../services/orders'
+import { FREE_SHIPPING_MIN } from '../services/shipping'
 
-const FREE_SHIPPING = 299
+interface Props {
+  /** Abre a tela de checkout (identificação + entrega + pagamento). */
+  onCheckout: () => void
+}
 
-export function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, setQuantity, subtotal, count, clear } =
-    useCart()
-  const { decrementStockLocal } = useCatalog()
-  const [done, setDone] = useState(false)
-  const [orderNumber, setOrderNumber] = useState<number | null>(null)
-  const [placing, setPlacing] = useState(false)
-  const [orderError, setOrderError] = useState<string | null>(null)
+export function CartDrawer({ onCheckout }: Props) {
+  const { items, isOpen, closeCart, removeItem, setQuantity, subtotal, count } = useCart()
 
-  const missing = Math.max(0, FREE_SHIPPING - subtotal)
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING) * 100)
-  const shipping = subtotal >= FREE_SHIPPING || subtotal === 0 ? 0 : 29.9
+  const missing = Math.max(0, FREE_SHIPPING_MIN - subtotal)
+  const progress = Math.min(100, (subtotal / FREE_SHIPPING_MIN) * 100)
 
-  async function checkout() {
-    if (placing) return
-    setPlacing(true)
-    setOrderError(null)
-
-    const { number, error } = await createOrder({
-      subtotal,
-      discount: 0,
-      shipping,
-      total: subtotal + shipping,
-      payment: 'pix',
-      items,
-    })
-
-    setPlacing(false)
-
-    if (error) {
-      setOrderError(error)
-      return
-    }
-
-    decrementStockLocal(
-      items.map((i) => ({ id: i.product.id, quantity: i.quantity })),
-    )
-    setOrderNumber(number)
-    setDone(true)
-    clear()
+  function goCheckout() {
+    closeCart()
+    onCheckout()
   }
 
   return (
@@ -68,31 +38,7 @@ export function CartDrawer() {
           </button>
         </header>
 
-        {done ? (
-          <div className="drawer__empty">
-            <span className="drawer__empty-icon">🎉</span>
-            <h3>Pedido confirmado!</h3>
-            {orderNumber != null && (
-              <p className="drawer__ordernum">
-                Pedido nº <strong>{String(orderNumber).padStart(6, '0')}</strong>
-              </p>
-            )}
-            <p>
-              Obrigado por torcer com a gente. Você receberá o código de
-              rastreio por e-mail em instantes.
-            </p>
-            <button
-              className="btn btn--primary"
-              onClick={() => {
-                setDone(false)
-                setOrderNumber(null)
-                closeCart()
-              }}
-            >
-              Continuar comprando
-            </button>
-          </div>
-        ) : items.length === 0 ? (
+        {items.length === 0 ? (
           <div className="drawer__empty">
             <span className="drawer__empty-icon">🛍️</span>
             <h3>Sua sacola está vazia</h3>
@@ -110,7 +56,7 @@ export function CartDrawer() {
                   <strong>frete grátis</strong>!
                 </p>
               ) : (
-                <p>🎉 Você ganhou <strong>frete grátis</strong>!</p>
+                <p>🎉 Você ganhou <strong>frete grátis (PAC)</strong>!</p>
               )}
               <div className="drawer__bar">
                 <span style={{ width: `${progress}%` }} />
@@ -176,20 +122,9 @@ export function CartDrawer() {
                 <span>Subtotal</span>
                 <strong>{BRL.format(subtotal)}</strong>
               </div>
-              <p className="drawer__pix">
-                ou {BRL.format(subtotal * 0.95)} à vista no Pix (5% off)
-              </p>
-              {orderError && (
-                <p className="drawer__ordererror" role="alert">
-                  ⚠️ {orderError}
-                </p>
-              )}
-              <button
-                className="btn btn--primary btn--block"
-                onClick={checkout}
-                disabled={placing}
-              >
-                {placing ? 'Processando…' : 'Finalizar compra'}
+              <p className="drawer__pix">Frete calculado no checkout pelo seu CEP.</p>
+              <button className="btn btn--primary btn--block" onClick={goCheckout}>
+                Finalizar compra
               </button>
               <button className="drawer__continue" onClick={closeCart}>
                 Continuar comprando

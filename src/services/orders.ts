@@ -1,8 +1,9 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import type { CartItem } from '../types'
+import type { Address, CartItem, ShippingService } from '../types'
 import { appendOrder } from './localStore'
 
 export interface OrderInput {
+  customerId?: string
   customerName?: string
   customerEmail?: string
   subtotal: number
@@ -10,6 +11,9 @@ export interface OrderInput {
   shipping: number
   total: number
   payment: 'pix' | 'cartao' | 'boleto'
+  shippingService?: ShippingService
+  shippingDays?: number
+  address?: Address
   items: CartItem[]
 }
 
@@ -46,6 +50,7 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
     const { data, error } = await supabase
       .from('orders')
       .insert({
+        customer_id: input.customerId ?? null,
         customer_name: input.customerName ?? null,
         customer_email: input.customerEmail ?? null,
         subtotal: input.subtotal,
@@ -54,6 +59,15 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
         total: input.total,
         payment_method: input.payment,
         status: 'pending',
+        shipping_service: input.shippingService ?? null,
+        shipping_days: input.shippingDays ?? null,
+        ship_cep: input.address?.cep ?? null,
+        ship_street: input.address?.street ?? null,
+        ship_number: input.address?.number ?? null,
+        ship_complement: input.address?.complement ?? null,
+        ship_neighborhood: input.address?.neighborhood ?? null,
+        ship_city: input.address?.city ?? null,
+        ship_uf: input.address?.uf ?? null,
       })
       .select('id, number')
       .single()
