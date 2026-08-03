@@ -4,13 +4,28 @@ interface Props {
   kind: ProductKind
   colors: [string, string]
   className?: string
+  /** Foto do produto (URL/data URL). Quando presente, substitui a ilustração. */
+  image?: string
+  alt?: string
 }
 
 /**
- * Ilustrações vetoriais dos produtos. Evita dependência de imagens externas e
- * mantém identidade visual consistente usando as cores de cada produto.
+ * Foto do produto quando cadastrada; caso contrário, ilustração vetorial por
+ * tipo de produto (mantém identidade visual sem depender de imagens externas).
  */
-export function ProductImage({ kind, colors, className }: Props) {
+export function ProductImage({ kind, colors, className, image, alt }: Props) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt={alt ?? ''}
+        className={className}
+        loading="lazy"
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      />
+    )
+  }
+
   const [main, accent] = colors
   const common = {
     className,

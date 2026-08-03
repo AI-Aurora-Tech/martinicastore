@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { CartItem } from '../types'
+import { appendOrder } from './localStore'
 
 export interface OrderInput {
   customerName?: string
@@ -23,7 +24,22 @@ export interface OrderResult {
  */
 export async function createOrder(input: OrderInput): Promise<OrderResult> {
   if (!isSupabaseConfigured || !supabase) {
-    return { number: null, error: null }
+    const number = appendOrder({
+      createdAt: new Date().toISOString(),
+      subtotal: input.subtotal,
+      discount: input.discount,
+      shipping: input.shipping,
+      total: input.total,
+      payment: input.payment,
+      items: input.items.map((i) => ({
+        productId: i.product.id,
+        name: i.product.name,
+        unitPrice: i.product.price,
+        unitCost: i.product.cost ?? 0,
+        quantity: i.quantity,
+      })),
+    })
+    return { number, error: null }
   }
 
   try {
@@ -50,6 +66,7 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
       name: i.product.name,
       size: i.size ?? null,
       unit_price: i.product.price,
+      unit_cost: i.product.cost ?? 0,
       quantity: i.quantity,
       line_total: i.product.price * i.quantity,
     }))

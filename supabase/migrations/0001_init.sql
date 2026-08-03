@@ -22,6 +22,7 @@ create table if not exists public.products (
   kind         text not null,
   price        numeric(10, 2) not null check (price >= 0),
   old_price    numeric(10, 2) check (old_price >= 0),
+  cost         numeric(10, 2) not null default 0 check (cost >= 0),
   color_main   text not null default '#ff6a00',
   color_accent text not null default '#111111',
   badge        text,
@@ -31,6 +32,7 @@ create table if not exists public.products (
   reviews      int  not null default 0,
   stock        int  not null default 0 check (stock >= 0),
   active       boolean not null default true,
+  image_url    text,
   sort         int  not null default 0,
   created_at   timestamptz not null default now()
 );
@@ -62,6 +64,7 @@ create table if not exists public.sale_items (
   product_id text not null,
   name       text not null,
   unit_price numeric(10, 2) not null,
+  unit_cost  numeric(10, 2) not null default 0,
   quantity   int not null check (quantity > 0),
   line_total numeric(10, 2) not null
 );
@@ -93,6 +96,7 @@ create table if not exists public.order_items (
   name       text not null,
   size       text,
   unit_price numeric(10, 2) not null,
+  unit_cost  numeric(10, 2) not null default 0,
   quantity   int not null check (quantity > 0),
   line_total numeric(10, 2) not null
 );
@@ -180,3 +184,27 @@ drop trigger if exists trg_order_items_stock on public.order_items;
 create trigger trg_order_items_stock
   after insert on public.order_items
   for each row execute function public.decrement_stock();
+
+-- ===========================================================================
+-- Storage: imagens de produtos (bucket público)
+-- Usado pelo painel Admin ao cadastrar/editar um produto com foto (JPG/PNG).
+-- ===========================================================================
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do nothing;
+
+-- Leitura pública das imagens.
+create policy "product_images_public_read"
+  on storage.objects for select
+  using (bucket_id = 'product-images');
+
+-- Upload/atualização/remoção por usuários autenticados (admin).
+create policy "product_images_auth_insert"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'product-images');
+create policy "product_images_auth_update"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'product-images');
+create policy "product_images_auth_delete"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'product-images');

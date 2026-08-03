@@ -14,6 +14,7 @@ function toRow(p: Product) {
     kind: p.kind,
     price: p.price,
     old_price: p.oldPrice ?? null,
+    cost: p.cost ?? 0,
     color_main: p.colors[0],
     color_accent: p.colors[1],
     badge: p.badge ?? null,
@@ -23,7 +24,58 @@ function toRow(p: Product) {
     reviews: p.reviews,
     stock: p.stock ?? 0,
     active: p.active ?? true,
+    image_url: p.image ?? null,
   }
+}
+
+const BUCKET = 'product-images'
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024 // 3 MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png']
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+export interface UploadResult {
+  url: string | null
+  error: string | null
+}
+
+/**
+ * Faz upload da imagem do produto. Aceita apenas JPG/PNG (até 3 MB).
+ * - Modo Supabase: envia para o Storage e devolve a URL pública.
+ * - Modo demo: devolve um data URL (base64) para pré-visualização em memória.
+ */
+export async function uploadProductImage(file: File): Promise<UploadResult> {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { url: null, error: 'Formato inválido. Envie um arquivo JPG ou PNG.' }
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return { url: null, error: 'Imagem muito grande (máximo 3 MB).' }
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    try {
+      return { url: await readAsDataUrl(file), error: null }
+    } catch {
+      return { url: null, error: 'Não foi possível ler a imagem.' }
+    }
+  }
+
+  const ext = file.type === 'image/png' ? 'png' : 'jpg'
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false })
+  if (error) return { url: null, error: error.message }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
 }
 
 /**

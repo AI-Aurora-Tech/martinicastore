@@ -23,7 +23,7 @@ out.push(
 )
 out.push('')
 out.push(
-  'insert into public.products (id, name, category_id, kind, price, old_price, color_main, color_accent, badge, description, sizes, rating, reviews, stock, sort) values',
+  'insert into public.products (id, name, category_id, kind, price, old_price, cost, color_main, color_accent, badge, description, sizes, rating, reviews, stock, image_url, sort) values',
 )
 out.push(
   products
@@ -35,6 +35,7 @@ out.push(
         sqlStr(p.kind),
         p.price,
         p.oldPrice ?? 'null',
+        p.cost ?? 0,
         sqlStr(p.colors[0]),
         sqlStr(p.colors[1]),
         sqlStr(p.badge),
@@ -43,6 +44,7 @@ out.push(
         p.rating,
         p.reviews,
         p.stock ?? 0,
+        sqlStr(p.image),
         i,
       ]
       return `  (${vals.join(', ')})`
@@ -50,7 +52,8 @@ out.push(
     .join(',\n') +
     '\non conflict (id) do update set\n' +
     '  name = excluded.name, category_id = excluded.category_id, kind = excluded.kind,\n' +
-    '  price = excluded.price, old_price = excluded.old_price, color_main = excluded.color_main,\n' +
+    '  price = excluded.price, old_price = excluded.old_price, cost = excluded.cost,\n' +
+    '  color_main = excluded.color_main,\n' +
     '  color_accent = excluded.color_accent, badge = excluded.badge, description = excluded.description,\n' +
     '  sizes = excluded.sizes, rating = excluded.rating, reviews = excluded.reviews,\n' +
     '  stock = excluded.stock, sort = excluded.sort;',

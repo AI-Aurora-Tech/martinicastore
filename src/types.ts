@@ -26,6 +26,8 @@ export interface Product {
   price: number
   /** Preço "de" (antes do desconto). Opcional. */
   oldPrice?: number
+  /** Preço de custo (para relatórios de lucro/margem). */
+  cost?: number
   colors: [string, string]
   badge?: string
   description: string
@@ -36,6 +38,8 @@ export interface Product {
   stock?: number
   /** Produto visível na loja. `undefined`/true = ativo. */
   active?: boolean
+  /** URL (ou data URL) da foto do produto. Sem valor = usa a ilustração SVG. */
+  image?: string
 }
 
 export interface CartItem {

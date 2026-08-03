@@ -66,14 +66,33 @@ mesmas credenciais do PDV). É onde você **gerencia o estoque**:
 - **Tabela de produtos** com busca e filtro por categoria:
   - ajuste de **estoque** (botões −/+ ou digitando), com destaque para estoque
     baixo (≤ 5) e esgotado;
-  - edição de **preço** inline;
+  - edição de **preço de venda** e **preço de custo** inline, com a **margem**
+    calculada na hora;
   - **ativar/desativar** o produto na loja;
   - **excluir** produto.
 - **Novo produto** via formulário (código, nome, categoria, tipo, preço,
-  estoque, descrição).
+  estoque, descrição) com **upload de imagem JPG/PNG** (até 3 MB) e
+  pré-visualização. Também é possível **trocar a foto** de um produto existente
+  clicando na miniatura da linha. Sem imagem, o produto usa a ilustração SVG.
+  - No modo Supabase a imagem vai para o **Storage** (bucket público
+    `product-images`) e a URL fica em `products.image_url`; no modo demo vira um
+    data URL em memória.
 - **Baixa automática de estoque**: cada venda no PDV e cada pedido na loja
   reduzem o estoque do produto (no banco, via *trigger*; na tela, em tempo real).
   Produtos esgotados aparecem como **"Esgotado"** na loja e no PDV.
+
+#### 📊 Relatórios (aba do Admin)
+
+Aba **"Relatórios"** dentro do Admin, com base no **preço de custo** dos itens
+vendidos (registrado em cada venda/pedido, para o lucro histórico ficar correto
+mesmo se o custo mudar depois):
+
+- **Faturamento**, **Custo (CMV)**, **Lucro bruto** e **Margem** consolidados.
+- Nº de vendas (PDV) e pedidos (loja), itens vendidos e **ticket médio**.
+- **Lucro por produto** (faturamento, custo, lucro e margem).
+- Quebra **por forma de pagamento** e lista das **últimas transações**.
+- No modo Supabase lê de `sales`/`orders`; no modo demo, das vendas guardadas no
+  navegador (para o relatório funcionar mesmo sem backend).
 
 ## 🗄️ Banco de dados (Supabase)
 
@@ -151,7 +170,9 @@ src/
 │   ├── auth.ts               # login (Supabase Auth ou mock)
 │   ├── sales.ts              # grava vendas do PDV
 │   ├── orders.ts             # grava pedidos da loja
-│   └── admin.ts              # CRUD de produtos + estoque
+│   ├── admin.ts              # CRUD de produtos + estoque + upload de imagem
+│   ├── reports.ts            # agrega faturamento/custo/lucro
+│   └── localStore.ts         # log de vendas/pedidos no modo demo
 ├── data/products.ts          # seed/fallback + config do clube + BRL
 ├── context/
 │   ├── CatalogContext.tsx    # carrega o catálogo uma vez
@@ -166,7 +187,8 @@ src/
     ├── CartDrawer.tsx        # sacola lateral + checkout (grava pedido)
     ├── AuthGate.tsx          # login reutilizável (PDV e Admin)
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
-    ├── Admin.tsx             # painel de estoque e produtos
+    ├── Admin.tsx             # painel de estoque e produtos (custo/margem)
+    ├── Reports.tsx           # aba de relatórios de venda e lucro
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```
 

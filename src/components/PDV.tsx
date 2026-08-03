@@ -132,6 +132,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
         productId: l.product.id,
         name: l.product.name,
         unitPrice: l.product.price,
+        unitCost: l.product.cost ?? 0,
         quantity: l.quantity,
       })),
     })
@@ -237,7 +238,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                     className="pdv__product-img"
                     style={{ background: `${p.colors[0]}18` }}
                   >
-                    <ProductImage kind={p.kind} colors={p.colors} />
+                    <ProductImage kind={p.kind} colors={p.colors} image={p.image} alt={p.name} />
                   </span>
                   <span className="pdv__product-name">{p.name}</span>
                   <span className="pdv__product-price">{BRL.format(p.price)}</span>

@@ -1,0 +1,75 @@
+// Registro local de vendas/pedidos usado no MODO DEMO (sem Supabase), para que
+// os relatórios tenham dados mesmo sem backend. No modo Supabase, os dados reais
+// vêm do banco e estas funções não são usadas.
+
+export interface TxItem {
+  productId: string
+  name: string
+  unitPrice: number
+  unitCost: number
+  quantity: number
+}
+
+export interface SaleRecord {
+  number: number
+  createdAt: string
+  subtotal: number
+  discount: number
+  total: number
+  payment: 'dinheiro' | 'cartao' | 'pix'
+  operatorEmail?: string
+  items: TxItem[]
+}
+
+export interface OrderRecord {
+  number: number
+  createdAt: string
+  subtotal: number
+  discount: number
+  shipping: number
+  total: number
+  payment: 'pix' | 'cartao' | 'boleto'
+  items: TxItem[]
+}
+
+const SALES_KEY = 'martinica-sales'
+const ORDERS_KEY = 'martinica-orders'
+
+function read<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T[]) : []
+  } catch {
+    return []
+  }
+}
+
+function write<T>(key: string, value: T[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* ignore quota / privacy-mode */
+  }
+}
+
+export function readSales(): SaleRecord[] {
+  return read<SaleRecord>(SALES_KEY)
+}
+
+export function readOrders(): OrderRecord[] {
+  return read<OrderRecord>(ORDERS_KEY)
+}
+
+export function appendSale(sale: Omit<SaleRecord, 'number'>): number {
+  const all = readSales()
+  const number = all.length + 1
+  write(SALES_KEY, [...all, { ...sale, number }])
+  return number
+}
+
+export function appendOrder(order: Omit<OrderRecord, 'number'>): number {
+  const all = readOrders()
+  const number = all.length + 1
+  write(ORDERS_KEY, [...all, { ...order, number }])
+  return number
+}

@@ -126,7 +126,12 @@ export function CartDrawer() {
                       className="drawer__thumb"
                       style={{ background: `${item.product.colors[0]}14` }}
                     >
-                      <ProductImage kind={item.product.kind} colors={item.product.colors} />
+                      <ProductImage
+                        kind={item.product.kind}
+                        colors={item.product.colors}
+                        image={item.product.image}
+                        alt={item.product.name}
+                      />
                     </div>
                     <div className="drawer__info">
                       <p className="drawer__item-name">{item.product.name}</p>

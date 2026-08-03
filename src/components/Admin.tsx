@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { CLUB } from '../data/products'
 import type { CategoryId, Product, ProductKind } from '../types'
 import { useCatalog } from '../context/CatalogContext'
-import { deleteProduct, saveProduct, setStock } from '../services/admin'
+import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
 import type { Operator } from '../services/auth'
+import { Reports } from './Reports'
 
 interface Props {
   operator: Operator
@@ -19,6 +20,7 @@ const KINDS: ProductKind[] = [
 
 export function Admin({ operator, onExit, onLogout }: Props) {
   const { products, categories, source, upsertLocal, removeLocal } = useCatalog()
+  const [tab, setTab] = useState<'estoque' | 'relatorios'>('estoque')
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
   const [creating, setCreating] = useState(false)
@@ -59,6 +61,15 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     if (err) setError(err)
   }
 
+  async function changeImage(p: Product, file: File) {
+    const { url, error: err } = await uploadProductImage(file)
+    if (err || !url) {
+      setError(err ?? 'Falha ao enviar a imagem.')
+      return
+    }
+    await persist({ ...p, image: url })
+  }
+
   return (
     <div className="admin">
       <header className="pdv__top">
@@ -83,10 +94,26 @@ export function Admin({ operator, onExit, onLogout }: Props) {
       </header>
 
       <div className="admin__body">
+        <nav className="admin__tabs">
+          <button
+            className={`admin__tab ${tab === 'estoque' ? 'admin__tab--active' : ''}`}
+            onClick={() => setTab('estoque')}
+          >
+            📦 Estoque &amp; Produtos
+          </button>
+          <button
+            className={`admin__tab ${tab === 'relatorios' ? 'admin__tab--active' : ''}`}
+            onClick={() => setTab('relatorios')}
+          >
+            📊 Relatórios
+          </button>
+        </nav>
+
         {source === 'demo' && (
           <div className="admin__banner">
-            ⚠️ <strong>Modo demo</strong> — as alterações valem só nesta sessão e
-            não são salvas. Configure o Supabase (veja o README) para persistir.
+            ⚠️ <strong>Modo demo</strong> — alterações e vendas valem só nesta
+            sessão (guardadas no navegador). Configure o Supabase (veja o README)
+            para persistir de verdade.
           </div>
         )}
         {error && (
@@ -95,6 +122,9 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           </div>
         )}
 
+        {tab === 'relatorios' && <Reports />}
+
+        <div style={{ display: tab === 'estoque' ? 'contents' : 'none' }}>
         <section className="admin__stats">
           <div className="admin__stat">
             <strong>{stats.total}</strong><span>produtos</span>
@@ -135,7 +165,9 @@ export function Admin({ operator, onExit, onLogout }: Props) {
               <tr>
                 <th>Produto</th>
                 <th>Categoria</th>
+                <th>Custo</th>
                 <th>Preço</th>
+                <th>Margem</th>
                 <th className="admin__col-stock">Estoque</th>
                 <th>Ativo</th>
                 <th></th>
@@ -149,17 +181,20 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                   categoryLabel={categories.find((c) => c.id === p.category)?.label ?? p.category}
                   onChangeStock={(v) => changeStock(p, v)}
                   onSavePrice={(price) => persist({ ...p, price })}
+                  onSaveCost={(cost) => persist({ ...p, cost })}
                   onToggleActive={(active) => persist({ ...p, active })}
+                  onUploadImage={(file) => changeImage(p, file)}
                   onDelete={() => remove(p)}
                 />
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="admin__empty">Nenhum produto encontrado.</td>
+                  <td colSpan={8} className="admin__empty">Nenhum produto encontrado.</td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 
@@ -185,28 +220,41 @@ interface RowProps {
   categoryLabel: string
   onChangeStock: (value: number) => void
   onSavePrice: (price: number) => void
+  onSaveCost: (cost: number) => void
   onToggleActive: (active: boolean) => void
+  onUploadImage: (file: File) => void
   onDelete: () => void
 }
 
 function AdminRow({
-  product, categoryLabel, onChangeStock, onSavePrice, onToggleActive, onDelete,
+  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onDelete,
 }: RowProps) {
   const stock = product.stock ?? 0
+  const cost = product.cost ?? 0
   const [priceInput, setPriceInput] = useState(String(product.price))
+  const [costInput, setCostInput] = useState(String(cost))
   const [stockInput, setStockInput] = useState(String(stock))
 
   // Mantém os inputs em sincronia quando o produto muda por fora (ex.: +/−).
   useEffect(() => setStockInput(String(stock)), [stock])
   useEffect(() => setPriceInput(String(product.price)), [product.price])
+  useEffect(() => setCostInput(String(cost)), [cost])
 
   const level =
     stock === 0 ? 'admin__stock--out' : stock <= LOW_STOCK ? 'admin__stock--low' : ''
+  const margin = product.price > 0 ? (product.price - cost) / product.price : 0
+  const marginClass = margin < 0.2 ? 'admin__margin--low' : margin >= 0.5 ? 'admin__margin--high' : ''
 
   function commitPrice() {
     const v = Number(priceInput.replace(',', '.'))
     if (!Number.isNaN(v) && v >= 0 && v !== product.price) onSavePrice(v)
     else setPriceInput(String(product.price))
+  }
+
+  function commitCost() {
+    const v = Number(costInput.replace(',', '.'))
+    if (!Number.isNaN(v) && v >= 0 && v !== cost) onSaveCost(v)
+    else setCostInput(String(cost))
   }
 
   function commitStock() {
@@ -219,7 +267,24 @@ function AdminRow({
     <tr className={product.active === false ? 'admin__row--inactive' : ''}>
       <td>
         <div className="admin__prod">
-          <span className="admin__dot" style={{ background: product.colors[0] }} />
+          <label className="admin__thumb" title="Enviar/trocar imagem (JPG ou PNG)">
+            {product.image ? (
+              <img src={product.image} alt={product.name} />
+            ) : (
+              <span className="admin__dot" style={{ background: product.colors[0] }}>
+                <span className="admin__thumb-cam" aria-hidden="true">📷</span>
+              </span>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onUploadImage(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
           <div>
             <strong>{product.name}</strong>
             <small>{product.id}</small>
@@ -232,12 +297,29 @@ function AdminRow({
           <span>R$</span>
           <input
             inputMode="decimal"
+            value={costInput}
+            onChange={(e) => setCostInput(e.target.value)}
+            onBlur={commitCost}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+        </div>
+      </td>
+      <td>
+        <div className="admin__price">
+          <span>R$</span>
+          <input
+            inputMode="decimal"
             value={priceInput}
             onChange={(e) => setPriceInput(e.target.value)}
             onBlur={commitPrice}
             onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
           />
         </div>
+      </td>
+      <td>
+        <span className={`admin__margin ${marginClass}`}>
+          {(margin * 100).toFixed(0)}%
+        </span>
       </td>
       <td>
         <div className={`admin__stock ${level}`}>
@@ -286,9 +368,24 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
   const [category, setCategory] = useState(categories[0] ?? 'camisas')
   const [kind, setKind] = useState<ProductKind>('jersey')
   const [price, setPrice] = useState('')
+  const [costV, setCostV] = useState('')
   const [stock, setStock] = useState('0')
   const [description, setDescription] = useState('')
+  const [image, setImage] = useState<string | undefined>(undefined)
+  const [imgBusy, setImgBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImgBusy(true)
+    setErr('')
+    const { url, error } = await uploadProductImage(file)
+    setImgBusy(false)
+    if (error || !url) return setErr(error ?? 'Falha ao enviar a imagem.')
+    setImage(url)
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -309,8 +406,10 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
       description: description.trim(),
       rating: 5,
       reviews: 0,
+      cost: Math.max(0, Number(costV.replace(',', '.')) || 0),
       stock: Math.max(0, Math.round(Number(stock) || 0)),
       active: true,
+      image,
     })
   }
 
@@ -319,6 +418,30 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
       <form className="admin__modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h3>Novo produto</h3>
         <div className="admin__form-grid">
+          <div className="admin__form-full admin__imgfield">
+            <span className="admin__imgfield-label">Imagem do produto</span>
+            <div className="admin__imgfield-row">
+              <div className="admin__imgpreview">
+                {image ? (
+                  <img src={image} alt="Pré-visualização" />
+                ) : (
+                  <span aria-hidden="true">🖼️</span>
+                )}
+              </div>
+              <div className="admin__imgfield-actions">
+                <label className="btn btn--ghost admin__imgbtn">
+                  {imgBusy ? 'Enviando…' : image ? 'Trocar imagem' : 'Escolher imagem'}
+                  <input type="file" accept="image/png,image/jpeg" onChange={handleFile} hidden />
+                </label>
+                {image && (
+                  <button type="button" className="admin__imgremove" onClick={() => setImage(undefined)}>
+                    Remover
+                  </button>
+                )}
+                <small>JPG ou PNG, até 3 MB. Opcional — sem imagem usa a ilustração.</small>
+              </div>
+            </div>
+          </div>
           <label>Código (id)<input value={id} onChange={(e) => setId(e.target.value)} placeholder="ex.: cam-07" /></label>
           <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" /></label>
           <label>Categoria
@@ -331,7 +454,8 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
               {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </label>
-          <label>Preço (R$)<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" /></label>
+          <label>Preço de venda (R$)<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" /></label>
+          <label>Preço de custo (R$)<input inputMode="decimal" value={costV} onChange={(e) => setCostV(e.target.value)} placeholder="0,00" /></label>
           <label>Estoque<input inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} /></label>
           <label className="admin__form-full">Descrição
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
