@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
 import { Benefits } from './components/Benefits'
@@ -17,6 +17,18 @@ export default function App() {
   const [view, setView] = useState<'loja' | 'pdv' | 'admin' | 'checkout'>('loja')
   const [active, setActive] = useState<CategoryId | 'todos'>('todos')
   const [query, setQuery] = useState('')
+  const [payNotice, setPayNotice] = useState<{ pedido: string; status: string } | null>(null)
+
+  // Retorno do Mercado Pago (?pedido=&pago=)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const pedido = q.get('pedido')
+    const pago = q.get('pago')
+    if (pedido && pago) {
+      setPayNotice({ pedido, status: pago })
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   function selectCategory(id: CategoryId | 'todos') {
     setActive(id)
@@ -85,6 +97,19 @@ export default function App() {
         onOpenPDV={() => setView('pdv')}
         onOpenAdmin={() => setView('admin')}
       />
+
+      {payNotice && (
+        <div className={`paynotice paynotice--${payNotice.status}`} role="status">
+          <span>
+            {payNotice.status === 'aprovado'
+              ? `🎉 Pagamento aprovado! Pedido nº ${payNotice.pedido.padStart(6, '0')} confirmado — enviamos a confirmação no seu WhatsApp.`
+              : payNotice.status === 'pendente'
+                ? `⏳ Pagamento do pedido nº ${payNotice.pedido.padStart(6, '0')} pendente. Avisaremos no WhatsApp quando for aprovado.`
+                : `⚠️ Não foi possível concluir o pagamento do pedido nº ${payNotice.pedido.padStart(6, '0')}. Tente novamente.`}
+          </span>
+          <button onClick={() => setPayNotice(null)} aria-label="Fechar">✕</button>
+        </div>
+      )}
 
       {active === 'todos' && !query.trim() && <Hero onShop={selectCategory} />}
 
