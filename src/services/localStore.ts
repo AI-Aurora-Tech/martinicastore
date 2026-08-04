@@ -30,6 +30,12 @@ export interface OrderRecord {
   total: number
   payment: 'pix' | 'cartao' | 'boleto'
   items: TxItem[]
+  customerName?: string
+  customerEmail?: string
+  status?: string
+  shippingService?: string
+  shippingDays?: number
+  address?: string
 }
 
 const SALES_KEY = 'martinica-sales'
@@ -70,6 +76,15 @@ export function appendSale(sale: Omit<SaleRecord, 'number'>): number {
 export function appendOrder(order: Omit<OrderRecord, 'number'>): number {
   const all = readOrders()
   const number = all.length + 1
-  write(ORDERS_KEY, [...all, { ...order, number }])
+  write(ORDERS_KEY, [...all, { status: 'pending', ...order, number }])
   return number
+}
+
+/** Atualiza o status de um pedido demo (por número). */
+export function updateOrderStatusLocal(number: number, status: string): void {
+  const all = readOrders()
+  write(
+    ORDERS_KEY,
+    all.map((o) => (o.number === number ? { ...o, status } : o)),
+  )
 }

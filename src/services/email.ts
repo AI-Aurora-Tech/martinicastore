@@ -31,6 +31,11 @@ export async function sendOrderEmail(orderId: string | null): Promise<EmailResul
           /* corpo não-JSON */
         }
       }
+      // Erro de alcance (função ainda não publicada / CORS / rede).
+      if (/failed to send a request|fetch/i.test(detail)) {
+        detail =
+          "Não foi possível alcançar a função 'send-order-email'. Ela provavelmente ainda não foi publicada (faça o deploy) — veja SETUP.md."
+      }
       console.warn('[email] função retornou erro:', detail)
       return { sent: false, error: detail }
     }

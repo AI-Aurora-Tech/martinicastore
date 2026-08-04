@@ -29,6 +29,11 @@ export interface OrderResult {
  */
 export async function createOrder(input: OrderInput): Promise<OrderResult> {
   if (!isSupabaseConfigured || !supabase) {
+    const addrStr = input.address
+      ? [input.address.street, input.address.number, input.address.neighborhood,
+         input.address.city && `${input.address.city}-${input.address.uf}`, input.address.cep]
+          .filter(Boolean).join(', ')
+      : undefined
     const number = appendOrder({
       createdAt: new Date().toISOString(),
       subtotal: input.subtotal,
@@ -36,6 +41,12 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
       shipping: input.shipping,
       total: input.total,
       payment: input.payment,
+      status: 'pending',
+      customerName: input.customerName,
+      customerEmail: input.customerEmail,
+      shippingService: input.shippingService,
+      shippingDays: input.shippingDays,
+      address: addrStr,
       items: input.items.map((i) => ({
         productId: i.product.id,
         name: i.product.name,

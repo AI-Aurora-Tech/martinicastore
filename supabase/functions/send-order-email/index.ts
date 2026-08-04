@@ -1,16 +1,23 @@
 // Supabase Edge Function: send-order-email
-// Envia o e-mail de confirmação do pedido (via Resend), lendo os dados do
-// pedido no banco com a service role — o cliente só informa o orderId.
+// Envia o e-mail de confirmação do pedido, lendo os dados no banco com a
+// service role — o cliente só informa o orderId.
 //
-// Deploy:
-//   supabase functions deploy send-order-email
-// Segredos (Project Settings → Edge Functions → Secrets, ou CLI):
-//   supabase secrets set RESEND_API_KEY=re_xxx
-//   supabase secrets set STORE_FROM_EMAIL="Martinica Store <pedidos@seudominio.com>"
-//   supabase secrets set STORE_NOTIFY_EMAIL="loja@seudominio.com"   # opcional
+// Provedor de envio (escolhido pelos segredos configurados):
+//   - GMAIL:  GMAIL_USER + GMAIL_APP_PASSWORD  (Senha de app do Google)
+//   - RESEND: RESEND_API_KEY
+// Se ambos existirem, o Gmail tem preferência.
+//
+// Deploy:  supabase functions deploy send-order-email
+// Segredos (Dashboard → Edge Functions → Secrets, ou CLI `supabase secrets set`):
+//   # opção Gmail
+//   GMAIL_USER="sualoja@gmail.com"
+//   GMAIL_APP_PASSWORD="abcd efgh ijkl mnop"   # senha de app (16 letras)
+//   STORE_FROM_NAME="Martinica Store"          # opcional (nome exibido)
+//   STORE_NOTIFY_EMAIL="loja@gmail.com"        # opcional (cópia oculta)
 // (SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já existem no ambiente da função.)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +82,54 @@ function buildHtml(order: Record<string, unknown>, items: Array<Record<string, u
   </div>`
 }
 
+async function deliver(opts: { to: string; bcc?: string; subject: string; html: string }) {
+  const gmailUser = Deno.env.get('GMAIL_USER')
+  const gmailPass = Deno.env.get('GMAIL_APP_PASSWORD')
+  const resendKey = Deno.env.get('RESEND_API_KEY')
+
+  // --- Gmail (SMTP) ---
+  if (gmailUser && gmailPass) {
+    const fromName = Deno.env.get('STORE_FROM_NAME') ?? 'Martinica Store'
+    const client = new SMTPClient({
+      connection: {
+        hostname: 'smtp.gmail.com',
+        port: 465,
+        tls: true,
+        auth: { username: gmailUser, password: gmailPass.replace(/\s+/g, '') },
+      },
+    })
+    try {
+      await client.send({
+        from: `${fromName} <${gmailUser}>`, // o Gmail exige o remetente autenticado
+        to: opts.to,
+        bcc: opts.bcc ? [opts.bcc] : undefined,
+        subject: opts.subject,
+        content: 'Confirmação do seu pedido.',
+        html: opts.html,
+      })
+    } finally {
+      await client.close()
+    }
+    return
+  }
+
+  // --- Resend (HTTP) ---
+  if (resendKey) {
+    const from = Deno.env.get('STORE_FROM_EMAIL') ?? 'Martinica Store <onboarding@resend.dev>'
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: opts.to, bcc: opts.bcc, subject: opts.subject, html: opts.html }),
+    })
+    if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
+    return
+  }
+
+  throw new Error(
+    'Nenhum provedor configurado. Defina GMAIL_USER + GMAIL_APP_PASSWORD (Gmail) ou RESEND_API_KEY.',
+  )
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -111,31 +166,12 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-    if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY não configurada.')
-    const from = Deno.env.get('STORE_FROM_EMAIL') ?? 'Martinica Store <onboarding@resend.dev>'
-    const notify = Deno.env.get('STORE_NOTIFY_EMAIL')
-
-    const html = buildHtml(order, items ?? [])
-    const subject = `Pedido nº ${String(order.number ?? '').padStart(6, '0')} confirmado — Martinica Store`
-
-    const send = (recipient: string) =>
-      fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ from, to: recipient, subject, html }),
-      })
-
-    const res = await send(to)
-    if (!res.ok) {
-      const detail = await res.text()
-      throw new Error(`Resend ${res.status}: ${detail}`)
-    }
-    // Notificação para a loja (opcional).
-    if (notify) await send(notify).catch(() => {})
+    await deliver({
+      to,
+      bcc: Deno.env.get('STORE_NOTIFY_EMAIL') ?? undefined,
+      subject: `Pedido nº ${String(order.number ?? '').padStart(6, '0')} confirmado — Martinica Store`,
+      html: buildHtml(order, items ?? []),
+    })
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...cors, 'Content-Type': 'application/json' },

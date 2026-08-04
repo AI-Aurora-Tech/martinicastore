@@ -99,6 +99,17 @@ mesmas credenciais do PDV). É onde você **gerencia o estoque**:
   reduzem o estoque do produto (no banco, via *trigger*; na tela, em tempo real).
   Produtos esgotados aparecem como **"Esgotado"** na loja e no PDV.
 
+#### 🧾 Pedidos (aba do Admin)
+
+Aba **"Pedidos"** que consolida **pedidos da loja online** e **vendas do PDV**:
+
+- Resumo (total, pedidos pendentes, enviados, vendas no PDV) e filtros por
+  tipo (Loja/PDV) e status.
+- Cada linha abre os detalhes: itens, subtotal, frete, total, forma de
+  pagamento, cliente/operador e, para pedidos da loja, **endereço de entrega**.
+- **Mudança de status** dos pedidos da loja: pendente → pago → enviado →
+  entregue (ou cancelado). No modo Supabase grava em `orders.status`.
+
 #### 📊 Relatórios (aba do Admin)
 
 Aba **"Relatórios"** dentro do Admin, com base no **preço de custo** dos itens
@@ -116,25 +127,20 @@ mesmo se o custo mudar depois):
 
 O envio de e-mail **não acontece no navegador** — quem envia é uma **Supabase
 Edge Function** (`supabase/functions/send-order-email`) que lê o pedido no banco
-(service role) e envia via [Resend](https://resend.com/). O checkout chama a
-função depois de gravar o pedido (best-effort: se falhar, a compra continua e a
-tela avisa que o e-mail não saiu).
+(service role) e envia por **Gmail (SMTP)** ou **[Resend](https://resend.com/)**.
+O checkout chama a função depois de gravar o pedido (best-effort: se falhar, a
+compra continua e a tela avisa o motivo).
 
-Para ativar:
+Resumo (passo a passo completo em
+[`supabase/functions/send-order-email/SETUP.md`](supabase/functions/send-order-email/SETUP.md)):
 
-1. Crie uma conta no **Resend** e gere uma **API key**. Para enviar a e-mails
-   quaisquer, **verifique um domínio**; para teste, o remetente
-   `onboarding@resend.dev` só envia para o e-mail dono da conta Resend.
-2. Deploy da função (precisa da [Supabase CLI](https://supabase.com/docs/guides/cli)):
-   ```bash
-   supabase functions deploy send-order-email
-   ```
-3. Configure os segredos:
-   ```bash
-   supabase secrets set RESEND_API_KEY=re_xxx
-   supabase secrets set STORE_FROM_EMAIL="Martinica Store <pedidos@seudominio.com>"
-   supabase secrets set STORE_NOTIFY_EMAIL="loja@seudominio.com"   # opcional (cópia p/ loja)
-   ```
+1. Publique a função — CLI `supabase functions deploy send-order-email` **ou**
+   pelo Dashboard (Edge Functions → Create → colar o `index.ts`).
+2. Configure os segredos do provedor escolhido:
+   - **Gmail:** `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Senha de app do Google, exige
+     2FA), `STORE_FROM_NAME` e `STORE_NOTIFY_EMAIL` (opcionais).
+   - **Resend:** `RESEND_API_KEY` (e `STORE_FROM_EMAIL`).
+   - Se ambos existirem, o Gmail tem preferência.
    `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente da função.
 
 > No **modo demo** (sem Supabase) não há backend de e-mail — o pedido é só
@@ -261,6 +267,7 @@ src/
 │   ├── orders.ts             # grava pedidos da loja
 │   ├── admin.ts              # CRUD de produtos + estoque + upload de imagem
 │   ├── reports.ts            # agrega faturamento/custo/lucro
+│   ├── management.ts         # lista pedidos (loja) + vendas (PDV) e status
 │   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
 │   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
@@ -281,6 +288,7 @@ src/
     ├── AuthGate.tsx          # login reutilizável (PDV e Admin)
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
     ├── Admin.tsx             # painel de estoque e produtos (custo/margem)
+    ├── Orders.tsx            # aba de pedidos (loja + PDV) com status
     ├── Reports.tsx           # aba de relatórios de venda e lucro
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```
