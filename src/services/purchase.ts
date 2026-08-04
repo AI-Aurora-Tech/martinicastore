@@ -10,6 +10,8 @@ export interface PurchaseItemInput {
 
 export interface PurchaseInput {
   supplier?: string
+  supplierId?: string
+  supplierPhone?: string
   operatorEmail?: string
   items: PurchaseItemInput[]
 }
@@ -58,6 +60,8 @@ export async function createPurchase(input: PurchaseInput): Promise<PurchaseResu
       .from('purchases')
       .insert({
         supplier: input.supplier ?? null,
+        supplier_id: input.supplierId ?? null,
+        supplier_phone: input.supplierPhone ?? null,
         operator_email: input.operatorEmail ?? null,
         total,
       })

@@ -14,7 +14,7 @@ import {
   quoteShipping,
 } from '../services/shipping'
 import { createOrder } from '../services/orders'
-import { sendOrderEmail } from '../services/email'
+import { notifyOrder } from '../services/notify'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
@@ -37,6 +37,7 @@ export function Checkout({ onExit }: Props) {
   const { decrementStockLocal } = useCatalog()
 
   const [addr, setAddr] = useState<Address>(EMPTY_ADDR)
+  const [phone, setPhone] = useState('')
   const [cepBusy, setCepBusy] = useState(false)
   const [cepError, setCepError] = useState('')
   const [options, setOptions] = useState<ShippingOption[] | null>(null)
@@ -45,13 +46,14 @@ export function Checkout({ onExit }: Props) {
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState('')
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
-  const [emailSent, setEmailSent] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const [notified, setNotified] = useState(false)
+  const [notifyErr, setNotifyErr] = useState<string | null>(null)
 
   const weight = useMemo(() => cartWeight(items), [items])
 
   useEffect(() => {
     if (customer?.address) setAddr({ ...EMPTY_ADDR, ...customer.address })
+    if (customer?.phone) setPhone(customer.phone)
   }, [customer])
 
   const selected = options?.find((o) => o.service === service) ?? null
@@ -105,11 +107,12 @@ export function Checkout({ onExit }: Props) {
       return setError('Preencha o endereço completo (incluindo número).')
     }
     setPlacing(true)
-    await saveAddress(addr)
+    await saveAddress(addr, phone.trim() ? { phone: phone.trim() } : undefined)
     const { number, id, error: err } = await createOrder({
       customerId: customer?.id,
       customerName: customer?.name,
       customerEmail: customer?.email,
+      customerPhone: phone.trim() || undefined,
       subtotal,
       discount: 0,
       shipping: shippingPrice,
@@ -125,10 +128,10 @@ export function Checkout({ onExit }: Props) {
       return setError(err)
     }
     decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity })))
-    // Dispara o e-mail de confirmação (best-effort — não bloqueia a compra).
-    const { sent, error: mailErr } = await sendOrderEmail(id)
-    setEmailSent(sent)
-    setEmailError(mailErr)
+    // Dispara a notificação por WhatsApp (best-effort — não bloqueia a compra).
+    const { sent, error: nErr } = await notifyOrder(id)
+    setNotified(sent)
+    setNotifyErr(nErr)
     setPlacing(false)
     setOrderNumber(number)
     clear()
@@ -145,17 +148,17 @@ export function Checkout({ onExit }: Props) {
           <h2>Pedido confirmado!</h2>
           {orderNumber > 0 && <p>Pedido nº <strong>{String(orderNumber).padStart(6, '0')}</strong></p>}
           <p className="checkout__done-sub">
-            {emailSent ? (
-              <>Enviamos a confirmação para <strong>{customer?.email}</strong>. </>
+            {notified ? (
+              <>Enviamos a confirmação pelo <strong>WhatsApp</strong>. </>
             ) : isSupabaseConfigured ? (
-              <>Seu pedido foi registrado (o e-mail de confirmação não pôde ser enviado agora). </>
+              <>Seu pedido foi registrado (a notificação por WhatsApp não pôde ser enviada agora). </>
             ) : (
               <>Seu pedido foi registrado. </>
             )}
             Entrega via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.
           </p>
-          {!emailSent && isSupabaseConfigured && emailError && (
-            <p className="checkout__mailerr">Diagnóstico do e-mail: {emailError}</p>
+          {!notified && isSupabaseConfigured && notifyErr && (
+            <p className="checkout__mailerr">Diagnóstico do WhatsApp: {notifyErr}</p>
           )}
           <button className="btn btn--primary" onClick={onExit}>Voltar à loja</button>
         </div>
@@ -243,6 +246,16 @@ export function Checkout({ onExit }: Props) {
               <label className="checkout__field checkout__field--uf">
                 <span>UF</span>
                 <input maxLength={2} value={addr.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} disabled={!customer} />
+              </label>
+              <label className="checkout__field checkout__field--street">
+                <span>WhatsApp (para avisos do pedido)</span>
+                <input
+                  inputMode="tel"
+                  placeholder="(11) 90000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={!customer}
+                />
               </label>
             </div>
 

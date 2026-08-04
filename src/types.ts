@@ -62,6 +62,16 @@ export interface Customer {
   address?: Address
 }
 
+export interface Supplier {
+  id: string
+  name: string
+  phone?: string
+  cnpj?: string
+  email?: string
+  contact?: string
+  notes?: string
+}
+
 export type ShippingService = 'PAC' | 'SEDEX'
 
 export interface ShippingOption {

@@ -28,7 +28,7 @@ Identidade visual em **laranja e preto**.
 - **Ilustrações vetoriais (SVG)** geradas por tipo de produto — sem dependência
   de imagens externas.
 - **Conta do comprador** (Supabase Auth): cadastro/login pelo topo da loja, com
-  endereço salvo no perfil para as próximas compras.
+  **WhatsApp obrigatório**, endereço salvo no perfil e edição em **"Minha conta"**.
 - **Checkout com entrega pelos Correios**: cadastro obrigatório, busca de
   endereço por **CEP (ViaCEP)** e cálculo de frete **PAC/SEDEX** (estimativa por
   região + peso), com prazos; escolha da forma de pagamento e resumo do pedido.
@@ -109,8 +109,14 @@ Aba **"Compras"** para comprar de fornecedores e **dar entrada no estoque**:
   estoque de cada produto é **somado** e o **custo do produto é atualizado**
   para o custo da compra (melhora o cálculo de margem/lucro).
 - **Histórico de compras** com fornecedor, data e total.
+- **Cadastro de fornecedores** (nome, WhatsApp, CNPJ, contato) e envio do
+  **pedido de compra pelo WhatsApp** (link wa.me com a mensagem pronta).
 - No modo Supabase grava em `purchases`/`purchase_items` e um *trigger* soma ao
   estoque; no modo demo, tudo fica no navegador.
+
+> **Notificação de pedidos por WhatsApp (Z-API):** com a Z-API configurada
+> (segredos na Edge Function `notify-order`), cada pedido online avisa a **loja**
+> e o **cliente** por WhatsApp. Veja o SETUP.md.
 
 #### 🧾 Pedidos (aba do Admin)
 
@@ -136,28 +142,29 @@ mesmo se o custo mudar depois):
 - No modo Supabase lê de `sales`/`orders`; no modo demo, das vendas guardadas no
   navegador (para o relatório funcionar mesmo sem backend).
 
-### 📧 E-mail de confirmação do pedido
+### 📲 Notificação do pedido por WhatsApp (Z-API)
 
-O envio de e-mail **não acontece no navegador** — quem envia é uma **Supabase
-Edge Function** (`supabase/functions/send-order-email`) que lê o pedido no banco
-(service role) e envia por **Gmail (SMTP)** ou **[Resend](https://resend.com/)**.
-O checkout chama a função depois de gravar o pedido (best-effort: se falhar, a
-compra continua e a tela avisa o motivo).
+A confirmação do pedido é enviada por **WhatsApp** (não por e-mail). Quem envia
+é uma **Supabase Edge Function** (`supabase/functions/notify-order`) que lê o
+pedido no banco (service role) e envia via **[Z-API](https://www.z-api.io/)**
+para a **loja** e para o **cliente**. O checkout chama a função depois de gravar
+o pedido (best-effort: se falhar, a compra continua e a tela avisa o motivo).
+
+O **WhatsApp é obrigatório no cadastro** do cliente, e ele pode editar os dados
+em **"Minha conta"** (nome, WhatsApp e endereço).
 
 Resumo (passo a passo completo em
-[`supabase/functions/send-order-email/SETUP.md`](supabase/functions/send-order-email/SETUP.md)):
+[`supabase/functions/notify-order/SETUP.md`](supabase/functions/notify-order/SETUP.md)):
 
-1. Publique a função — CLI `supabase functions deploy send-order-email` **ou**
-   pelo Dashboard (Edge Functions → Create → colar o `index.ts`).
-2. Configure os segredos do provedor escolhido:
-   - **Gmail:** `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Senha de app do Google, exige
-     2FA), `STORE_FROM_NAME` e `STORE_NOTIFY_EMAIL` (opcionais).
-   - **Resend:** `RESEND_API_KEY` (e `STORE_FROM_EMAIL`).
-   - Se ambos existirem, o Gmail tem preferência.
+1. Crie uma instância na **Z-API** e **conecte o WhatsApp** (QR Code).
+2. Publique a função — CLI `supabase functions deploy notify-order` **ou** pelo
+   Dashboard (Edge Functions → Create → colar o `index.ts`).
+3. Configure os segredos: `ZAPI_INSTANCE_ID`, `ZAPI_INSTANCE_TOKEN`,
+   `ZAPI_CLIENT_TOKEN` e `STORE_WHATSAPP` (número da loja).
    `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente da função.
 
-> No **modo demo** (sem Supabase) não há backend de e-mail — o pedido é só
-> registrado localmente e a tela não promete envio de e-mail.
+> No **modo demo** (sem Supabase) não há backend — o pedido é só registrado
+> localmente e a tela não promete envio de notificação.
 
 ## 🗄️ Banco de dados (Supabase)
 
@@ -178,6 +185,8 @@ variáveis de ambiente:
      pedido e peso do produto) — aditiva e re-executável.
    - `supabase/migrations/0003_purchases.sql` (compras/entrada de estoque, com
      trigger que soma ao estoque) — aditiva e re-executável.
+   - `supabase/migrations/0004_suppliers_whatsapp.sql` (fornecedores + telefones
+     de WhatsApp) — aditiva e re-executável.
    - **Para começar com seus produtos reais (recomendado):**
      `supabase/seed_categories.sql` — cria só as categorias, catálogo vazio.
    - **Ou, para começar com os produtos de exemplo:**
@@ -284,8 +293,11 @@ src/
 │   ├── reports.ts            # agrega faturamento/custo/lucro
 │   ├── management.ts         # lista pedidos (loja) + vendas (PDV) e status
 │   ├── purchase.ts           # compras/entrada de estoque (fornecedor)
+│   ├── suppliers.ts          # cadastro de fornecedores (CRUD)
+│   ├── whatsapp.ts           # links wa.me + texto do pedido de compra
 │   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
 │   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
+│   ├── notify.ts             # chama a Edge Function notify-order (WhatsApp)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
 ├── data/products.ts          # seed/fallback + config do clube + BRL
 ├── context/
@@ -300,12 +312,14 @@ src/
     ├── StarRating.tsx        # avaliações em estrelas
     ├── CartDrawer.tsx        # sacola lateral (abre o checkout)
     ├── Checkout.tsx          # checkout: conta + endereço + frete + pagamento
-    ├── CustomerAuth.tsx      # form de cadastro/login do comprador
+    ├── CustomerAuth.tsx      # form de cadastro/login do comprador (com WhatsApp)
+    ├── AccountModal.tsx      # "Minha conta" — editar cadastro do cliente
     ├── AuthGate.tsx          # login reutilizável (PDV e Admin)
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
     ├── Admin.tsx             # painel de estoque e produtos (custo/margem)
     ├── Orders.tsx            # aba de pedidos (loja + PDV) com status
     ├── Purchases.tsx         # aba de compras / entrada de estoque
+    ├── SuppliersModal.tsx    # cadastro de fornecedores
     ├── Reports.tsx           # aba de relatórios de venda e lucro
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```
