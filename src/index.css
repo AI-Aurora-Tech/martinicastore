@@ -2729,3 +2729,34 @@ button {
 @media (max-width: 620px) {
   .sup-modal__body { grid-template-columns: 1fr; }
 }
+
+/* ---------- Minha conta (modal) ---------- */
+.header__account-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  font-size: 1.3rem;
+}
+.account { max-width: 460px; width: min(460px, 100%); }
+.account__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+.account__full { grid-column: 1 / -1; }
+.account__sep {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  font-weight: 700;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.7rem;
+  margin-top: 0.2rem;
+}

@@ -75,8 +75,10 @@ export async function signUpCustomer(
   name: string,
   email: string,
   password: string,
+  phone: string,
 ): Promise<CustomerResult> {
   const cleanEmail = email.trim().toLowerCase()
+  const cleanPhone = phone.trim()
 
   if (customerAuthMode === 'supabase' && supabase) {
     const { data, error } = await supabase.auth.signUp({
@@ -88,7 +90,9 @@ export async function signUpCustomer(
     const user = data.user
     if (!user) return { customer: null, error: 'Não foi possível criar a conta.' }
 
-    await supabase.from('customers').upsert({ id: user.id, name, email: cleanEmail })
+    await supabase
+      .from('customers')
+      .upsert({ id: user.id, name, email: cleanEmail, phone: cleanPhone })
 
     if (!data.session) {
       // Projeto exige confirmação de e-mail.
@@ -98,7 +102,7 @@ export async function signUpCustomer(
           'Conta criada! Confirme o e-mail para entrar (ou desative a confirmação em Auth → Providers → Email).',
       }
     }
-    return { customer: { id: user.id, name, email: cleanEmail }, error: null }
+    return { customer: { id: user.id, name, email: cleanEmail, phone: cleanPhone }, error: null }
   }
 
   // Demo
@@ -110,6 +114,7 @@ export async function signUpCustomer(
     id: `demo-${Date.now()}`,
     name,
     email: cleanEmail,
+    phone: cleanPhone,
     password,
   }
   writeDemo([...list, c])

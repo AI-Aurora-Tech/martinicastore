@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext'
 import { useCatalog } from '../context/CatalogContext'
 import { useCustomer } from '../context/CustomerContext'
 import { CustomerAuth } from './CustomerAuth'
+import { AccountModal } from './AccountModal'
 
 interface Props {
   active: CategoryId | 'todos'
@@ -20,6 +21,7 @@ export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmi
   const { categories } = useCatalog()
   const { customer, signOut } = useCustomer()
   const [showAuth, setShowAuth] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
 
   return (
     <header className="header">
@@ -74,11 +76,13 @@ export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmi
           </button>
           {customer ? (
             <div className="header__account header__account--in">
-              <span aria-hidden="true">👤</span>
-              <span className="header__account-text">
-                <small>Olá,</small>
-                <strong>{customer.name.split(' ')[0]}</strong>
-              </span>
+              <button className="header__account-btn" onClick={() => setShowAccount(true)} title="Minha conta">
+                <span aria-hidden="true">👤</span>
+                <span className="header__account-text">
+                  <small>Olá,</small>
+                  <strong>{customer.name.split(' ')[0]}</strong>
+                </span>
+              </button>
               <button className="header__logout" onClick={() => signOut()} title="Sair da conta">
                 Sair
               </button>
@@ -134,6 +138,8 @@ export function Header({ active, onSelect, query, onQuery, onOpenPDV, onOpenAdmi
           </div>
         </div>
       )}
+
+      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
     </header>
   )
 }

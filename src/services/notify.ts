@@ -1,22 +1,22 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
-export interface EmailResult {
+export interface NotifyResult {
   sent: boolean
   error: string | null
 }
 
 /**
- * Dispara o e-mail de confirmação do pedido chamando a Edge Function
- * `send-order-email` (que lê o pedido no banco e envia via Resend).
- * É "best-effort": nunca deve travar a confirmação da compra.
- * No modo demo (sem Supabase) não há backend de e-mail — retorna sent:false.
+ * Dispara a notificação do pedido por WhatsApp chamando a Edge Function
+ * `notify-order` (que lê o pedido no banco e envia via Z-API para a loja e o
+ * cliente). É "best-effort": nunca deve travar a confirmação da compra.
+ * No modo demo (sem Supabase) não há backend — retorna sent:false.
  */
-export async function sendOrderEmail(orderId: string | null): Promise<EmailResult> {
+export async function notifyOrder(orderId: string | null): Promise<NotifyResult> {
   if (!isSupabaseConfigured || !supabase || !orderId) {
     return { sent: false, error: null }
   }
   try {
-    const { data, error } = await supabase.functions.invoke('send-order-email', {
+    const { data, error } = await supabase.functions.invoke('notify-order', {
       body: { orderId },
     })
     if (error) {
@@ -34,17 +34,17 @@ export async function sendOrderEmail(orderId: string | null): Promise<EmailResul
       // Erro de alcance (função ainda não publicada / CORS / rede).
       if (/failed to send a request|fetch/i.test(detail)) {
         detail =
-          "Não foi possível alcançar a função 'send-order-email'. Ela provavelmente ainda não foi publicada (faça o deploy) — veja SETUP.md."
+          "Não foi possível alcançar a função 'notify-order'. Ela provavelmente ainda não foi publicada (faça o deploy) — veja SETUP.md."
       }
-      console.warn('[email] função retornou erro:', detail)
+      console.warn('[notify] função retornou erro:', detail)
       return { sent: false, error: detail }
     }
-    const d = data as { emailSent?: boolean; whatsappSent?: boolean } | null
-    const sent = d ? Boolean(d.emailSent || d.whatsappSent) : true
+    const d = data as { whatsappSent?: boolean } | null
+    const sent = d ? Boolean(d.whatsappSent) : true
     return { sent, error: null }
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Falha ao enviar e-mail.'
-    console.warn('[email] não foi possível enviar a confirmação:', err)
+    const message = err instanceof Error ? err.message : 'Falha ao notificar o pedido.'
+    console.warn('[notify] não foi possível enviar a notificação:', err)
     return { sent: false, error: message }
   }
 }

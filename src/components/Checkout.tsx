@@ -14,7 +14,7 @@ import {
   quoteShipping,
 } from '../services/shipping'
 import { createOrder } from '../services/orders'
-import { sendOrderEmail } from '../services/email'
+import { notifyOrder } from '../services/notify'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
@@ -46,8 +46,8 @@ export function Checkout({ onExit }: Props) {
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState('')
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
-  const [emailSent, setEmailSent] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const [notified, setNotified] = useState(false)
+  const [notifyErr, setNotifyErr] = useState<string | null>(null)
 
   const weight = useMemo(() => cartWeight(items), [items])
 
@@ -128,10 +128,10 @@ export function Checkout({ onExit }: Props) {
       return setError(err)
     }
     decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity })))
-    // Dispara o e-mail de confirmação (best-effort — não bloqueia a compra).
-    const { sent, error: mailErr } = await sendOrderEmail(id)
-    setEmailSent(sent)
-    setEmailError(mailErr)
+    // Dispara a notificação por WhatsApp (best-effort — não bloqueia a compra).
+    const { sent, error: nErr } = await notifyOrder(id)
+    setNotified(sent)
+    setNotifyErr(nErr)
     setPlacing(false)
     setOrderNumber(number)
     clear()
@@ -148,17 +148,17 @@ export function Checkout({ onExit }: Props) {
           <h2>Pedido confirmado!</h2>
           {orderNumber > 0 && <p>Pedido nº <strong>{String(orderNumber).padStart(6, '0')}</strong></p>}
           <p className="checkout__done-sub">
-            {emailSent ? (
-              <>Enviamos a confirmação do seu pedido (e-mail/WhatsApp). </>
+            {notified ? (
+              <>Enviamos a confirmação pelo <strong>WhatsApp</strong>. </>
             ) : isSupabaseConfigured ? (
-              <>Seu pedido foi registrado (a notificação não pôde ser enviada agora). </>
+              <>Seu pedido foi registrado (a notificação por WhatsApp não pôde ser enviada agora). </>
             ) : (
               <>Seu pedido foi registrado. </>
             )}
             Entrega via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.
           </p>
-          {!emailSent && isSupabaseConfigured && emailError && (
-            <p className="checkout__mailerr">Diagnóstico do e-mail: {emailError}</p>
+          {!notified && isSupabaseConfigured && notifyErr && (
+            <p className="checkout__mailerr">Diagnóstico do WhatsApp: {notifyErr}</p>
           )}
           <button className="btn btn--primary" onClick={onExit}>Voltar à loja</button>
         </div>

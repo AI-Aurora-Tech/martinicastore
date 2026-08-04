@@ -11,6 +11,7 @@ export function CustomerAuth({ onDone, compact }: Props) {
   const { signIn, signUp } = useCustomer()
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -23,10 +24,15 @@ export function CustomerAuth({ onDone, compact }: Props) {
     setBusy(true)
     setError('')
     setInfo('')
+    if (mode === 'signup' && phone.replace(/\D/g, '').length < 10) {
+      setBusy(false)
+      setError('Informe um WhatsApp válido (com DDD).')
+      return
+    }
     const err =
       mode === 'login'
         ? await signIn(email, password)
-        : await signUp(name, email, password)
+        : await signUp(name, email, password, phone)
     setBusy(false)
     if (err) {
       // Mensagem de "confirme o e-mail" é informativa, não erro fatal.
@@ -57,10 +63,23 @@ export function CustomerAuth({ onDone, compact }: Props) {
       </div>
 
       {mode === 'signup' && (
-        <label className="custauth__field">
-          <span>Nome completo</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
-        </label>
+        <>
+          <label className="custauth__field">
+            <span>Nome completo</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+          </label>
+          <label className="custauth__field">
+            <span>WhatsApp (para avisos do pedido)</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(11) 90000-0000"
+              required
+              autoComplete="tel"
+            />
+          </label>
+        </>
       )}
       <label className="custauth__field">
         <span>E-mail</span>
