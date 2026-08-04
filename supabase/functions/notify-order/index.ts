@@ -50,7 +50,9 @@ function forStore(o: Record<string, unknown>, items: Array<Record<string, unknow
 }
 function forCustomer(o: Record<string, unknown>): string {
   const num = String(o.number ?? '').padStart(6, '0')
-  return `✅ *Martinica Store*\nRecebemos seu pedido *nº ${num}*!\nTotal: ${BRL(Number(o.total))}\nEntrega: ${o.shipping_service ?? '—'} (até ${o.shipping_days ?? '?'} dias úteis).\nObrigado pela compra! 🧡`
+  const firstName = o.customer_name ? String(o.customer_name).trim().split(/\s+/)[0] : ''
+  const greet = firstName ? `Olá ${firstName}, recebemos` : 'Recebemos'
+  return `✅ *Martinica Store*\n${greet} seu pedido *nº ${num}*!\nTotal: ${BRL(Number(o.total))}\nEntrega: ${o.shipping_service ?? '—'} (até ${o.shipping_days ?? '?'} dias úteis).\nObrigado pela compra! 🧡`
 }
 
 Deno.serve(async (req: Request) => {
