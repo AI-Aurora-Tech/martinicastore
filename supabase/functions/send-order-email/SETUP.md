@@ -41,6 +41,27 @@ Usa o SMTP do Gmail com uma **Senha de app** (não é a sua senha normal).
 
 > Se você configurar Gmail **e** Resend, o Gmail tem preferência.
 
+### (Opcional) WhatsApp via Z-API
+
+A mesma função também notifica o pedido por **WhatsApp** usando a
+[Z-API](https://www.z-api.io/) — avisa a **loja** a cada pedido e o **cliente**
+(se ele informar o WhatsApp no checkout).
+
+1. Crie uma conta e uma **instância** na Z-API e **conecte o WhatsApp**
+   (leia o QR Code no painel da Z-API com o celular da loja).
+2. Anote, no painel da instância: **ID da instância**, **Token da instância**
+   e o **Client-Token** (Token de segurança da conta).
+3. Segredos a configurar na Parte 2:
+   - `ZAPI_INSTANCE_ID`
+   - `ZAPI_INSTANCE_TOKEN`
+   - `ZAPI_CLIENT_TOKEN`
+   - `STORE_WHATSAPP` = número da loja p/ receber os avisos (só dígitos, com
+     DDI+DDD, ex.: `5511988887777`)
+
+> E-mail e WhatsApp são independentes: pode usar só um, só o outro, ou os dois.
+> O **pedido de compra ao fornecedor** (aba Compras) NÃO usa a Z-API — ele abre
+> o WhatsApp (link wa.me) com a mensagem pronta para você revisar e enviar.
+
 ---
 
 ## Parte 2 — Deploy da função no Supabase
@@ -72,6 +93,13 @@ Você pode fazer pela **CLI** (recomendado) **ou** pelo **Dashboard**.
    ```bash
    supabase secrets set RESEND_API_KEY=re_suachave
    supabase secrets set STORE_FROM_EMAIL="Martinica Store <pedidos@seudominio.com>"
+   ```
+   …e/ou **WhatsApp (Z-API)**:
+   ```bash
+   supabase secrets set ZAPI_INSTANCE_ID=xxxxxxxx
+   supabase secrets set ZAPI_INSTANCE_TOKEN=xxxxxxxx
+   supabase secrets set ZAPI_CLIENT_TOKEN=xxxxxxxx
+   supabase secrets set STORE_WHATSAPP=5511988887777
    ```
    > `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem automaticamente.
 

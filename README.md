@@ -109,8 +109,14 @@ Aba **"Compras"** para comprar de fornecedores e **dar entrada no estoque**:
   estoque de cada produto é **somado** e o **custo do produto é atualizado**
   para o custo da compra (melhora o cálculo de margem/lucro).
 - **Histórico de compras** com fornecedor, data e total.
+- **Cadastro de fornecedores** (nome, WhatsApp, CNPJ, contato) e envio do
+  **pedido de compra pelo WhatsApp** (link wa.me com a mensagem pronta).
 - No modo Supabase grava em `purchases`/`purchase_items` e um *trigger* soma ao
   estoque; no modo demo, tudo fica no navegador.
+
+> **Notificação de pedidos por WhatsApp (Z-API):** com a Z-API configurada
+> (segredos na Edge Function), cada pedido online avisa a **loja** e o
+> **cliente** por WhatsApp, além do e-mail. Veja o SETUP.md.
 
 #### 🧾 Pedidos (aba do Admin)
 
@@ -178,6 +184,8 @@ variáveis de ambiente:
      pedido e peso do produto) — aditiva e re-executável.
    - `supabase/migrations/0003_purchases.sql` (compras/entrada de estoque, com
      trigger que soma ao estoque) — aditiva e re-executável.
+   - `supabase/migrations/0004_suppliers_whatsapp.sql` (fornecedores + telefones
+     de WhatsApp) — aditiva e re-executável.
    - **Para começar com seus produtos reais (recomendado):**
      `supabase/seed_categories.sql` — cria só as categorias, catálogo vazio.
    - **Ou, para começar com os produtos de exemplo:**
@@ -284,6 +292,8 @@ src/
 │   ├── reports.ts            # agrega faturamento/custo/lucro
 │   ├── management.ts         # lista pedidos (loja) + vendas (PDV) e status
 │   ├── purchase.ts           # compras/entrada de estoque (fornecedor)
+│   ├── suppliers.ts          # cadastro de fornecedores (CRUD)
+│   ├── whatsapp.ts           # links wa.me + texto do pedido de compra
 │   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
 │   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
@@ -306,6 +316,7 @@ src/
     ├── Admin.tsx             # painel de estoque e produtos (custo/margem)
     ├── Orders.tsx            # aba de pedidos (loja + PDV) com status
     ├── Purchases.tsx         # aba de compras / entrada de estoque
+    ├── SuppliersModal.tsx    # cadastro de fornecedores
     ├── Reports.tsx           # aba de relatórios de venda e lucro
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```

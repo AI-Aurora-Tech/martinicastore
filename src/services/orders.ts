@@ -6,6 +6,7 @@ export interface OrderInput {
   customerId?: string
   customerName?: string
   customerEmail?: string
+  customerPhone?: string
   subtotal: number
   discount: number
   shipping: number
@@ -65,6 +66,7 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
         customer_id: input.customerId ?? null,
         customer_name: input.customerName ?? null,
         customer_email: input.customerEmail ?? null,
+        customer_phone: input.customerPhone ?? null,
         subtotal: input.subtotal,
         discount: input.discount,
         shipping: input.shipping,

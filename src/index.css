@@ -2662,3 +2662,70 @@ button {
 @media (max-width: 640px) {
   .purch__top { grid-template-columns: 1fr; }
 }
+
+/* ---------- WhatsApp ---------- */
+.btn--wa {
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.3);
+}
+.btn--wa:hover { background: #1fbf59; }
+.btn--wa:disabled { opacity: 0.5; box-shadow: none; }
+
+.purch__supplier { display: flex; gap: 0.5rem; }
+.purch__supplier select {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
+  background: var(--surface);
+}
+.purch__manage { color: var(--ink); border-color: var(--line); padding: 0.5rem 0.9rem; white-space: nowrap; }
+.purch__manage:hover { background: var(--bg); }
+.purch__wa { padding: 0.85rem 1.2rem; }
+
+/* ---------- Suppliers modal ---------- */
+.sup-modal {
+  background: var(--surface);
+  border-radius: 16px;
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+.sup-modal__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.3rem; border-bottom: 1px solid var(--line);
+}
+.sup-modal__body {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1rem;
+  padding: 1.2rem 1.3rem;
+  overflow-y: auto;
+}
+.sup-modal__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.sup-modal__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+  border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.8rem;
+}
+.sup-modal__item strong { display: block; font-size: 0.9rem; }
+.sup-modal__item small { color: var(--muted); font-size: 0.75rem; }
+.sup-modal__actions { display: flex; gap: 0.3rem; }
+.sup-modal__actions button { border: none; background: var(--bg); border-radius: 8px; width: 32px; height: 32px; }
+.sup-modal__actions button:hover { background: #ececec; }
+.sup-modal__form { display: flex; flex-direction: column; gap: 0.55rem; background: var(--bg); border-radius: 12px; padding: 1rem; }
+.sup-modal__form h4 { font-size: 0.95rem; }
+.sup-modal__form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.76rem; font-weight: 700; color: var(--ink-soft); }
+.sup-modal__form input {
+  border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.9rem; font-weight: 400; outline: none;
+}
+.sup-modal__form input:focus { border-color: var(--red); }
+.sup-modal__form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.8rem; margin-top: 0.4rem; }
+
+@media (max-width: 620px) {
+  .sup-modal__body { grid-template-columns: 1fr; }
+}

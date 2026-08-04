@@ -16,7 +16,7 @@ export async function sendOrderEmail(orderId: string | null): Promise<EmailResul
     return { sent: false, error: null }
   }
   try {
-    const { error } = await supabase.functions.invoke('send-order-email', {
+    const { data, error } = await supabase.functions.invoke('send-order-email', {
       body: { orderId },
     })
     if (error) {
@@ -39,7 +39,9 @@ export async function sendOrderEmail(orderId: string | null): Promise<EmailResul
       console.warn('[email] função retornou erro:', detail)
       return { sent: false, error: detail }
     }
-    return { sent: true, error: null }
+    const d = data as { emailSent?: boolean; whatsappSent?: boolean } | null
+    const sent = d ? Boolean(d.emailSent || d.whatsappSent) : true
+    return { sent, error: null }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao enviar e-mail.'
     console.warn('[email] não foi possível enviar a confirmação:', err)

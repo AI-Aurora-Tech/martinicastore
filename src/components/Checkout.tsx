@@ -37,6 +37,7 @@ export function Checkout({ onExit }: Props) {
   const { decrementStockLocal } = useCatalog()
 
   const [addr, setAddr] = useState<Address>(EMPTY_ADDR)
+  const [phone, setPhone] = useState('')
   const [cepBusy, setCepBusy] = useState(false)
   const [cepError, setCepError] = useState('')
   const [options, setOptions] = useState<ShippingOption[] | null>(null)
@@ -52,6 +53,7 @@ export function Checkout({ onExit }: Props) {
 
   useEffect(() => {
     if (customer?.address) setAddr({ ...EMPTY_ADDR, ...customer.address })
+    if (customer?.phone) setPhone(customer.phone)
   }, [customer])
 
   const selected = options?.find((o) => o.service === service) ?? null
@@ -105,11 +107,12 @@ export function Checkout({ onExit }: Props) {
       return setError('Preencha o endereço completo (incluindo número).')
     }
     setPlacing(true)
-    await saveAddress(addr)
+    await saveAddress(addr, phone.trim() ? { phone: phone.trim() } : undefined)
     const { number, id, error: err } = await createOrder({
       customerId: customer?.id,
       customerName: customer?.name,
       customerEmail: customer?.email,
+      customerPhone: phone.trim() || undefined,
       subtotal,
       discount: 0,
       shipping: shippingPrice,
@@ -146,9 +149,9 @@ export function Checkout({ onExit }: Props) {
           {orderNumber > 0 && <p>Pedido nº <strong>{String(orderNumber).padStart(6, '0')}</strong></p>}
           <p className="checkout__done-sub">
             {emailSent ? (
-              <>Enviamos a confirmação para <strong>{customer?.email}</strong>. </>
+              <>Enviamos a confirmação do seu pedido (e-mail/WhatsApp). </>
             ) : isSupabaseConfigured ? (
-              <>Seu pedido foi registrado (o e-mail de confirmação não pôde ser enviado agora). </>
+              <>Seu pedido foi registrado (a notificação não pôde ser enviada agora). </>
             ) : (
               <>Seu pedido foi registrado. </>
             )}
@@ -243,6 +246,16 @@ export function Checkout({ onExit }: Props) {
               <label className="checkout__field checkout__field--uf">
                 <span>UF</span>
                 <input maxLength={2} value={addr.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} disabled={!customer} />
+              </label>
+              <label className="checkout__field checkout__field--street">
+                <span>WhatsApp (para avisos do pedido)</span>
+                <input
+                  inputMode="tel"
+                  placeholder="(11) 90000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={!customer}
+                />
               </label>
             </div>
 

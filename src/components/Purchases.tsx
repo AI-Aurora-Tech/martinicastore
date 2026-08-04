@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BRL } from '../data/products'
-import type { Product } from '../types'
+import type { Product, Supplier } from '../types'
 import { useCatalog } from '../context/CatalogContext'
 import {
   createPurchase,
   listPurchases,
   type PurchaseSummary,
 } from '../services/purchase'
+import { listSuppliers } from '../services/suppliers'
+import { buildPurchaseText, waLink } from '../services/whatsapp'
+import { SuppliersModal } from './SuppliersModal'
 
 interface Props {
   operatorEmail?: string
@@ -25,7 +28,9 @@ function when(iso: string) {
 
 export function Purchases({ operatorEmail }: Props) {
   const { products, upsertLocal } = useCatalog()
-  const [supplier, setSupplier] = useState('')
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [supplierId, setSupplierId] = useState('')
+  const [showSuppliers, setShowSuppliers] = useState(false)
   const [query, setQuery] = useState('')
   const [lines, setLines] = useState<Line[]>([])
   const [saving, setSaving] = useState(false)
@@ -37,6 +42,9 @@ export function Purchases({ operatorEmail }: Props) {
     listPurchases().then(setHistory).catch(() => {})
   }
   useEffect(() => loadHistory(), [])
+  useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
+
+  const supplier = suppliers.find((s) => s.id === supplierId) ?? null
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -73,7 +81,9 @@ export function Purchases({ operatorEmail }: Props) {
     setSuccess(null)
 
     const { number, error: err } = await createPurchase({
-      supplier: supplier.trim() || undefined,
+      supplier: supplier?.name,
+      supplierId: supplier?.id,
+      supplierPhone: supplier?.phone,
       operatorEmail,
       items: lines.map((l) => ({
         productId: l.product.id,
@@ -101,8 +111,20 @@ export function Purchases({ operatorEmail }: Props) {
         + `${totalUnits} ${totalUnits === 1 ? 'unidade' : 'unidades'} somadas ao estoque.`,
     )
     setLines([])
-    setSupplier('')
     loadHistory()
+  }
+
+  function sendWhatsApp() {
+    const text = buildPurchaseText(
+      supplier,
+      lines.map((l) => ({ name: l.product.name, quantity: l.quantity, unitCost: l.unitCost })),
+    )
+    const link = waLink(supplier?.phone, text)
+    if (!link) {
+      setError('Selecione um fornecedor com WhatsApp cadastrado.')
+      return
+    }
+    window.open(link, '_blank', 'noopener')
   }
 
   return (
@@ -112,8 +134,18 @@ export function Purchases({ operatorEmail }: Props) {
 
         <div className="purch__top">
           <label className="checkout__field">
-            <span>Fornecedor (opcional)</span>
-            <input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Ex.: Distribuidora Esportiva" />
+            <span>Fornecedor</span>
+            <div className="purch__supplier">
+              <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+                <option value="">— selecione —</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}{s.phone ? ` (📱)` : ''}</option>
+                ))}
+              </select>
+              <button type="button" className="btn btn--ghost purch__manage" onClick={() => setShowSuppliers(true)}>
+                Gerenciar
+              </button>
+            </div>
           </label>
           <label className="checkout__field purch__search">
             <span>Adicionar produto</span>
@@ -189,11 +221,23 @@ export function Purchases({ operatorEmail }: Props) {
             <span>Total da compra</span>
             <strong>{BRL.format(total)}</strong>
           </div>
+          <button
+            className="btn btn--wa purch__wa"
+            disabled={lines.length === 0 || !supplier?.phone}
+            onClick={sendWhatsApp}
+            title={supplier?.phone ? 'Enviar pedido ao fornecedor pelo WhatsApp' : 'Selecione um fornecedor com WhatsApp'}
+          >
+            <span aria-hidden="true">💬</span> Enviar pedido (WhatsApp)
+          </button>
           <button className="btn btn--primary purch__register" disabled={saving || lines.length === 0} onClick={register}>
             {saving ? 'Registrando…' : '↧ Registrar entrada no estoque'}
           </button>
         </div>
       </section>
+
+      {showSuppliers && (
+        <SuppliersModal onClose={() => setShowSuppliers(false)} onChange={setSuppliers} />
+      )}
 
       <section className="purch__history">
         <h3 className="purch__title">Últimas compras</h3>
