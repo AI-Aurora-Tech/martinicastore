@@ -99,6 +99,17 @@ mesmas credenciais do PDV). É onde você **gerencia o estoque**:
   reduzem o estoque do produto (no banco, via *trigger*; na tela, em tempo real).
   Produtos esgotados aparecem como **"Esgotado"** na loja e no PDV.
 
+#### 🧾 Pedidos (aba do Admin)
+
+Aba **"Pedidos"** que consolida **pedidos da loja online** e **vendas do PDV**:
+
+- Resumo (total, pedidos pendentes, enviados, vendas no PDV) e filtros por
+  tipo (Loja/PDV) e status.
+- Cada linha abre os detalhes: itens, subtotal, frete, total, forma de
+  pagamento, cliente/operador e, para pedidos da loja, **endereço de entrega**.
+- **Mudança de status** dos pedidos da loja: pendente → pago → enviado →
+  entregue (ou cancelado). No modo Supabase grava em `orders.status`.
+
 #### 📊 Relatórios (aba do Admin)
 
 Aba **"Relatórios"** dentro do Admin, com base no **preço de custo** dos itens
@@ -256,6 +267,7 @@ src/
 │   ├── orders.ts             # grava pedidos da loja
 │   ├── admin.ts              # CRUD de produtos + estoque + upload de imagem
 │   ├── reports.ts            # agrega faturamento/custo/lucro
+│   ├── management.ts         # lista pedidos (loja) + vendas (PDV) e status
 │   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
 │   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
@@ -276,6 +288,7 @@ src/
     ├── AuthGate.tsx          # login reutilizável (PDV e Admin)
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
     ├── Admin.tsx             # painel de estoque e produtos (custo/margem)
+    ├── Orders.tsx            # aba de pedidos (loja + PDV) com status
     ├── Reports.tsx           # aba de relatórios de venda e lucro
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```
