@@ -38,8 +38,25 @@ export interface OrderRecord {
   address?: string
 }
 
+export interface PurchaseItem {
+  productId: string
+  name: string
+  quantity: number
+  unitCost: number
+}
+
+export interface PurchaseRecord {
+  number: number
+  createdAt: string
+  supplier?: string
+  operatorEmail?: string
+  total: number
+  items: PurchaseItem[]
+}
+
 const SALES_KEY = 'martinica-sales'
 const ORDERS_KEY = 'martinica-orders'
+const PURCHASES_KEY = 'martinica-purchases'
 
 function read<T>(key: string): T[] {
   try {
@@ -77,6 +94,17 @@ export function appendOrder(order: Omit<OrderRecord, 'number'>): number {
   const all = readOrders()
   const number = all.length + 1
   write(ORDERS_KEY, [...all, { status: 'pending', ...order, number }])
+  return number
+}
+
+export function readPurchases(): PurchaseRecord[] {
+  return read<PurchaseRecord>(PURCHASES_KEY)
+}
+
+export function appendPurchase(purchase: Omit<PurchaseRecord, 'number'>): number {
+  const all = readPurchases()
+  const number = all.length + 1
+  write(PURCHASES_KEY, [...all, { ...purchase, number }])
   return number
 }
 
