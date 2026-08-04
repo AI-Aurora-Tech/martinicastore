@@ -99,6 +99,19 @@ mesmas credenciais do PDV). É onde você **gerencia o estoque**:
   reduzem o estoque do produto (no banco, via *trigger*; na tela, em tempo real).
   Produtos esgotados aparecem como **"Esgotado"** na loja e no PDV.
 
+#### 🛒 Compras (aba do Admin) — entrada/reposição de estoque
+
+Aba **"Compras"** para comprar de fornecedores e **dar entrada no estoque**:
+
+- Busque produtos e monte a entrada com **quantidade** e **custo unitário**
+  (a tela já mostra a prévia `estoque atual → novo`).
+- Informe o **fornecedor** (opcional) e clique em **Registrar entrada** — o
+  estoque de cada produto é **somado** e o **custo do produto é atualizado**
+  para o custo da compra (melhora o cálculo de margem/lucro).
+- **Histórico de compras** com fornecedor, data e total.
+- No modo Supabase grava em `purchases`/`purchase_items` e um *trigger* soma ao
+  estoque; no modo demo, tudo fica no navegador.
+
 #### 🧾 Pedidos (aba do Admin)
 
 Aba **"Pedidos"** que consolida **pedidos da loja online** e **vendas do PDV**:
@@ -163,6 +176,8 @@ variáveis de ambiente:
    - `supabase/migrations/0001_init.sql` (cria tabelas + RLS)
    - `supabase/migrations/0002_customers_shipping.sql` (clientes, endereço no
      pedido e peso do produto) — aditiva e re-executável.
+   - `supabase/migrations/0003_purchases.sql` (compras/entrada de estoque, com
+     trigger que soma ao estoque) — aditiva e re-executável.
    - **Para começar com seus produtos reais (recomendado):**
      `supabase/seed_categories.sql` — cria só as categorias, catálogo vazio.
    - **Ou, para começar com os produtos de exemplo:**
@@ -268,6 +283,7 @@ src/
 │   ├── admin.ts              # CRUD de produtos + estoque + upload de imagem
 │   ├── reports.ts            # agrega faturamento/custo/lucro
 │   ├── management.ts         # lista pedidos (loja) + vendas (PDV) e status
+│   ├── purchase.ts           # compras/entrada de estoque (fornecedor)
 │   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
 │   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
@@ -289,6 +305,7 @@ src/
     ├── PDV.tsx               # Ponto de Venda (caixa) + comprovante
     ├── Admin.tsx             # painel de estoque e produtos (custo/margem)
     ├── Orders.tsx            # aba de pedidos (loja + PDV) com status
+    ├── Purchases.tsx         # aba de compras / entrada de estoque
     ├── Reports.tsx           # aba de relatórios de venda e lucro
     └── Footer.tsx            # rodapé, newsletter e pagamentos
 ```

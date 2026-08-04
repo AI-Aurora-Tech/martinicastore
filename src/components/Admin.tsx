@@ -6,6 +6,7 @@ import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../ser
 import type { Operator } from '../services/auth'
 import { Reports } from './Reports'
 import { Orders } from './Orders'
+import { Purchases } from './Purchases'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
@@ -22,7 +23,7 @@ const KINDS: ProductKind[] = [
 
 export function Admin({ operator, onExit, onLogout }: Props) {
   const { products, categories, source, error: catalogError, upsertLocal, removeLocal } = useCatalog()
-  const [tab, setTab] = useState<'estoque' | 'pedidos' | 'relatorios'>('estoque')
+  const [tab, setTab] = useState<'estoque' | 'compras' | 'pedidos' | 'relatorios'>('estoque')
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
   const [creating, setCreating] = useState(false)
@@ -104,6 +105,12 @@ export function Admin({ operator, onExit, onLogout }: Props) {
             📦 Estoque &amp; Produtos
           </button>
           <button
+            className={`admin__tab ${tab === 'compras' ? 'admin__tab--active' : ''}`}
+            onClick={() => setTab('compras')}
+          >
+            🛒 Compras
+          </button>
+          <button
             className={`admin__tab ${tab === 'pedidos' ? 'admin__tab--active' : ''}`}
             onClick={() => setTab('pedidos')}
           >
@@ -148,6 +155,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           </div>
         )}
 
+        {tab === 'compras' && <Purchases operatorEmail={operator.email} />}
         {tab === 'pedidos' && <Orders />}
         {tab === 'relatorios' && <Reports />}
 

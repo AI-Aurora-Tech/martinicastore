@@ -2594,3 +2594,71 @@ button {
   .orders__row { grid-template-columns: auto 1fr auto; grid-template-areas: "tag who total" "num status chevron"; row-gap: 0.4rem; }
   .orders__detail-grid { grid-template-columns: 1fr; gap: 1rem; }
 }
+
+/* ---------- Admin: Compras (entrada de estoque) ---------- */
+.purch { display: flex; flex-direction: column; gap: 1.25rem; }
+.purch__title { font-size: 1.05rem; margin-bottom: 0.9rem; }
+.purch__top { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.purch__search { position: relative; }
+.purch__results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  margin-top: 4px;
+  overflow: hidden;
+}
+.purch__result {
+  width: 100%;
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--line);
+}
+.purch__result:last-child { border-bottom: none; }
+.purch__result:hover { background: var(--bg); }
+.purch__result span { font-size: 0.88rem; font-weight: 600; }
+.purch__result small { color: var(--muted); font-size: 0.74rem; }
+.purch__empty { color: var(--muted); font-size: 0.88rem; padding: 1rem 0; }
+.purch__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.purch__total { text-align: right; }
+.purch__total span { display: block; font-size: 0.78rem; color: var(--muted); }
+.purch__total strong { font-size: 1.5rem; }
+.purch__register { padding: 0.85rem 1.4rem; }
+.purch__history {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+}
+.purch__hist-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.purch__hist {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+.purch__hist div { display: flex; flex-direction: column; }
+.purch__hist small { color: var(--muted); font-size: 0.75rem; }
+.purch__hist-total { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .purch__top { grid-template-columns: 1fr; }
+}
