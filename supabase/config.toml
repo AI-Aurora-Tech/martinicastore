@@ -1,0 +1,4 @@
+# Configuração das Edge Functions (usado pela Supabase CLI).
+# O webhook do Mercado Pago é chamado pelo MP sem JWT — precisa ser público.
+[functions.mercadopago-webhook]
+verify_jwt = false

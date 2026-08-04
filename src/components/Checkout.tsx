@@ -15,6 +15,7 @@ import {
 } from '../services/shipping'
 import { createOrder } from '../services/orders'
 import { notifyOrder } from '../services/notify'
+import { createPayment } from '../services/payment'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
@@ -26,9 +27,8 @@ const EMPTY_ADDR: Address = {
 }
 
 const PAYMENTS = [
-  { id: 'pix', label: 'Pix', icon: '⚡', note: '5% de desconto' },
-  { id: 'cartao', label: 'Cartão', icon: '💳', note: 'até 10x sem juros' },
-  { id: 'boleto', label: 'Boleto', icon: '🧾', note: 'aprovação em 1-2 dias' },
+  { id: 'pix', label: 'Pix', icon: '⚡', note: 'aprovação na hora' },
+  { id: 'cartao', label: 'Cartão de crédito', icon: '💳', note: 'até 10x' },
 ] as const
 
 export function Checkout({ onExit }: Props) {
@@ -42,7 +42,7 @@ export function Checkout({ onExit }: Props) {
   const [cepError, setCepError] = useState('')
   const [options, setOptions] = useState<ShippingOption[] | null>(null)
   const [service, setService] = useState<'PAC' | 'SEDEX' | null>(null)
-  const [payment, setPayment] = useState<'pix' | 'cartao' | 'boleto'>('pix')
+  const [payment, setPayment] = useState<'pix' | 'cartao'>('pix')
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState('')
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
@@ -128,13 +128,21 @@ export function Checkout({ onExit }: Props) {
       return setError(err)
     }
     decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity })))
-    // Dispara a notificação por WhatsApp (best-effort — não bloqueia a compra).
+    // Notificação "recebemos seu pedido" por WhatsApp (best-effort).
     const { sent, error: nErr } = await notifyOrder(id)
     setNotified(sent)
     setNotifyErr(nErr)
+
+    // Pagamento online (Mercado Pago). Se configurado, redireciona para pagar.
+    const { initPoint } = await createPayment(id, payment, window.location.origin)
+    clear()
+    if (initPoint) {
+      window.location.href = initPoint
+      return
+    }
+
     setPlacing(false)
     setOrderNumber(number)
-    clear()
   }
 
   // ---- Estados de tela ----
@@ -277,6 +285,7 @@ export function Checkout({ onExit }: Props) {
           {/* 3. Pagamento */}
           <section className={`checkout__card ${!customer ? 'checkout__card--disabled' : ''}`}>
             <h3><span className="checkout__step">3</span> Pagamento</h3>
+            <p className="checkout__req">🔒 Pagamento seguro via <strong>Mercado Pago</strong>. Você será redirecionado para concluir.</p>
             <div className="checkout__pay">
               {PAYMENTS.map((pm) => (
                 <button
@@ -326,7 +335,7 @@ export function Checkout({ onExit }: Props) {
             onClick={confirm}
             disabled={!customer || !selected || placing}
           >
-            {placing ? 'Processando…' : 'Confirmar pedido'}
+            {placing ? 'Processando…' : 'Confirmar e pagar'}
           </button>
           {!customer && <p className="checkout__hint">Entre na etapa 1 para continuar.</p>}
           {customer && !selected && <p className="checkout__hint">Calcule o frete na etapa 2.</p>}

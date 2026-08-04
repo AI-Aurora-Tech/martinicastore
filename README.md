@@ -142,6 +142,20 @@ mesmo se o custo mudar depois):
 - No modo Supabase lê de `sales`/`orders`; no modo demo, das vendas guardadas no
   navegador (para o relatório funcionar mesmo sem backend).
 
+### 💳 Pagamento online (Mercado Pago)
+
+As vendas online são pagas com **Pix ou Cartão de crédito** via **Mercado Pago
+(Checkout Pro)**. No checkout, o cliente clica em **"Confirmar e pagar"**, o
+pedido é gravado (status *pending*) e ele é redirecionado ao Mercado Pago.
+Quando o pagamento é **aprovado**, um **webhook** marca o pedido como **Pago**
+e dispara um **WhatsApp automático** de "pagamento aprovado" ao cliente.
+
+Duas Edge Functions: `create-payment` (cria a preferência) e
+`mercadopago-webhook` (confirma o pagamento). Passo a passo em
+[`supabase/functions/MERCADOPAGO.md`](supabase/functions/MERCADOPAGO.md). Sem o
+`MP_ACCESS_TOKEN` configurado, a loja segue no fluxo sem pagamento online (nada
+quebra).
+
 ### 📲 Notificação do pedido por WhatsApp (Z-API)
 
 A confirmação do pedido é enviada por **WhatsApp** (não por e-mail). Quem envia
@@ -187,6 +201,8 @@ variáveis de ambiente:
      trigger que soma ao estoque) — aditiva e re-executável.
    - `supabase/migrations/0004_suppliers_whatsapp.sql` (fornecedores + telefones
      de WhatsApp) — aditiva e re-executável.
+   - `supabase/migrations/0005_payments.sql` (status/ids do pagamento Mercado
+     Pago no pedido) — aditiva e re-executável.
    - **Para começar com seus produtos reais (recomendado):**
      `supabase/seed_categories.sql` — cria só as categorias, catálogo vazio.
    - **Ou, para começar com os produtos de exemplo:**
@@ -298,6 +314,7 @@ src/
 │   ├── customer.ts           # cadastro/login do comprador (Supabase Auth)
 │   ├── shipping.ts           # frete Correios (PAC/SEDEX) + CEP (ViaCEP)
 │   ├── notify.ts             # chama a Edge Function notify-order (WhatsApp)
+│   ├── payment.ts            # cria pagamento Mercado Pago (create-payment)
 │   └── localStore.ts         # log de vendas/pedidos no modo demo
 ├── data/products.ts          # seed/fallback + config do clube + BRL
 ├── context/

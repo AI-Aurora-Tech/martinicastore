@@ -2760,3 +2760,21 @@ button {
   padding-top: 0.7rem;
   margin-top: 0.2rem;
 }
+
+/* ---------- Aviso de pagamento (retorno do Mercado Pago) ---------- */
+.paynotice {
+  max-width: var(--max);
+  margin: 1rem auto 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.paynotice button { border: none; background: rgba(0,0,0,0.08); border-radius: 50%; width: 28px; height: 28px; }
+.paynotice--aprovado { background: #eafaf0; border: 1px solid #b7e3c7; color: #147a3e; }
+.paynotice--pendente { background: #fff4ec; border: 1px solid #ffd9bf; color: #b3600a; }
+.paynotice--falhou { background: #fdecec; border: 1px solid #f5b5b5; color: #b3261e; }
