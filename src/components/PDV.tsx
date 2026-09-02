@@ -89,8 +89,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const itemCount = lines.reduce((s, l) => s + l.quantity, 0)
 
   const manualDiscount = Math.max(0, Number(discountInput.replace(',', '.')) || 0)
-  const pixDiscount = payment === 'pix' ? subtotal * 0.05 : 0
-  const discount = Math.min(subtotal, manualDiscount + pixDiscount)
+  const discount = Math.min(subtotal, manualDiscount)
   const total = Math.max(0, subtotal - discount)
 
   const received = Number(receivedInput.replace(',', '.')) || 0
@@ -436,9 +435,6 @@ export function PDV({ onExit, operator, onLogout }: Props) {
               </div>
             )}
 
-            {payment === 'pix' && (
-              <p className="pdv__pixnote">⚡ 5% de desconto aplicado no Pix.</p>
-            )}
 
             <dl className="pdv__totals">
               <div>
