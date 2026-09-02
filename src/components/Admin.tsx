@@ -8,6 +8,7 @@ import type { Operator } from '../services/auth'
 import { Reports } from './Reports'
 import { Orders } from './Orders'
 import { Purchases } from './Purchases'
+import { Despesas } from './Despesas'
 import { BannersManager } from './BannersManager'
 import { CategoriesManager } from './CategoriesManager'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -27,7 +28,7 @@ const KINDS: ProductKind[] = [
 export function Admin({ operator, onExit, onLogout }: Props) {
   const { products, categories, source, error: catalogError, upsertLocal, removeLocal } = useCatalog()
   const [tab, setTab] = useState<
-    'estoque' | 'categorias' | 'banners' | 'compras' | 'pedidos' | 'relatorios'
+    'estoque' | 'categorias' | 'banners' | 'compras' | 'despesas' | 'pedidos' | 'relatorios'
   >('estoque')
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
@@ -149,6 +150,12 @@ export function Admin({ operator, onExit, onLogout }: Props) {
             🛒 Compras
           </button>
           <button
+            className={`admin__tab ${tab === 'despesas' ? 'admin__tab--active' : ''}`}
+            onClick={() => setTab('despesas')}
+          >
+            💸 Despesas
+          </button>
+          <button
             className={`admin__tab ${tab === 'pedidos' ? 'admin__tab--active' : ''}`}
             onClick={() => setTab('pedidos')}
           >
@@ -201,6 +208,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
         {tab === 'categorias' && <CategoriesManager onFlash={flash} />}
         {tab === 'banners' && <BannersManager onFlash={flash} />}
         {tab === 'compras' && <Purchases operatorEmail={operator.email} />}
+        {tab === 'despesas' && <Despesas operatorEmail={operator.email} />}
         {tab === 'pedidos' && <Orders />}
         {tab === 'relatorios' && <Reports />}
 

@@ -61,9 +61,23 @@ export interface PurchaseRecord {
   items: PurchaseItem[]
 }
 
+export interface ExpenseRecord {
+  id: string
+  description: string
+  category?: string
+  amount: number
+  dueDate?: string
+  paid: boolean
+  paidAt?: string
+  recurring: boolean
+  recurrence?: 'mensal' | 'semanal'
+  createdAt: string
+}
+
 const SALES_KEY = 'martinica-sales'
 const ORDERS_KEY = 'martinica-orders'
 const PURCHASES_KEY = 'martinica-purchases'
+const EXPENSES_KEY = 'martinica-expenses'
 
 function read<T>(key: string): T[] {
   try {
@@ -119,6 +133,26 @@ export function appendPurchase(purchase: Omit<PurchaseRecord, 'number'>): number
 export function updatePurchaseLocal(number: number, patch: Partial<PurchaseRecord>): void {
   const all = readPurchases()
   write(PURCHASES_KEY, all.map((p) => (p.number === number ? { ...p, ...patch } : p)))
+}
+
+export function readExpenses(): ExpenseRecord[] {
+  return read<ExpenseRecord>(EXPENSES_KEY)
+}
+
+export function appendExpense(exp: Omit<ExpenseRecord, 'id'>): ExpenseRecord {
+  const all = readExpenses()
+  const rec: ExpenseRecord = { ...exp, id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
+  write(EXPENSES_KEY, [...all, rec])
+  return rec
+}
+
+export function updateExpenseLocal(id: string, patch: Partial<ExpenseRecord>): void {
+  const all = readExpenses()
+  write(EXPENSES_KEY, all.map((e) => (e.id === id ? { ...e, ...patch } : e)))
+}
+
+export function removeExpenseLocal(id: string): void {
+  write(EXPENSES_KEY, readExpenses().filter((e) => e.id !== id))
 }
 
 /** Atualiza o status de um pedido demo (por número). */

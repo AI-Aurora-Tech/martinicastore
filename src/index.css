@@ -2196,6 +2196,21 @@ button {
 .reports__kpi--primary { background: var(--ink); color: #fff; }
 .reports__kpi--primary span { color: rgba(255,255,255,0.7); }
 .reports__kpi--profit strong { color: var(--green); }
+.reports__periods { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.reports__kpis--received { grid-template-columns: repeat(3, 1fr); }
+.reports__kpi--received strong { color: var(--green); }
+.reports__kpi--received { border-color: #bfe6cc; background: #f3fbf5; }
+.reports__kpi--pending { border-color: #f2dca8; background: #fffaf0; }
+.reports__kpi--pending strong { color: #9a6400; }
+.reports__badge-wait {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #9a6400;
+  background: #fff4e0;
+  border: 1px solid #f2dca8;
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
 .reports__subkpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -2276,6 +2291,7 @@ button {
 
 @media (max-width: 860px) {
   .reports__kpis, .reports__subkpis { grid-template-columns: 1fr 1fr; }
+  .reports__kpis--received { grid-template-columns: 1fr; }
   .reports__grid { grid-template-columns: 1fr; }
 }
 
@@ -2702,6 +2718,48 @@ button {
   .purch__top { grid-template-columns: 1fr; }
   .purch__pay { grid-template-columns: 1fr; align-items: stretch; }
   .purch__paid { padding-bottom: 0; }
+}
+
+/* ---------- Despesas ---------- */
+.despesas { display: flex; flex-direction: column; gap: 1.1rem; }
+.despesas__form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 0.8rem 1rem;
+  align-items: end;
+}
+.despesas__desc { grid-column: 1 / -1; }
+.despesas__paidchk { padding-bottom: 0.55rem; }
+.despesas__submit { grid-column: 1 / -1; justify-self: start; padding: 0.7rem 1.4rem; }
+.despesas__rec {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+}
+.despesas__rec-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.despesas__rec-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding-bottom: 0.5rem; border-bottom: 1px solid var(--line);
+}
+.despesas__rec-item div { display: flex; flex-direction: column; }
+.despesas__rec-item small { color: var(--muted); font-size: 0.75rem; }
+.despesas__src {
+  display: inline-block; margin-left: 0.4rem; font-size: 0.66rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 0.05rem 0.4rem;
+}
+.despesas__src--rec { color: #9a6400; background: #fff4e0; border-color: #f2dca8; }
+.despesas__actions { display: flex; gap: 0.4rem; align-items: center; justify-content: flex-end; }
+.despesas__actions .btn { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+.despesas__table td { vertical-align: middle; }
+
+@media (max-width: 720px) {
+  .despesas__form { grid-template-columns: 1fr 1fr; }
+  .despesas__desc { grid-column: 1 / -1; }
+}
+@media (max-width: 460px) {
+  .despesas__form { grid-template-columns: 1fr; }
 }
 
 /* ---------- WhatsApp ---------- */

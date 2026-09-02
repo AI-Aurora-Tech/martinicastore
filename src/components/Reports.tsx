@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BRL } from '../data/products'
-import { loadReport, type ReportData } from '../services/reports'
+import {
+  aggregate,
+  fetchTransactions,
+  filterByPeriod,
+  type Period,
+  type ReportData,
+  type Tx,
+} from '../services/reports'
 
 const PAYMENT_LABELS: Record<string, string> = {
   dinheiro: 'Dinheiro',
@@ -12,6 +19,13 @@ const PAYMENT_LABELS: Record<string, string> = {
   boleto: 'Boleto',
 }
 
+const PERIODS: { id: Period; label: string }[] = [
+  { id: 'dia', label: 'Hoje' },
+  { id: 'semana', label: '7 dias' },
+  { id: 'mes', label: 'Mês' },
+  { id: 'tudo', label: 'Tudo' },
+]
+
 function pct(v: number) {
   return `${(v * 100).toFixed(1)}%`
 }
@@ -22,20 +36,27 @@ function when(iso: string) {
 }
 
 export function Reports() {
-  const [data, setData] = useState<ReportData | null>(null)
+  const [txs, setTxs] = useState<Tx[]>([])
+  const [source, setSource] = useState<'supabase' | 'demo'>('demo')
+  const [period, setPeriod] = useState<Period>('mes')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
     setError(null)
-    loadReport()
-      .then(setData)
+    fetchTransactions()
+      .then((r) => { setTxs(r.txs); setSource(r.source) })
       .catch((e) => setError(e instanceof Error ? e.message : 'Falha ao carregar relatório.'))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => load(), [])
+
+  const data: ReportData = useMemo(
+    () => aggregate(filterByPeriod(txs, period), source),
+    [txs, period, source],
+  )
 
   if (loading) {
     return <div className="reports__loading">Calculando relatórios…</div>
@@ -47,28 +68,36 @@ export function Reports() {
       </div>
     )
   }
-  if (!data) return null
 
   const empty = data.salesCount + data.ordersCount === 0
 
   return (
     <div className="reports">
       <div className="reports__head">
-        <p className="reports__hint">
-          Consolida <strong>vendas do PDV</strong> e <strong>pedidos da loja</strong>.
-          Lucro = faturamento − custo (preço de custo dos itens vendidos).
-        </p>
+        <div className="reports__periods">
+          {PERIODS.map((pd) => (
+            <button
+              key={pd.id}
+              className={`chip ${period === pd.id ? 'chip--active' : ''}`}
+              onClick={() => setPeriod(pd.id)}
+            >
+              {pd.label}
+            </button>
+          ))}
+        </div>
         <button className="reports__refresh" onClick={load}>↻ Atualizar</button>
       </div>
+      <p className="reports__hint">
+        Consolida <strong>vendas do PDV</strong> e <strong>pedidos da loja</strong>.
+        Lucro bruto = faturamento − custo. <strong>Recebido</strong> exclui fiados e
+        pedidos ainda pendentes de pagamento.
+      </p>
 
       {empty ? (
         <div className="reports__empty">
           <span>📊</span>
-          <p>Ainda não há vendas registradas.</p>
-          <small>
-            Faça uma venda no PDV ou um pedido na loja e volte aqui — o relatório
-            é gerado automaticamente.
-          </small>
+          <p>Nenhuma venda no período selecionado.</p>
+          <small>Troque o período acima ou registre uma venda no PDV / pedido na loja.</small>
         </div>
       ) : (
         <>
@@ -88,6 +117,21 @@ export function Reports() {
             <div className="reports__kpi">
               <span>Margem</span>
               <strong>{pct(data.margin)}</strong>
+            </div>
+          </section>
+
+          <section className="reports__kpis reports__kpis--received">
+            <div className="reports__kpi reports__kpi--received">
+              <span>Lucro bruto já recebido</span>
+              <strong>{BRL.format(data.receivedProfit)}</strong>
+            </div>
+            <div className="reports__kpi reports__kpi--pending">
+              <span>Lucro a receber (fiado/pendente)</span>
+              <strong>{BRL.format(data.pendingProfit)}</strong>
+            </div>
+            <div className="reports__kpi">
+              <span>Faturamento recebido</span>
+              <strong>{BRL.format(data.receivedRevenue)}</strong>
             </div>
           </section>
 
@@ -155,6 +199,7 @@ export function Reports() {
                       </span>
                       <span className="reports__recent-num">nº {String(t.number).padStart(4, '0')}</span>
                       <span className="reports__recent-when">{when(t.when)}</span>
+                      {!t.received && <span className="reports__badge-wait">a receber</span>}
                       <strong>{BRL.format(t.total)}</strong>
                     </li>
                   ))}
