@@ -3131,3 +3131,27 @@ button {
   .banners-admin__thumb { width: 100%; }
   .banners-admin__actions { flex-direction: row; align-items: center; }
 }
+
+/* ================================================================= */
+/* Mobile hardening (iPhone/Android)                                  */
+/* ================================================================= */
+
+/* Evita reajuste de texto do iOS e vazamentos horizontais que "cortam" */
+html { -webkit-text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+#root { max-width: 100%; overflow-x: clip; }
+
+/* iOS Safari dá ZOOM automático ao focar um campo com fonte < 16px — e não
+   volta, deixando a página "cortada". Forçamos 16px nos campos no celular. */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .search input,
+  .pdvlogin__field input,
+  .custauth__field input,
+  .checkout__field input,
+  .checkout__field select {
+    font-size: 16px !important;
+  }
+}
