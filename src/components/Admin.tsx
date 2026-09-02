@@ -601,14 +601,14 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
           <div className="admin__form-full admin__variants">
             <div className="admin__variants-head">
               <span>Variações com estoque individual (tamanho, cor, etc.)</span>
-              <button type="button" className="btn btn--ghost admin__variants-add" onClick={addVariant}>
-                + Adicionar variação
-              </button>
             </div>
             <p className="admin__variants-hint">
               Preencha para controlar o estoque por variação. Ao usar variações, o
               cliente escolhe uma delas e só compra se houver estoque naquela opção.
             </p>
+            <button type="button" className="admin__variants-add" onClick={addVariant}>
+              + Adicionar variação
+            </button>
             {variants.length > 0 && (
               <div className="admin__variants-list">
                 {variants.map((v, i) => (

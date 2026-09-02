@@ -3328,14 +3328,22 @@ body { overflow-x: hidden; }
   background: #fafafb;
 }
 .admin__variants-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
   font-weight: 700;
   font-size: 0.85rem;
 }
-.admin__variants-add { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+.admin__variants-add {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--red, #ff6a00);
+  background: #fff;
+  border: 1.5px solid var(--red, #ff6a00);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.admin__variants-add:hover { background: var(--red, #ff6a00); color: #fff; }
 .admin__variants-hint { font-size: 0.78rem; color: #666; margin: 0.35rem 0 0.6rem; }
 .admin__variants-list { display: grid; gap: 0.45rem; }
 .admin__variant-row { display: grid; grid-template-columns: 1fr 90px auto; gap: 0.4rem; align-items: center; }
