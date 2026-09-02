@@ -16,7 +16,7 @@ function readAsDataUrl(file: File): Promise<string> {
 }
 
 /** Edição do banner principal da loja (um ou vários — vira carrossel). */
-export function BannersManager() {
+export function BannersManager({ onFlash }: { onFlash?: (msg: string) => void }) {
   const { categories, products } = useCatalog()
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +53,7 @@ export function BannersManager() {
     setBusy(false)
     if (sErr) return setError(sErr)
     if (saved) setBanners((b) => [...b, saved])
+    onFlash?.('Banner adicionado.')
   }
 
   async function patch(b: Banner, changes: Partial<Banner>) {
@@ -60,6 +61,7 @@ export function BannersManager() {
     setBanners((list) => list.map((x) => (x.id === b.id ? next : x)))
     const { error: err } = await saveBanner(next)
     if (err) setError(err)
+    else onFlash?.('Banner atualizado.')
   }
 
   async function move(b: Banner, dir: -1 | 1) {
@@ -75,6 +77,7 @@ export function BannersManager() {
     }
     setBanners(ordered)
     setBusy(false)
+    onFlash?.('Ordem dos banners atualizada.')
   }
 
   async function remove(b: Banner) {
@@ -84,6 +87,7 @@ export function BannersManager() {
     setBusy(false)
     if (err) return setError(err)
     setBanners((list) => list.filter((x) => x.id !== b.id))
+    onFlash?.('Banner excluído.')
   }
 
   return (

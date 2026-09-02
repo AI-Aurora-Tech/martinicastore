@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CLUB } from '../data/products'
 import type { CategoryId, Product, ProductKind } from '../types'
 import { useCatalog } from '../context/CatalogContext'
@@ -34,6 +34,14 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [flashMsg, setFlashMsg] = useState<string | null>(null)
+
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function flash(msg: string) {
+    setFlashMsg(msg)
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlashMsg(null), 3500)
+  }
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -50,10 +58,11 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     return { total: products.length, units, out, low }
   }, [products])
 
-  async function persist(next: Product) {
+  async function persist(next: Product, okMsg = 'Produto salvo.') {
     upsertLocal(next)
     const { error: err } = await saveProduct(next)
     if (err) setError(err)
+    else flash(okMsg)
   }
 
   async function changeStock(p: Product, value: number) {
@@ -61,6 +70,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     upsertLocal({ ...p, stock })
     const { error: err } = await setStock(p.id, stock)
     if (err) setError(err)
+    else flash(`Estoque de "${p.name}" atualizado (${stock}).`)
   }
 
   async function remove(p: Product) {
@@ -68,6 +78,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     removeLocal(p.id)
     const { error: err } = await deleteProduct(p.id)
     if (err) setError(err)
+    else flash(`Produto "${p.name}" excluído.`)
   }
 
   async function changeImage(p: Product, file: File) {
@@ -76,7 +87,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
       setError(err ?? 'Falha ao enviar a imagem.')
       return
     }
-    await persist({ ...p, image: url })
+    await persist({ ...p, image: url }, 'Imagem atualizada.')
   }
 
   return (
@@ -178,8 +189,8 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           </div>
         )}
 
-        {tab === 'categorias' && <CategoriesManager />}
-        {tab === 'banners' && <BannersManager />}
+        {tab === 'categorias' && <CategoriesManager onFlash={flash} />}
+        {tab === 'banners' && <BannersManager onFlash={flash} />}
         {tab === 'compras' && <Purchases operatorEmail={operator.email} />}
         {tab === 'pedidos' && <Orders />}
         {tab === 'relatorios' && <Reports />}
@@ -265,7 +276,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           existingIds={products.map((p) => p.id)}
           onClose={() => setCreating(false)}
           onSave={async (p) => {
-            await persist(p)
+            await persist(p, 'Produto criado.')
             setCreating(false)
           }}
         />
@@ -278,10 +289,16 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           product={editing}
           onClose={() => setEditing(null)}
           onSave={async (p) => {
-            await persist(p)
+            await persist(p, 'Alterações salvas.')
             setEditing(null)
           }}
         />
+      )}
+
+      {flashMsg && (
+        <div className="admin__flash" role="status" onClick={() => setFlashMsg(null)}>
+          ✓ {flashMsg}
+        </div>
       )}
     </div>
   )

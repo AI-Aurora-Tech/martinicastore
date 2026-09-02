@@ -3,7 +3,7 @@ import { BRL } from '../data/products'
 import type { CategoryId, Product } from '../types'
 import { ProductImage } from './ProductImage'
 import { useCatalog } from '../context/CatalogContext'
-import { createSale } from '../services/sales'
+import { createSale, notifySale } from '../services/sales'
 import { availableFor, hasVariants } from '../services/variants'
 import type { Operator } from '../services/auth'
 
@@ -95,7 +95,8 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const received = Number(receivedInput.replace(',', '.')) || 0
   const change = payment === 'dinheiro' ? received - total : 0
   const isFiado = payment === 'fiado'
-  const fiadoOk = !isFiado || (fiadoName.trim().length > 1 && fiadoPhone.trim().length >= 8)
+  // Fiado exige apenas o nome; telefone é opcional.
+  const fiadoOk = !isFiado || fiadoName.trim().length > 1
   const canFinish =
     lines.length > 0 &&
     (payment !== 'dinheiro' || received >= total) &&
@@ -155,7 +156,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
     setSaving(true)
     setSaveError(null)
 
-    const { number, error } = await createSale({
+    const { number, id, error } = await createSale({
       operator,
       subtotal,
       discount,
@@ -184,6 +185,9 @@ export function PDV({ onExit, operator, onLogout }: Props) {
       setSaveError(error)
       return
     }
+
+    // Avisa a loja pelo WhatsApp (best-effort, não bloqueia o caixa).
+    notifySale(id)
 
     decrementStockLocal(
       lines.map((l) => ({ id: l.product.id, quantity: l.quantity, size: l.size })),
@@ -423,7 +427,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                   value={fiadoName}
                   onChange={(e) => setFiadoName(e.target.value)}
                 />
-                <label htmlFor="pdv-fiado-tel">Telefone / WhatsApp</label>
+                <label htmlFor="pdv-fiado-tel">Telefone / WhatsApp (opcional)</label>
                 <input
                   id="pdv-fiado-tel"
                   inputMode="tel"
@@ -431,7 +435,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                   value={fiadoPhone}
                   onChange={(e) => setFiadoPhone(e.target.value)}
                 />
-                {!fiadoOk && <p className="pdv__fiado-req">Preencha nome e telefone para registrar o fiado.</p>}
+                {!fiadoOk && <p className="pdv__fiado-req">Informe o nome do comprador para registrar o fiado.</p>}
               </div>
             )}
 

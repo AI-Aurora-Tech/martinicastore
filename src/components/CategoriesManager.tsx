@@ -4,7 +4,7 @@ import { deleteCategory, saveCategory, slugify } from '../services/categories'
 import type { Category } from '../types'
 
 /** Edição das categorias de produtos (adicionar, renomear, reordenar, excluir). */
-export function CategoriesManager() {
+export function CategoriesManager({ onFlash }: { onFlash?: (msg: string) => void }) {
   const { categories, products, refresh } = useCatalog()
   const [newLabel, setNewLabel] = useState('')
   const [editing, setEditing] = useState<Record<string, string>>({})
@@ -30,6 +30,7 @@ export function CategoriesManager() {
     setBusy(false)
     if (err) return setError(err)
     setNewLabel('')
+    onFlash?.(`Categoria "${label}" adicionada.`)
     refresh()
   }
 
@@ -51,6 +52,7 @@ export function CategoriesManager() {
       const { [cat.id]: _drop, ...rest } = e
       return rest
     })
+    onFlash?.(`Categoria renomeada para "${label}".`)
     refresh()
   }
 
@@ -66,6 +68,7 @@ export function CategoriesManager() {
       await saveCategory({ ...ordered[k], sort: k }, ordered)
     }
     setBusy(false)
+    onFlash?.('Ordem das categorias atualizada.')
     refresh()
   }
 
@@ -81,6 +84,7 @@ export function CategoriesManager() {
     const { error: err } = await deleteCategory(cat.id, categories)
     setBusy(false)
     if (err) return setError(err)
+    onFlash?.(`Categoria "${cat.label}" excluída.`)
     refresh()
   }
 

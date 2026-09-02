@@ -33,6 +33,7 @@ export interface SaleInput {
 
 export interface SaleResult {
   number: number | null
+  id: string | null
   error: string | null
 }
 
@@ -61,7 +62,7 @@ export async function createSale(input: SaleInput): Promise<SaleResult> {
         quantity: i.quantity,
       })),
     })
-    return { number, error: null }
+    return { number, id: null, error: null }
   }
 
   try {
@@ -99,10 +100,23 @@ export async function createSale(input: SaleInput): Promise<SaleResult> {
     const { error: itemsError } = await supabase.from('sale_items').insert(items)
     if (itemsError) throw itemsError
 
-    return { number: data.number as number, error: null }
+    return { number: data.number as number, id: data.id as string, error: null }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro ao registrar venda.'
     console.error('[sales] erro ao gravar venda:', err)
-    return { number: null, error: message }
+    return { number: null, id: null, error: message }
+  }
+}
+
+/**
+ * Avisa a LOJA (WhatsApp) sobre uma venda do PDV, via Edge Function notify-sale.
+ * Best-effort: nunca quebra o fluxo do caixa. No modo demo, não faz nada.
+ */
+export async function notifySale(saleId: string | null): Promise<void> {
+  if (!isSupabaseConfigured || !supabase || !saleId) return
+  try {
+    await supabase.functions.invoke('notify-sale', { body: { saleId } })
+  } catch (err) {
+    console.warn('[sales] aviso de venda por WhatsApp falhou:', err)
   }
 }
