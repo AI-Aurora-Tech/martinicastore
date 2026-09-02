@@ -9,12 +9,20 @@ import { AuthGate } from './components/AuthGate'
 import { PDV } from './components/PDV'
 import { Admin } from './components/Admin'
 import { Checkout } from './components/Checkout'
+import { LegalPage, type LegalSection } from './components/LegalPage'
 import { useCatalog } from './context/CatalogContext'
 import type { CategoryId } from './types'
 
 export default function App() {
   const { products, categories, loading } = useCatalog()
-  const [view, setView] = useState<'loja' | 'pdv' | 'admin' | 'checkout'>('loja')
+  const [view, setView] = useState<'loja' | 'pdv' | 'admin' | 'checkout' | 'legal'>('loja')
+  const [legalSection, setLegalSection] = useState<LegalSection>('trocas')
+
+  function openLegal(section: LegalSection) {
+    setLegalSection(section)
+    setView('legal')
+    window.scrollTo({ top: 0 })
+  }
   const [active, setActive] = useState<CategoryId | 'todos'>('todos')
   const [query, setQuery] = useState('')
   const [payNotice, setPayNotice] = useState<{ pedido: string; status: string } | null>(null)
@@ -85,6 +93,10 @@ export default function App() {
 
   if (view === 'checkout') {
     return <Checkout onExit={() => setView('loja')} />
+  }
+
+  if (view === 'legal') {
+    return <LegalPage initial={legalSection} onExit={() => setView('loja')} />
   }
 
   return (
@@ -169,7 +181,7 @@ export default function App() {
         )}
       </main>
 
-      <Footer />
+      <Footer onLegal={openLegal} />
       <CartDrawer onCheckout={() => setView('checkout')} />
     </div>
   )

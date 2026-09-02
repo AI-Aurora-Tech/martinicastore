@@ -69,17 +69,35 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-    const patch: Record<string, unknown> = { payment_status: status, mp_payment_id: String(paymentId) }
-    if (status === 'approved') { patch.status = 'paid'; patch.paid_at = new Date().toISOString() }
-    await supabase.from('orders').update(patch).eq('id', orderId)
+    // Carrega o pedido primeiro (para idempotência: o MP reenvia notificações).
+    const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).single()
+    if (!order) return new Response('order not found', { status: 200 })
 
-    if (status === 'approved') {
-      const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).single()
-      if (order?.customer_phone) await sendWhatsApp(String(order.customer_phone), approvedMsg(order))
-      const storeWa = Deno.env.get('STORE_WHATSAPP')
-      if (storeWa && order) {
-        await sendWhatsApp(storeWa, `💰 *Pagamento aprovado* — pedido nº ${String(order.number ?? '').padStart(6, '0')} (${BRL(Number(order.total))}).`)
-      }
+    if (status !== 'approved') {
+      // Só atualiza o status de pagamento; não mexe em estoque nem notifica.
+      await supabase.from('orders').update({ payment_status: status, mp_payment_id: String(paymentId) }).eq('id', orderId)
+      return new Response('ok', { status: 200 })
+    }
+
+    // Aprovado. Se já processamos este pedido (paid_at preenchido), não repete
+    // baixa de estoque nem WhatsApp — apenas confirma.
+    if (order.paid_at) return new Response('already processed', { status: 200 })
+
+    await supabase.from('orders').update({
+      payment_status: status,
+      mp_payment_id: String(paymentId),
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+    }).eq('id', orderId)
+
+    // Abate o estoque de todos os itens do pedido (agora que está pago).
+    const { error: stockErr } = await supabase.rpc('apply_order_stock', { p_order_id: orderId })
+    if (stockErr) console.error('[mercadopago-webhook] baixa de estoque falhou:', stockErr.message)
+
+    if (order.customer_phone) await sendWhatsApp(String(order.customer_phone), approvedMsg(order))
+    const storeWa = Deno.env.get('STORE_WHATSAPP')
+    if (storeWa) {
+      await sendWhatsApp(storeWa, `💰 *Pagamento aprovado* — pedido nº ${String(order.number ?? '').padStart(6, '0')} (${BRL(Number(order.total))}).`)
     }
     return new Response('ok', { status: 200 })
   } catch (err) {
