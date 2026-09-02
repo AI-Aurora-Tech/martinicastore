@@ -36,7 +36,11 @@ function approvedMsg(o: Record<string, unknown>): string {
   const num = String(o.number ?? '').padStart(6, '0')
   const first = o.customer_name ? String(o.customer_name).trim().split(/\s+/)[0] : ''
   const hi = first ? `Olá ${first}, o` : 'O'
-  return `🎉 *Pagamento aprovado!*\n${hi} pagamento do seu pedido *nº ${num}* foi confirmado.\nTotal: ${BRL(Number(o.total))}\nJá estamos preparando seu envio (${o.shipping_service ?? '—'}). Obrigado pela compra! 🧡`
+  const pickup = String(o.shipping_service ?? '') === 'RETIRADA'
+  const closing = pickup
+    ? 'Seu pedido já pode ser retirado na loja (Sáb. e Dom., das 8h às 15h).'
+    : `Já estamos preparando seu envio (${o.shipping_service ?? '—'}).`
+  return `🎉 *Pagamento aprovado!*\n${hi} pagamento do seu pedido *nº ${num}* foi confirmado.\nTotal: ${BRL(Number(o.total))}\n${closing} Obrigado pela compra! 🧡`
 }
 
 Deno.serve(async (req: Request) => {

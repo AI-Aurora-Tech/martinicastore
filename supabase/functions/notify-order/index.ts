@@ -43,16 +43,23 @@ async function sendWhatsApp(phone: string, message: string) {
   if (!res.ok) throw new Error(`Z-API ${res.status}: ${await res.text()}`)
 }
 
+const isPickup = (o: Record<string, unknown>) => String(o.shipping_service ?? '') === 'RETIRADA'
+
 function forStore(o: Record<string, unknown>, items: Array<Record<string, unknown>>): string {
   const num = String(o.number ?? '').padStart(6, '0')
   const list = items.map((i) => `• ${i.quantity}x ${i.name}`).join('\n')
-  return `🛒 *Novo pedido nº ${num}*\nCliente: ${o.customer_name ?? '—'}\nWhatsApp: ${o.customer_phone ?? '—'}\n${list}\n*Total:* ${BRL(Number(o.total))}\nEntrega: ${o.shipping_service ?? '—'}\n📍 ${orderAddress(o) || '—'}`
+  const entrega = isPickup(o) ? 'Retirada na loja' : String(o.shipping_service ?? '—')
+  const local = isPickup(o) ? 'Retirada na loja' : (orderAddress(o) || '—')
+  return `🛒 *Novo pedido nº ${num}*\nCliente: ${o.customer_name ?? '—'}\nWhatsApp: ${o.customer_phone ?? '—'}\n${list}\n*Total:* ${BRL(Number(o.total))}\nEntrega: ${entrega}\n📍 ${local}`
 }
 function forCustomer(o: Record<string, unknown>): string {
   const num = String(o.number ?? '').padStart(6, '0')
   const firstName = o.customer_name ? String(o.customer_name).trim().split(/\s+/)[0] : ''
   const greet = firstName ? `Olá ${firstName}, recebemos` : 'Recebemos'
-  return `✅ *Martinica Store*\n${greet} seu pedido *nº ${num}*!\nTotal: ${BRL(Number(o.total))}\nEntrega: ${o.shipping_service ?? '—'} (até ${o.shipping_days ?? '?'} dias úteis).\nObrigado pela compra! 🧡`
+  const entrega = isPickup(o)
+    ? 'Retirada na loja (Sáb. e Dom., das 8h às 15h)'
+    : `${o.shipping_service ?? '—'} (até ${o.shipping_days ?? '?'} dias úteis)`
+  return `✅ *Martinica Store*\n${greet} seu pedido *nº ${num}*!\nTotal: ${BRL(Number(o.total))}\nEntrega: ${entrega}.\nObrigado pela compra! 🧡`
 }
 
 Deno.serve(async (req: Request) => {

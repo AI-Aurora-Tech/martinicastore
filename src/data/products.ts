@@ -34,6 +34,8 @@ export const COMPANY = {
   hours: 'Seg. a Sex., das 9h às 18h (exceto feriados)',
   /** Atendimento presencial (loja física). */
   presencial: 'Sábado e domingo, das 8h às 18h',
+  /** Horário para retirada de pedidos na loja. */
+  pickupHours: 'Sábado e domingo, das 8h às 15h',
 }
 
 export const categories: Category[] = [

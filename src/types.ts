@@ -83,7 +83,7 @@ export interface Supplier {
   notes?: string
 }
 
-export type ShippingService = 'PAC' | 'SEDEX'
+export type ShippingService = 'PAC' | 'SEDEX' | 'RETIRADA'
 
 export interface ShippingOption {
   service: ShippingService

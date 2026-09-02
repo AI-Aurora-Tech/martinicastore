@@ -3381,3 +3381,39 @@ body { overflow-x: hidden; }
 .pdv__pickvar-opt:hover:not(:disabled) { border-color: var(--red, #ff6a00); }
 .pdv__pickvar-opt:disabled { opacity: 0.45; cursor: not-allowed; }
 .pdv__pickvar-opt small { color: #777; font-size: 0.75rem; }
+
+/* ---------- Checkout: forma de entrega (Correios x Retirada) ---------- */
+.checkout__delivery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.checkout__delivery-opt {
+  border: 1.5px solid var(--line, #e7e8ec);
+  background: var(--surface, #fff);
+  border-radius: 10px;
+  padding: 0.8rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  cursor: pointer;
+  text-align: center;
+}
+.checkout__delivery-opt span { font-size: 1.4rem; }
+.checkout__delivery-opt small { color: var(--muted, #6b7280); font-size: 0.75rem; }
+.checkout__delivery-opt.is-active { border-color: var(--red, #ff6a00); background: #fff4ec; }
+.checkout__delivery-opt:disabled { opacity: 0.55; cursor: default; }
+.checkout__pickup {
+  border: 1.5px solid #b7e3c7;
+  background: #f2fbf5;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.checkout__pickup p { margin: 0; font-size: 0.9rem; }
+.checkout__pickup-addr { color: #333; }
+.checkout__pickup-hours { color: #147a3e; }
+.checkout__phone { margin-top: 1rem; }

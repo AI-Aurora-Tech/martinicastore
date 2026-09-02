@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useCart } from '../context/CartContext'
 import { useCustomer } from '../context/CustomerContext'
 import { useCatalog } from '../context/CatalogContext'
-import { BRL } from '../data/products'
+import { BRL, COMPANY } from '../data/products'
 import type { Address, ShippingOption } from '../types'
 import { ProductImage } from './ProductImage'
 import { CustomerAuth } from './CustomerAuth'
@@ -36,6 +36,7 @@ export function Checkout({ onExit }: Props) {
   const { customer, signOut, saveAddress } = useCustomer()
   const { decrementStockLocal } = useCatalog()
 
+  const [delivery, setDelivery] = useState<'correios' | 'retirada'>('correios')
   const [addr, setAddr] = useState<Address>(EMPTY_ADDR)
   const [phone, setPhone] = useState('')
   const [cepBusy, setCepBusy] = useState(false)
@@ -56,7 +57,9 @@ export function Checkout({ onExit }: Props) {
     if (customer?.phone) setPhone(customer.phone)
   }, [customer])
 
-  const selected = options?.find((o) => o.service === service) ?? null
+  const PICKUP: ShippingOption = { service: 'RETIRADA', price: 0, days: 0, free: true }
+  const selected =
+    delivery === 'retirada' ? PICKUP : (options?.find((o) => o.service === service) ?? null)
   const shippingPrice = selected?.price ?? 0
   const total = subtotal + shippingPrice
 
@@ -101,13 +104,20 @@ export function Checkout({ onExit }: Props) {
 
   async function confirm() {
     setError('')
+    const pickup = delivery === 'retirada'
     if (!selected) return setError('Calcule e escolha o frete.')
-    const required: (keyof Address)[] = ['cep', 'street', 'number', 'neighborhood', 'city', 'uf']
-    if (required.some((k) => !String(addr[k]).trim())) {
-      return setError('Preencha o endereço completo (incluindo número).')
+    if (!pickup) {
+      const required: (keyof Address)[] = ['cep', 'street', 'number', 'neighborhood', 'city', 'uf']
+      if (required.some((k) => !String(addr[k]).trim())) {
+        return setError('Preencha o endereço completo (incluindo número).')
+      }
     }
     setPlacing(true)
-    await saveAddress(addr, phone.trim() ? { phone: phone.trim() } : undefined)
+    if (pickup) {
+      await saveAddress(customer?.address ?? addr, phone.trim() ? { phone: phone.trim() } : undefined)
+    } else {
+      await saveAddress(addr, phone.trim() ? { phone: phone.trim() } : undefined)
+    }
     const { number, id, error: err } = await createOrder({
       customerId: customer?.id,
       customerName: customer?.name,
@@ -115,12 +125,12 @@ export function Checkout({ onExit }: Props) {
       customerPhone: phone.trim() || undefined,
       subtotal,
       discount: 0,
-      shipping: shippingPrice,
-      total,
+      shipping: pickup ? 0 : shippingPrice,
+      total: pickup ? subtotal : total,
       payment,
       shippingService: selected.service,
       shippingDays: selected.days,
-      address: addr,
+      address: pickup ? undefined : addr,
       items,
     })
     if (err) {
@@ -163,7 +173,11 @@ export function Checkout({ onExit }: Props) {
             ) : (
               <>Seu pedido foi registrado. </>
             )}
-            Entrega via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.
+            {delivery === 'retirada' ? (
+              <>Retirada na loja (grátis) — {COMPANY.pickupHours}.</>
+            ) : (
+              <>Entrega via <strong>{selected?.service}</strong> em até {selected?.days} dias úteis.</>
+            )}
           </p>
           {!notified && isSupabaseConfigured && notifyErr && (
             <p className="checkout__mailerr">Diagnóstico do WhatsApp: {notifyErr}</p>
@@ -211,75 +225,117 @@ export function Checkout({ onExit }: Props) {
 
           {/* 2. Entrega */}
           <section className={`checkout__card ${!customer ? 'checkout__card--disabled' : ''}`}>
-            <h3><span className="checkout__step">2</span> Entrega (Correios)</h3>
-            <div className="checkout__cep">
-              <label className="checkout__field checkout__field--cep">
-                <span>CEP</span>
-                <input
-                  inputMode="numeric"
-                  placeholder="00000-000"
-                  value={addr.cep}
-                  onChange={(e) => set('cep', formatCep(e.target.value))}
-                  disabled={!customer}
-                />
-              </label>
-              <button type="button" className="btn btn--primary checkout__calc" onClick={calcFrete} disabled={!customer || cepBusy}>
-                {cepBusy ? 'Buscando…' : 'Calcular frete'}
+            <h3><span className="checkout__step">2</span> Entrega</h3>
+
+            <div className="checkout__delivery" role="group" aria-label="Forma de entrega">
+              <button
+                type="button"
+                className={`checkout__delivery-opt ${delivery === 'correios' ? 'is-active' : ''}`}
+                onClick={() => setDelivery('correios')}
+                disabled={!customer}
+              >
+                <span aria-hidden="true">🚚</span>
+                <strong>Receber em casa</strong>
+                <small>Correios (PAC/SEDEX)</small>
               </button>
-              <a className="checkout__link checkout__cep-help" href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noreferrer">não sei meu CEP</a>
-            </div>
-            {cepError && <p className="checkout__error">⚠️ {cepError}</p>}
-
-            <div className="checkout__addr">
-              <label className="checkout__field checkout__field--street">
-                <span>Endereço</span>
-                <input value={addr.street} onChange={(e) => set('street', e.target.value)} disabled={!customer} />
-              </label>
-              <label className="checkout__field checkout__field--num">
-                <span>Número</span>
-                <input value={addr.number} onChange={(e) => set('number', e.target.value)} disabled={!customer} />
-              </label>
-              <label className="checkout__field">
-                <span>Complemento</span>
-                <input value={addr.complement} onChange={(e) => set('complement', e.target.value)} disabled={!customer} />
-              </label>
-              <label className="checkout__field">
-                <span>Bairro</span>
-                <input value={addr.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} disabled={!customer} />
-              </label>
-              <label className="checkout__field checkout__field--city">
-                <span>Cidade</span>
-                <input value={addr.city} onChange={(e) => set('city', e.target.value)} disabled={!customer} />
-              </label>
-              <label className="checkout__field checkout__field--uf">
-                <span>UF</span>
-                <input maxLength={2} value={addr.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} disabled={!customer} />
-              </label>
-              <label className="checkout__field checkout__field--street">
-                <span>WhatsApp (para avisos do pedido)</span>
-                <input
-                  inputMode="tel"
-                  placeholder="(11) 90000-0000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  disabled={!customer}
-                />
-              </label>
+              <button
+                type="button"
+                className={`checkout__delivery-opt ${delivery === 'retirada' ? 'is-active' : ''}`}
+                onClick={() => setDelivery('retirada')}
+                disabled={!customer}
+              >
+                <span aria-hidden="true">🏬</span>
+                <strong>Retirar na loja</strong>
+                <small>Grátis</small>
+              </button>
             </div>
 
-            {options && (
-              <div className="checkout__ship">
-                {options.map((o) => (
-                  <label key={o.service} className={`checkout__ship-opt ${service === o.service ? 'is-active' : ''}`}>
-                    <input type="radio" name="frete" checked={service === o.service} onChange={() => setService(o.service)} />
-                    <span className="checkout__ship-name">{o.service}</span>
-                    <span className="checkout__ship-days">{o.days} dias úteis</span>
-                    <strong className="checkout__ship-price">{o.free ? 'Grátis' : BRL.format(o.price)}</strong>
-                  </label>
-                ))}
-                <p className="checkout__ship-note">Peso estimado do pedido: {(weight / 1000).toFixed(2)} kg</p>
+            {delivery === 'retirada' ? (
+              <div className="checkout__pickup">
+                <p>
+                  <strong>Retirada gratuita na loja.</strong> Seu pedido fica disponível
+                  para retirada após a confirmação do pagamento.
+                </p>
+                <p className="checkout__pickup-addr">
+                  📍 {COMPANY.address.street}, {COMPANY.address.number}
+                  {COMPANY.address.complement ? ` – ${COMPANY.address.complement}` : ''} —{' '}
+                  {COMPANY.address.neighborhood}, {COMPANY.address.city}-{COMPANY.address.uf}
+                </p>
+                <p className="checkout__pickup-hours">🕗 <strong>{COMPANY.pickupHours}</strong></p>
               </div>
+            ) : (
+              <>
+                <div className="checkout__cep">
+                  <label className="checkout__field checkout__field--cep">
+                    <span>CEP</span>
+                    <input
+                      inputMode="numeric"
+                      placeholder="00000-000"
+                      value={addr.cep}
+                      onChange={(e) => set('cep', formatCep(e.target.value))}
+                      disabled={!customer}
+                    />
+                  </label>
+                  <button type="button" className="btn btn--primary checkout__calc" onClick={calcFrete} disabled={!customer || cepBusy}>
+                    {cepBusy ? 'Buscando…' : 'Calcular frete'}
+                  </button>
+                  <a className="checkout__link checkout__cep-help" href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noreferrer">não sei meu CEP</a>
+                </div>
+                {cepError && <p className="checkout__error">⚠️ {cepError}</p>}
+
+                <div className="checkout__addr">
+                  <label className="checkout__field checkout__field--street">
+                    <span>Endereço</span>
+                    <input value={addr.street} onChange={(e) => set('street', e.target.value)} disabled={!customer} />
+                  </label>
+                  <label className="checkout__field checkout__field--num">
+                    <span>Número</span>
+                    <input value={addr.number} onChange={(e) => set('number', e.target.value)} disabled={!customer} />
+                  </label>
+                  <label className="checkout__field">
+                    <span>Complemento</span>
+                    <input value={addr.complement} onChange={(e) => set('complement', e.target.value)} disabled={!customer} />
+                  </label>
+                  <label className="checkout__field">
+                    <span>Bairro</span>
+                    <input value={addr.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} disabled={!customer} />
+                  </label>
+                  <label className="checkout__field checkout__field--city">
+                    <span>Cidade</span>
+                    <input value={addr.city} onChange={(e) => set('city', e.target.value)} disabled={!customer} />
+                  </label>
+                  <label className="checkout__field checkout__field--uf">
+                    <span>UF</span>
+                    <input maxLength={2} value={addr.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} disabled={!customer} />
+                  </label>
+                </div>
+
+                {options && (
+                  <div className="checkout__ship">
+                    {options.map((o) => (
+                      <label key={o.service} className={`checkout__ship-opt ${service === o.service ? 'is-active' : ''}`}>
+                        <input type="radio" name="frete" checked={service === o.service} onChange={() => setService(o.service as 'PAC' | 'SEDEX')} />
+                        <span className="checkout__ship-name">{o.service}</span>
+                        <span className="checkout__ship-days">{o.days} dias úteis</span>
+                        <strong className="checkout__ship-price">{o.free ? 'Grátis' : BRL.format(o.price)}</strong>
+                      </label>
+                    ))}
+                    <p className="checkout__ship-note">Peso estimado do pedido: {(weight / 1000).toFixed(2)} kg</p>
+                  </div>
+                )}
+              </>
             )}
+
+            <label className="checkout__field checkout__phone">
+              <span>WhatsApp (para avisos do pedido)</span>
+              <input
+                inputMode="tel"
+                placeholder="(11) 90000-0000"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                disabled={!customer}
+              />
+            </label>
           </section>
 
           {/* 3. Pagamento */}
@@ -323,10 +379,17 @@ export function Checkout({ onExit }: Props) {
           </ul>
           <dl className="checkout__totals">
             <div><dt>Subtotal</dt><dd>{BRL.format(subtotal)}</dd></div>
-            <div>
-              <dt>Frete {selected ? `(${selected.service})` : ''}</dt>
-              <dd>{selected ? (selected.free ? 'Grátis' : BRL.format(shippingPrice)) : '—'}</dd>
-            </div>
+            {delivery === 'retirada' ? (
+              <div>
+                <dt>Retirada na loja</dt>
+                <dd>Grátis</dd>
+              </div>
+            ) : (
+              <div>
+                <dt>Frete {selected ? `(${selected.service})` : ''}</dt>
+                <dd>{selected ? (selected.free ? 'Grátis' : BRL.format(shippingPrice)) : '—'}</dd>
+              </div>
+            )}
             <div className="checkout__grand"><dt>Total</dt><dd>{BRL.format(total)}</dd></div>
           </dl>
           {error && <p className="checkout__error" role="alert">⚠️ {error}</p>}
@@ -338,7 +401,9 @@ export function Checkout({ onExit }: Props) {
             {placing ? 'Processando…' : 'Confirmar e pagar'}
           </button>
           {!customer && <p className="checkout__hint">Entre na etapa 1 para continuar.</p>}
-          {customer && !selected && <p className="checkout__hint">Calcule o frete na etapa 2.</p>}
+          {customer && delivery === 'correios' && !selected && (
+            <p className="checkout__hint">Calcule o frete na etapa 2.</p>
+          )}
         </aside>
       </div>
     </div>
