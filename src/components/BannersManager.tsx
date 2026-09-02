@@ -81,10 +81,11 @@ export function BannersManager() {
           <strong>carrossel</strong> automático.
         </p>
         <div className="banners-admin__hint">
-          📐 <strong>Tamanho recomendado:</strong> 1600 × 600 px (proporção 8:3),
-          JPG ou PNG de até 3 MB. A imagem se ajusta a qualquer tela (celular,
-          tablet ou computador) mantendo o centro visível — evite textos muito
-          próximos das bordas.
+          📐 <strong>A imagem aparece INTEIRA</strong> (sem cortes) em qualquer
+          tela — a altura se ajusta à proporção da arte. Para ficar bonito no
+          computador <em>e</em> no celular, use uma imagem em{' '}
+          <strong>paisagem</strong> (recomendado 1600 × 600 px, proporção ~8:3);
+          imagens muito “quadradas” ficam altas no celular. JPG ou PNG de até 3 MB.
         </div>
       </div>
 
