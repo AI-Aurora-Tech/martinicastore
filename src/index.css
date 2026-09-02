@@ -2922,3 +2922,12 @@ button {
 
 /* Link discreto de acesso da equipe no rodapé */
 .footer__staff { opacity: 0.75; }
+
+.backoffice__role {
+  color: #eaeaea;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}

@@ -153,8 +153,8 @@ export function AuthGate({ subtitle, onExit, children }: Props) {
         ) : (
           <div className="pdvlogin__demo">
             <strong>Modo demo — credenciais de teste</strong>
-            <span>caixa01 / 1234</span>
-            <span>gerente / martinica</span>
+            <span>gerente / martinica — admin (Gestão + PDV)</span>
+            <span>caixa01 / 1234 — operador (só PDV)</span>
           </div>
         )}
       </form>

@@ -25,11 +25,35 @@ create table if not exists public.admins (
 );
 alter table public.admins enable row level security;
 
+-- A tabela `admins` é a tabela da EQUIPE, com um papel por usuário:
+--   admin    → Gestão (painel) + PDV
+--   operator → SOMENTE o PDV
+alter table public.admins
+  add column if not exists role text not null default 'admin';
+alter table public.admins drop constraint if exists admins_role_chk;
+alter table public.admins
+  add constraint admins_role_chk check (role in ('admin', 'operator'));
+
 drop policy if exists "admins_self_read" on public.admins;
 create policy "admins_self_read"
   on public.admins for select to authenticated using (id = auth.uid());
 
+-- is_admin(): exige papel = 'admin'.
 create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.admins where id = auth.uid() and role = 'admin'
+  );
+$$;
+grant execute on function public.is_admin() to anon, authenticated;
+
+-- is_staff(): faz parte da equipe (admin OU operador).
+create or replace function public.is_staff()
 returns boolean
 language sql
 stable
@@ -38,12 +62,29 @@ set search_path = public
 as $$
   select exists (select 1 from public.admins where id = auth.uid());
 $$;
-grant execute on function public.is_admin() to anon, authenticated;
+grant execute on function public.is_staff() to anon, authenticated;
 
--- >>> BOOTSTRAP: torne seu usuário admin (rode uma vez, trocando o e-mail):
---   insert into public.admins (id)
---   select id from auth.users where email = 'seuadmin@email.com'
---   on conflict do nothing;
+-- staff_role(): papel do usuário atual ('admin' | 'operator' | null).
+create or replace function public.staff_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.admins where id = auth.uid();
+$$;
+grant execute on function public.staff_role() to anon, authenticated;
+
+-- >>> BOOTSTRAP de papéis (rode trocando os e-mails):
+--   -- Admin (Gestão + PDV):
+--   insert into public.admins (id, role)
+--   select id, 'admin' from auth.users where email = 'admin@suaempresa.com'
+--   on conflict (id) do update set role = 'admin';
+--   -- Operador de caixa (só PDV):
+--   insert into public.admins (id, role)
+--   select id, 'operator' from auth.users where email = 'caixa@suaempresa.com'
+--   on conflict (id) do update set role = 'operator';
 
 -- ---- Catálogo: leitura pública ----
 drop policy if exists "catalog_public_read_categories" on public.categories;
@@ -67,20 +108,22 @@ create policy "categories_write_admin"
   on public.categories for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- ---- PDV (vendas): só ADMIN ----
+-- ---- PDV (vendas): toda a EQUIPE (admin + operador) ----
 drop policy if exists "sales_insert_authenticated" on public.sales;
 drop policy if exists "sales_select_authenticated" on public.sales;
 drop policy if exists "sales_admin" on public.sales;
-create policy "sales_admin"
+drop policy if exists "sales_staff" on public.sales;
+create policy "sales_staff"
   on public.sales for all to authenticated
-  using (public.is_admin()) with check (public.is_admin());
+  using (public.is_staff()) with check (public.is_staff());
 
 drop policy if exists "sale_items_insert_authenticated" on public.sale_items;
 drop policy if exists "sale_items_select_authenticated" on public.sale_items;
 drop policy if exists "sale_items_admin" on public.sale_items;
-create policy "sale_items_admin"
+drop policy if exists "sale_items_staff" on public.sale_items;
+create policy "sale_items_staff"
   on public.sale_items for all to authenticated
-  using (public.is_admin()) with check (public.is_admin());
+  using (public.is_staff()) with check (public.is_staff());
 
 -- ---- Pedidos (loja): admin vê tudo; cliente vê os seus ----
 -- INSERT NÃO é permitido ao cliente (feito pela Edge Function place-order).
