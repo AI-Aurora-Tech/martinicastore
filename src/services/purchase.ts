@@ -1,5 +1,14 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { appendPurchase, readPurchases, updatePurchaseLocal } from './localStore'
+import { appendPurchase, readPurchases, updatePurchaseLocal, type Installment } from './localStore'
+
+export type { Installment } from './localStore'
+
+/** Parcela informada ao registrar a compra (sem os campos de baixa). */
+export interface InstallmentInput {
+  n: number
+  amount: number
+  dueDate: string
+}
 
 export interface PurchaseItemInput {
   productId: string
@@ -17,8 +26,10 @@ export interface PurchaseInput {
   operatorEmail?: string
   /** Forma de pagamento da compra. */
   paymentMethod?: string
-  /** À vista (já paga) → conta paga; senão → conta a pagar. */
+  /** À vista (já paga) → conta paga; senão → conta(s) a pagar (parcelas). */
   paid?: boolean
+  /** Parcelas com data de vencimento (quando não é à vista). */
+  installments?: InstallmentInput[]
   items: PurchaseItemInput[]
 }
 
@@ -46,6 +57,7 @@ export interface PurchaseSummary {
   paymentMethod?: string
   paid?: boolean
   status?: 'pendente' | 'entregue'
+  installments?: Installment[]
   items: PurchaseSummaryItem[]
 }
 
@@ -56,6 +68,10 @@ export interface PurchaseSummary {
  */
 export async function createPurchase(input: PurchaseInput): Promise<PurchaseResult> {
   const total = input.items.reduce((s, i) => s + i.unitCost * i.quantity, 0)
+  // À vista => sem parcelas. Senão, guarda as parcelas com vencimento (não pagas).
+  const installments: Installment[] | undefined = input.paid
+    ? undefined
+    : (input.installments ?? []).map((p) => ({ n: p.n, amount: p.amount, dueDate: p.dueDate, paid: false }))
 
   if (!isSupabaseConfigured || !supabase) {
     const number = appendPurchase({
@@ -66,6 +82,7 @@ export async function createPurchase(input: PurchaseInput): Promise<PurchaseResu
       paymentMethod: input.paymentMethod,
       paid: !!input.paid,
       status: 'pendente',
+      installments,
       items: input.items.map((i) => ({
         productId: i.productId, name: i.name, quantity: i.quantity, unitCost: i.unitCost, size: i.size,
       })),
@@ -86,6 +103,7 @@ export async function createPurchase(input: PurchaseInput): Promise<PurchaseResu
         paid: !!input.paid,
         paid_at: input.paid ? new Date().toISOString() : null,
         status: 'pendente',
+        installments: installments ?? null,
       })
       .select('id, number')
       .single()
@@ -121,16 +139,39 @@ export async function receivePurchase(p: PurchaseSummary): Promise<{ error: stri
   return { error: error?.message ?? null }
 }
 
-/** Marca a compra como PAGA (conta paga). */
+/** Marca a compra INTEIRA como PAGA (todas as parcelas, se houver). */
 export async function markPurchasePaid(p: PurchaseSummary): Promise<{ error: string | null }> {
+  const now = new Date().toISOString()
   if (!isSupabaseConfigured || !supabase) {
-    updatePurchaseLocal(p.number, { paid: true })
+    const all = readPurchases().find((r) => r.number === p.number)
+    const installments = all?.installments?.map((i) => ({ ...i, paid: true, paidAt: i.paidAt ?? now }))
+    updatePurchaseLocal(p.number, { paid: true, ...(installments ? { installments } : {}) })
     return { error: null }
   }
+  const installments = p.installments?.map((i) => ({ ...i, paid: true, paidAt: i.paidAt ?? now }))
   const { error } = await supabase
     .from('purchases')
-    .update({ paid: true, paid_at: new Date().toISOString() })
+    .update({ paid: true, paid_at: now, ...(installments ? { installments } : {}) })
     .eq('id', p.id)
+  return { error: error?.message ?? null }
+}
+
+/** Baixa UMA parcela de uma compra parcelada. */
+export async function payPurchaseInstallment(
+  p: { id: string; number?: number },
+  n: number,
+): Promise<{ error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    if (p.number == null) return { error: null }
+    const rec = readPurchases().find((r) => r.number === p.number)
+    if (!rec?.installments) return { error: null }
+    const now = new Date().toISOString()
+    const installments = rec.installments.map((i) => (i.n === n ? { ...i, paid: true, paidAt: now } : i))
+    const allPaid = installments.every((i) => i.paid)
+    updatePurchaseLocal(p.number, { installments, paid: allPaid })
+    return { error: null }
+  }
+  const { error } = await supabase.rpc('pay_purchase_installment', { p_purchase_id: p.id, p_n: n })
   return { error: error?.message ?? null }
 }
 
@@ -147,6 +188,7 @@ export async function listPurchases(): Promise<PurchaseSummary[]> {
         paymentMethod: p.paymentMethod,
         paid: p.paid,
         status: p.status ?? 'pendente',
+        installments: p.installments,
         items: p.items.map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity, unitCost: i.unitCost, size: i.size })),
       }))
       .sort((a, b) => b.when.localeCompare(a.when))
@@ -177,6 +219,7 @@ export async function listPurchases(): Promise<PurchaseSummary[]> {
     paymentMethod: (p.payment_method as string) ?? undefined,
     paid: Boolean(p.paid),
     status: ((p.status as string) ?? 'pendente') as 'pendente' | 'entregue',
+    installments: (p.installments as Installment[] | null) ?? undefined,
     items: byPurchase.get(String(p.id)) ?? [],
   }))
 }

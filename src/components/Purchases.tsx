@@ -26,10 +26,35 @@ interface Line {
 }
 
 const PAYMENTS = ['Pix', 'Dinheiro', 'Cartão', 'Boleto', 'Transferência']
+const MAX_PARCELAS = 24
+
+interface POLine { name: string; quantity: number; unitCost: number }
 
 function when(iso: string) {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR')
+}
+function whenDate(iso: string) {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('pt-BR')
+}
+function todayISO() {
+  const n = new Date()
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate()).toISOString().slice(0, 10)
+}
+/** Soma `m` meses a uma data ISO (yyyy-mm-dd), preservando o dia quando possível. */
+function addMonthsISO(iso: string, m: number) {
+  const [y, mo, d] = iso.split('-').map(Number)
+  const base = new Date(y, (mo - 1) + m, d)
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate()).toISOString().slice(0, 10)
+}
+/** Divide `total` em `n` parcelas (centavos ajustados na última). */
+function splitAmounts(total: number, n: number): number[] {
+  if (n <= 1) return [Math.round(total * 100) / 100]
+  const base = Math.floor((total / n) * 100) / 100
+  const arr = Array(n).fill(base)
+  arr[n - 1] = Math.round((total - base * (n - 1)) * 100) / 100
+  return arr
 }
 const lineKey = (l: { product: Product; size?: string }) => `${l.product.id}__${l.size ?? ''}`
 
@@ -41,7 +66,10 @@ export function Purchases({ operatorEmail }: Props) {
   const [query, setQuery] = useState('')
   const [lines, setLines] = useState<Line[]>([])
   const [payment, setPayment] = useState('Pix')
-  const [paid, setPaid] = useState(true)
+  const [paid, setPaid] = useState(false)
+  const [parcelas, setParcelas] = useState(1)
+  const [dueDates, setDueDates] = useState<string[]>([todayISO()])
+  const [lastOrder, setLastOrder] = useState<{ supplierName?: string; supplierPhone?: string; lines: POLine[] } | null>(null)
   const [pick, setPick] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,14 +94,28 @@ export function Purchases({ operatorEmail }: Props) {
   }, [query, products])
 
   const total = lines.reduce((s, l) => s + l.unitCost * l.quantity, 0)
+  const amounts = splitAmounts(total, parcelas)
+
+  function setParcelasCount(nRaw: number) {
+    const n = Math.max(1, Math.min(MAX_PARCELAS, Math.round(nRaw || 1)))
+    setParcelas(n)
+    setDueDates((prev) => {
+      const next = prev.slice(0, n)
+      const start = prev[0] || todayISO()
+      while (next.length < n) next.push(addMonthsISO(start, next.length))
+      return next
+    })
+  }
 
   function addProduct(p: Product) {
     setQuery('')
     setSuccess(null)
+    setLastOrder(null)
     if (hasVariants(p)) { setPick(p); return }
     addLine(p, undefined)
   }
   function addLine(p: Product, size?: string) {
+    setLastOrder(null)
     setLines((prev) => {
       const key = lineKey({ product: p, size })
       const found = prev.find((l) => lineKey(l) === key)
@@ -91,6 +133,14 @@ export function Purchases({ operatorEmail }: Props) {
 
   async function register() {
     if (saving || lines.length === 0) return
+    // Não à vista: exige uma data de vencimento por parcela.
+    const installments = paid
+      ? undefined
+      : dueDates.map((d, i) => ({ n: i + 1, amount: amounts[i], dueDate: d }))
+    if (!paid && installments!.some((p) => !p.dueDate)) {
+      setError('Informe a data de vencimento de cada parcela.')
+      return
+    }
     if (!confirm(`Registrar esta compra (${BRL.format(total)})?`)) return
     setSaving(true)
     setError(null)
@@ -103,6 +153,7 @@ export function Purchases({ operatorEmail }: Props) {
       operatorEmail,
       paymentMethod: payment,
       paid,
+      installments,
       items: lines.map((l) => ({
         productId: l.product.id, name: l.product.name, quantity: l.quantity, unitCost: l.unitCost, size: l.size,
       })),
@@ -110,11 +161,25 @@ export function Purchases({ operatorEmail }: Props) {
     setSaving(false)
     if (err) { setError(err); return }
 
+    // Guarda o pedido registrado: só agora o botão de WhatsApp fica ativo.
+    setLastOrder({
+      supplierName: supplier?.name,
+      supplierPhone: supplier?.phone,
+      lines: lines.map((l) => ({
+        name: `${l.product.name}${l.size ? ` (${l.size})` : ''}`, quantity: l.quantity, unitCost: l.unitCost,
+      })),
+    })
+    const parcelaMsg = paid
+      ? 'paga (à vista)'
+      : `a pagar em ${parcelas}x`
     setSuccess(
-      `Compra registrada${number ? ` (nº ${String(number).padStart(6, '0')})` : ''} — `
-        + `${paid ? 'paga' : 'a pagar'}. O estoque será somado quando você marcar como ENTREGUE.`,
+      `Compra registrada${number ? ` (nº ${String(number).padStart(6, '0')})` : ''} — ${parcelaMsg}. `
+        + 'Agora você pode enviar o pedido pelo WhatsApp. O estoque será somado quando marcar como ENTREGUE.',
     )
     setLines([])
+    setPaid(false)
+    setParcelas(1)
+    setDueDates([todayISO()])
     loadHistory()
   }
 
@@ -166,12 +231,13 @@ export function Purchases({ operatorEmail }: Props) {
   }
 
   function sendWhatsApp() {
+    if (!lastOrder) { setError('Registre o pedido antes de enviar pelo WhatsApp.'); return }
     const text = buildPurchaseText(
-      supplier,
-      lines.map((l) => ({ name: `${l.product.name}${l.size ? ` (${l.size})` : ''}`, quantity: l.quantity, unitCost: l.unitCost })),
+      { name: lastOrder.supplierName } as Supplier,
+      lastOrder.lines,
     )
-    const link = waLink(supplier?.phone, text)
-    if (!link) { setError('Selecione um fornecedor com WhatsApp cadastrado.'); return }
+    const link = waLink(lastOrder.supplierPhone, text)
+    if (!link) { setError('O fornecedor deste pedido não tem WhatsApp cadastrado.'); return }
     window.open(link, '_blank', 'noopener')
   }
 
@@ -223,6 +289,29 @@ export function Purchases({ operatorEmail }: Props) {
             Pago à vista (senão fica em <strong>contas a pagar</strong>)
           </label>
         </div>
+
+        {!paid && (
+          <div className="purch__parcelas">
+            <label className="checkout__field purch__parcelas-n">
+              <span>Parcelas</span>
+              <input
+                type="number" min={1} max={MAX_PARCELAS} value={parcelas}
+                onChange={(e) => setParcelasCount(Number(e.target.value))}
+              />
+            </label>
+            <div className="purch__vencs">
+              {dueDates.map((d, i) => (
+                <label key={i} className="checkout__field purch__venc">
+                  <span>{parcelas > 1 ? `Parcela ${i + 1}` : 'Vencimento'} · {BRL.format(amounts[i] ?? 0)}</span>
+                  <input
+                    type="date" value={d}
+                    onChange={(e) => setDueDates((prev) => prev.map((x, ix) => (ix === i ? e.target.value : x)))}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {lines.length === 0 ? (
           <p className="purch__empty">Busque um produto acima para adicionar ao pedido.</p>
@@ -277,9 +366,15 @@ export function Purchases({ operatorEmail }: Props) {
           </div>
           <button
             className="btn btn--wa purch__wa"
-            disabled={lines.length === 0 || !supplier?.phone}
+            disabled={!lastOrder || !lastOrder.supplierPhone}
             onClick={sendWhatsApp}
-            title={supplier?.phone ? 'Enviar pedido ao fornecedor pelo WhatsApp' : 'Selecione um fornecedor com WhatsApp'}
+            title={
+              !lastOrder
+                ? 'Registre o pedido de compra primeiro'
+                : lastOrder.supplierPhone
+                  ? 'Enviar pedido ao fornecedor pelo WhatsApp'
+                  : 'O fornecedor deste pedido não tem WhatsApp cadastrado'
+            }
           >
             <span aria-hidden="true">💬</span> Enviar pedido (WhatsApp)
           </button>
@@ -322,7 +417,10 @@ export function Purchases({ operatorEmail }: Props) {
               <li key={h.id} className="purch__hist">
                 <div className="purch__hist-main">
                   <strong>nº {String(h.number).padStart(6, '0')}</strong>
-                  <small>{when(h.when)} · {h.supplier || 'sem fornecedor'} · {h.items.reduce((s, i) => s + i.quantity, 0)} un. · {h.paymentMethod || '—'}</small>
+                  <small>
+                    {when(h.when)} · {h.supplier || 'sem fornecedor'} · {h.items.reduce((s, i) => s + i.quantity, 0)} un. · {h.paymentMethod || '—'}
+                    {h.installments && h.installments.length > 1 ? ` · ${h.installments.length}x` : ''}
+                  </small>
                   <div className="purch__badges">
                     <span className={`purch__badge ${h.status === 'entregue' ? 'is-ok' : 'is-wait'}`}>
                       {h.status === 'entregue' ? '✓ Entregue' : '⏳ Pendente de entrega'}
@@ -330,7 +428,20 @@ export function Purchases({ operatorEmail }: Props) {
                     <span className={`purch__badge ${h.paid ? 'is-ok' : 'is-danger'}`}>
                       {h.paid ? '✓ Paga' : '💰 A pagar'}
                     </span>
+                    {h.installments && h.installments.length > 1 && !h.paid && (
+                      <span className="purch__badge is-wait">
+                        {h.installments.filter((i) => i.paid).length}/{h.installments.length} parcelas pagas
+                      </span>
+                    )}
                   </div>
+                  {h.installments && h.installments.length > 1 && !h.paid && (
+                    <small className="purch__next-venc">
+                      Próx. venc.: {(() => {
+                        const nxt = h.installments.filter((i) => !i.paid).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
+                        return nxt ? `${whenDate(nxt.dueDate)} (${BRL.format(nxt.amount)})` : '—'
+                      })()}
+                    </small>
+                  )}
                 </div>
                 <div className="purch__hist-side">
                   <strong className="purch__hist-total">{BRL.format(h.total)}</strong>

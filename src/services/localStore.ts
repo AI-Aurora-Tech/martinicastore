@@ -49,6 +49,14 @@ export interface PurchaseItem {
   size?: string
 }
 
+export interface Installment {
+  n: number
+  amount: number
+  dueDate: string
+  paid: boolean
+  paidAt?: string
+}
+
 export interface PurchaseRecord {
   number: number
   createdAt: string
@@ -58,6 +66,7 @@ export interface PurchaseRecord {
   paymentMethod?: string
   paid?: boolean
   status?: 'pendente' | 'entregue'
+  installments?: Installment[]
   items: PurchaseItem[]
 }
 

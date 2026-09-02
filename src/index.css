@@ -2698,6 +2698,28 @@ button {
 .purch__paid strong { color: var(--text); }
 .purch__hint { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--muted); }
 
+/* Parcelas / vencimentos */
+.purch__parcelas {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin: 0 0 0.4rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+.purch__vencs { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.purch__venc { min-width: 190px; }
+.purch__venc span { font-size: 0.78rem; }
+.purch__next-venc { color: #9a6400 !important; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .purch__parcelas { grid-template-columns: 1fr; }
+  .purch__venc { min-width: 0; flex: 1 1 100%; }
+}
+
 /* Selos de status/pagamento */
 .purch__badges { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.4rem; }
 .purch__badge {

@@ -6,7 +6,7 @@ import {
   updateExpenseLocal,
   type ExpenseRecord,
 } from './localStore'
-import { listPurchases, markPurchasePaid } from './purchase'
+import { listPurchases, markPurchasePaid, payPurchaseInstallment } from './purchase'
 
 export interface Expense {
   id: string
@@ -45,6 +45,8 @@ export interface Conta {
   recurrence?: 'mensal' | 'semanal'
   /** Nº da compra (quando source === 'compra'), usado no modo demo. */
   purchaseNumber?: number
+  /** Nº da parcela (quando a compra é parcelada). */
+  installmentN?: number
 }
 
 function rowToExpense(r: Record<string, unknown>): Expense {
@@ -163,25 +165,48 @@ export async function listContas(): Promise<Conta[]> {
     recurring: e.recurring,
     recurrence: e.recurrence,
   }))
-  const fromPurchases: Conta[] = purchases.map((p) => ({
-    key: `c-${p.id}`,
-    source: 'compra',
-    refId: p.id,
-    description: `Compra nº ${String(p.number).padStart(6, '0')}${p.supplier ? ` · ${p.supplier}` : ''}`,
-    category: 'Compras',
-    amount: p.total,
-    when: p.when,
-    paid: !!p.paid,
-    recurring: false,
-    purchaseNumber: p.number,
-  }))
+  const fromPurchases: Conta[] = purchases.flatMap((p) => {
+    const label = `Compra nº ${String(p.number).padStart(6, '0')}${p.supplier ? ` · ${p.supplier}` : ''}`
+    // Compra parcelada (não à vista) => uma conta por parcela, com o seu vencimento.
+    if (p.installments && p.installments.length > 0) {
+      const n = p.installments.length
+      return p.installments.map((par) => ({
+        key: `c-${p.id}-${par.n}`,
+        source: 'compra' as const,
+        refId: p.id,
+        description: `${label} · parcela ${par.n}/${n}`,
+        category: 'Compras',
+        amount: par.amount,
+        when: par.dueDate || p.when,
+        paid: !!par.paid,
+        recurring: false,
+        purchaseNumber: p.number,
+        installmentN: par.n,
+      }))
+    }
+    return [{
+      key: `c-${p.id}`,
+      source: 'compra' as const,
+      refId: p.id,
+      description: label,
+      category: 'Compras',
+      amount: p.total,
+      when: p.when,
+      paid: !!p.paid,
+      recurring: false,
+      purchaseNumber: p.number,
+    }]
+  })
   return [...fromExpenses, ...fromPurchases].sort((a, b) => b.when.localeCompare(a.when))
 }
 
 /** Marca uma conta como paga/em aberto, despachando por origem. */
 export async function setContaPaid(conta: Conta, paid: boolean): Promise<{ error: string | null }> {
   if (conta.source === 'despesa') return setExpensePaid(conta.refId, paid)
-  // Compra: só suportamos marcar como paga (a entrega é feita no módulo Compras).
-  if (paid) return markPurchasePaid({ id: conta.refId, number: conta.purchaseNumber } as never)
-  return { error: null }
+  // Compra: baixa da parcela (ou da compra à vista). Reabertura não é suportada aqui.
+  if (!paid) return { error: null }
+  if (conta.installmentN != null) {
+    return payPurchaseInstallment({ id: conta.refId, number: conta.purchaseNumber }, conta.installmentN)
+  }
+  return markPurchasePaid({ id: conta.refId, number: conta.purchaseNumber } as never)
 }
