@@ -2655,12 +2655,53 @@ button {
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--line);
 }
-.purch__hist div { display: flex; flex-direction: column; }
+.purch__hist-main { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
 .purch__hist small { color: var(--muted); font-size: 0.75rem; }
 .purch__hist-total { font-variant-numeric: tabular-nums; }
+.purch__hist-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; flex-shrink: 0; }
+.purch__hist-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
+.purch__hist-actions .btn { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+
+/* Forma de pagamento + à vista (novo pedido de compra) */
+.purch__pay {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 1rem;
+  align-items: end;
+  margin: 0.9rem 0 0.4rem;
+}
+.purch__paid {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding-bottom: 0.55rem;
+}
+.purch__paid input { width: 1.05rem; height: 1.05rem; }
+.purch__paid strong { color: var(--text); }
+.purch__hint { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--muted); }
+
+/* Selos de status/pagamento */
+.purch__badges { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.4rem; }
+.purch__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.purch__badge.is-ok { background: #e7f6ec; color: #1b7a3d; border-color: #bfe6cc; }
+.purch__badge.is-wait { background: #fff4e0; color: #9a6400; border-color: #f2dca8; }
+.purch__badge.is-danger { background: #fdecec; color: #b3261e; border-color: #f3c4c1; }
 
 @media (max-width: 640px) {
   .purch__top { grid-template-columns: 1fr; }
+  .purch__pay { grid-template-columns: 1fr; align-items: stretch; }
+  .purch__paid { padding-bottom: 0; }
 }
 
 /* ---------- WhatsApp ---------- */

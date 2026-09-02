@@ -46,6 +46,7 @@ export interface PurchaseItem {
   name: string
   quantity: number
   unitCost: number
+  size?: string
 }
 
 export interface PurchaseRecord {
@@ -54,6 +55,9 @@ export interface PurchaseRecord {
   supplier?: string
   operatorEmail?: string
   total: number
+  paymentMethod?: string
+  paid?: boolean
+  status?: 'pendente' | 'entregue'
   items: PurchaseItem[]
 }
 
@@ -109,6 +113,12 @@ export function appendPurchase(purchase: Omit<PurchaseRecord, 'number'>): number
   const number = all.length + 1
   write(PURCHASES_KEY, [...all, { ...purchase, number }])
   return number
+}
+
+/** Atualiza campos de uma compra demo (por número). */
+export function updatePurchaseLocal(number: number, patch: Partial<PurchaseRecord>): void {
+  const all = readPurchases()
+  write(PURCHASES_KEY, all.map((p) => (p.number === number ? { ...p, ...patch } : p)))
 }
 
 /** Atualiza o status de um pedido demo (por número). */
