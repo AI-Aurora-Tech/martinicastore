@@ -1,22 +1,13 @@
 -- ===========================================================================
--- Policies (RLS) — SEGURO DE RODAR VÁRIAS VEZES
--- Estado FINAL (produção): leitura pública do catálogo, escrita e leitura de
--- dados sensíveis apenas para ADMIN. Pedidos são criados pela Edge Function
--- `place-order` (service role), então o cliente NÃO insere direto.
--- Rode no SQL Editor sempre que o RLS estiver ligado mas o app não ler/escrever.
+-- Migração 0006 — Segurança para produção
+--  (5) Papel de ADMIN: separa a equipe (PDV/Admin) dos clientes.
+--  (6) Preparação p/ criação de pedido no servidor: remove INSERT direto do
+--      cliente em orders/order_items (passam a ser criados pela Edge Function
+--      place-order com service role).
+--  (7) Estoque baixa na APROVAÇÃO do pagamento: remove o trigger que abatia o
+--      estoque na criação do pedido (o webhook passa a abater quando pago).
+-- Aditiva e idempotente. Rode depois da 0005.
 -- ===========================================================================
-
--- Garante RLS ligado (idempotente).
-alter table public.categories     enable row level security;
-alter table public.products       enable row level security;
-alter table public.sales          enable row level security;
-alter table public.sale_items     enable row level security;
-alter table public.orders         enable row level security;
-alter table public.order_items    enable row level security;
-alter table if exists public.customers      enable row level security;
-alter table if exists public.suppliers      enable row level security;
-alter table if exists public.purchases      enable row level security;
-alter table if exists public.purchase_items enable row level security;
 
 -- ---- (5) Admins ----------------------------------------------------------
 create table if not exists public.admins (
@@ -25,10 +16,12 @@ create table if not exists public.admins (
 );
 alter table public.admins enable row level security;
 
+-- Cada usuário pode verificar a PRÓPRIA associação de admin.
 drop policy if exists "admins_self_read" on public.admins;
 create policy "admins_self_read"
   on public.admins for select to authenticated using (id = auth.uid());
 
+-- Função central: o usuário atual é admin?
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -45,16 +38,7 @@ grant execute on function public.is_admin() to anon, authenticated;
 --   select id from auth.users where email = 'seuadmin@email.com'
 --   on conflict do nothing;
 
--- ---- Catálogo: leitura pública ----
-drop policy if exists "catalog_public_read_categories" on public.categories;
-create policy "catalog_public_read_categories"
-  on public.categories for select using (true);
-
-drop policy if exists "catalog_public_read_products" on public.products;
-create policy "catalog_public_read_products"
-  on public.products for select using (true);
-
--- ---- Catálogo/estoque: escrita só ADMIN ----
+-- ---- Catálogo: leitura pública, escrita só admin --------------------------
 drop policy if exists "products_write_authenticated" on public.products;
 drop policy if exists "products_write_admin" on public.products;
 create policy "products_write_admin"
@@ -67,7 +51,7 @@ create policy "categories_write_admin"
   on public.categories for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- ---- PDV (vendas): só ADMIN ----
+-- ---- PDV (vendas): só admin ----------------------------------------------
 drop policy if exists "sales_insert_authenticated" on public.sales;
 drop policy if exists "sales_select_authenticated" on public.sales;
 drop policy if exists "sales_admin" on public.sales;
@@ -82,8 +66,8 @@ create policy "sale_items_admin"
   on public.sale_items for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- ---- Pedidos (loja): admin vê tudo; cliente vê os seus ----
--- INSERT NÃO é permitido ao cliente (feito pela Edge Function place-order).
+-- ---- Pedidos (loja): admin vê tudo; cliente vê os seus -------------------
+-- INSERT deixa de ser permitido ao cliente (feito pela Edge Function).
 drop policy if exists "orders_insert_anyone" on public.orders;
 drop policy if exists "orders_select_authenticated" on public.orders;
 drop policy if exists "orders_select_admin" on public.orders;
@@ -109,12 +93,12 @@ create policy "order_items_select_own"
     where o.id = order_items.order_id and o.customer_id = auth.uid()
   ));
 
--- ---- Clientes: dono + admin ----
+-- ---- Clientes: dono + admin ----------------------------------------------
 drop policy if exists "customers_select_admin" on public.customers;
 create policy "customers_select_admin"
   on public.customers for select to authenticated using (public.is_admin());
 
--- ---- Fornecedores / Compras: só ADMIN ----
+-- ---- Fornecedores / Compras: só admin ------------------------------------
 drop policy if exists "suppliers_all_authenticated" on public.suppliers;
 drop policy if exists "suppliers_admin" on public.suppliers;
 create policy "suppliers_admin"
@@ -133,15 +117,7 @@ create policy "purchase_items_admin"
   on public.purchase_items for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- ---- Storage: imagens de produtos ----
-insert into storage.buckets (id, name, public)
-values ('product-images', 'product-images', true)
-on conflict (id) do nothing;
-
-drop policy if exists "product_images_public_read" on storage.objects;
-create policy "product_images_public_read"
-  on storage.objects for select using (bucket_id = 'product-images');
-
+-- ---- Storage (imagens de produto): escrita só admin ----------------------
 drop policy if exists "product_images_auth_insert" on storage.objects;
 drop policy if exists "product_images_auth_update" on storage.objects;
 drop policy if exists "product_images_auth_delete" on storage.objects;
@@ -158,9 +134,14 @@ create policy "product_images_admin_delete"
   on storage.objects for delete to authenticated
   using (bucket_id = 'product-images' and public.is_admin());
 
--- ---- (7) Estoque abatido na aprovação do pagamento ----
+-- ---- (7) Estoque baixa na aprovação --------------------------------------
+-- Remove o abatimento de estoque na criação do pedido da loja.
+-- (O trigger das vendas do PDV permanece — PDV é pago na hora.)
 drop trigger if exists trg_order_items_stock on public.order_items;
 
+-- Abate o estoque de todos os itens de um pedido, de uma vez (agregando por
+-- produto). Chamada pelo webhook quando o pagamento é aprovado; a idempotência
+-- é garantida pelo webhook (só chama se orders.paid_at ainda estiver vazio).
 create or replace function public.apply_order_stock(p_order_id uuid)
 returns void
 language plpgsql

@@ -9,6 +9,32 @@ export const CLUB = {
   founded: 1926,
 }
 
+/**
+ * Dados institucionais da empresa (item 9 — obrigatórios por lei para uma loja
+ * real: CDC art. 6º/CF e Marco Civil). AJUSTE com os dados reais da sua empresa
+ * antes de ir ao ar — estes são valores de exemplo.
+ */
+export const COMPANY = {
+  legalName: 'Martinica Comércio de Artigos Esportivos LTDA',
+  tradeName: 'Martinica Store',
+  cnpj: '00.000.000/0001-00',
+  stateRegistration: 'Isento',
+  address: {
+    street: 'Av. Exemplo',
+    number: '1000',
+    complement: 'Loja 1',
+    neighborhood: 'Centro',
+    city: 'São Paulo',
+    uf: 'SP',
+    cep: '01000-000',
+  },
+  email: 'sac@martinicastore.com.br',
+  /** WhatsApp/telefone do SAC (com DDD, apenas dígitos p/ o link wa.me). */
+  whatsapp: '5511990000000',
+  whatsappLabel: '(11) 99000-0000',
+  hours: 'Seg. a Sex., das 9h às 18h (exceto feriados)',
+}
+
 export const categories: Category[] = [
   { id: 'camisas', label: 'Camisas' },
   { id: 'agasalhos', label: 'Agasalhos' },

@@ -32,10 +32,21 @@ export async function createPayment(
           if (body?.error) detail = body.error
         } catch { /* ignore */ }
       }
+      if (/failed to send a request|fetch/i.test(detail)) {
+        detail =
+          "Não foi possível alcançar a função 'create-payment'. Ela provavelmente ainda não foi publicada (faça o deploy) — veja MERCADOPAGO.md."
+      }
       console.warn('[payment] erro ao criar pagamento:', detail)
       return { initPoint: null, error: detail }
     }
-    const d = data as { initPoint?: string | null } | null
+    const d = data as { initPoint?: string | null; error?: string } | null
+    if (d?.error === 'mp-not-configured') {
+      return {
+        initPoint: null,
+        error: 'Pagamento online (Mercado Pago) ainda não configurado: falta o segredo MP_ACCESS_TOKEN.',
+      }
+    }
+    if (d?.error) return { initPoint: null, error: d.error }
     return { initPoint: d?.initPoint ?? null, error: null }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao iniciar o pagamento.'

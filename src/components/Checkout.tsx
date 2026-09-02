@@ -48,6 +48,7 @@ export function Checkout({ onExit }: Props) {
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
   const [notified, setNotified] = useState(false)
   const [notifyErr, setNotifyErr] = useState<string | null>(null)
+  const [payErr, setPayErr] = useState<string | null>(null)
 
   const weight = useMemo(() => cartWeight(items), [items])
 
@@ -134,13 +135,13 @@ export function Checkout({ onExit }: Props) {
     setNotifyErr(nErr)
 
     // Pagamento online (Mercado Pago). Se configurado, redireciona para pagar.
-    const { initPoint } = await createPayment(id, payment, window.location.origin)
+    const { initPoint, error: pErr } = await createPayment(id, payment, window.location.origin)
     clear()
     if (initPoint) {
       window.location.href = initPoint
       return
     }
-
+    setPayErr(pErr)
     setPlacing(false)
     setOrderNumber(number)
   }
@@ -167,6 +168,9 @@ export function Checkout({ onExit }: Props) {
           </p>
           {!notified && isSupabaseConfigured && notifyErr && (
             <p className="checkout__mailerr">Diagnóstico do WhatsApp: {notifyErr}</p>
+          )}
+          {payErr && (
+            <p className="checkout__mailerr">💳 Pagamento online: {payErr}</p>
           )}
           <button className="btn btn--primary" onClick={onExit}>Voltar à loja</button>
         </div>

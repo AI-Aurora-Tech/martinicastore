@@ -2,3 +2,7 @@
 # O webhook do Mercado Pago é chamado pelo MP sem JWT — precisa ser público.
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+# A criação de pedido é chamada pelo navegador do cliente (anon) — sem JWT.
+[functions.place-order]
+verify_jwt = false

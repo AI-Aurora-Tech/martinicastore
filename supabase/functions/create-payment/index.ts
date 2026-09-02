@@ -69,7 +69,8 @@ Deno.serve(async (req: Request) => {
               pending: `${base}/?pedido=${num}&pago=pendente`,
               failure: `${base}/?pedido=${num}&pago=falhou`,
             },
-            auto_return: 'approved',
+            // auto_return exige URL https válida — o MP rejeita localhost.
+            ...(base.startsWith('https://') ? { auto_return: 'approved' } : {}),
           }
         : {}),
     }
