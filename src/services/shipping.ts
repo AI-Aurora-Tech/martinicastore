@@ -1,8 +1,5 @@
 import type { Address, ShippingOption } from '../types'
 
-/** Valor mínimo de compra para frete grátis (PAC). */
-export const FREE_SHIPPING_MIN = 299
-
 /** CEP de origem (loja). Ajuste para o CEP real da sua operação. */
 export const ORIGIN_UF = 'SP'
 
@@ -47,12 +44,12 @@ export function formatCep(cep: string) {
 
 /**
  * Estima as opções de frete (PAC e SEDEX) para um destino (UF) e peso total.
- * Aplica frete grátis (PAC) acima de FREE_SHIPPING_MIN.
+ * O `subtotal` é aceito por compatibilidade, mas não altera o valor do frete.
  */
 export function quoteShipping(
   uf: string,
   weightGrams: number,
-  subtotal: number,
+  _subtotal?: number,
 ): ShippingOption[] {
   const region = UF_REGION[(uf || '').toUpperCase()] ?? 'sudeste'
   const rate = REGION_RATE[region]
@@ -62,10 +59,8 @@ export function quoteShipping(
   const sedexPrice = round2(pacPrice * 1.6 + 5)
   const sedexDays = Math.max(1, Math.ceil(rate.pacDays / 2))
 
-  const freePac = subtotal >= FREE_SHIPPING_MIN
-
   return [
-    { service: 'PAC', price: freePac ? 0 : pacPrice, days: rate.pacDays, free: freePac },
+    { service: 'PAC', price: pacPrice, days: rate.pacDays },
     { service: 'SEDEX', price: sedexPrice, days: sedexDays },
   ]
 }

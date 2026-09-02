@@ -1,7 +1,6 @@
 import { useCart } from '../context/CartContext'
 import { BRL } from '../data/products'
 import { ProductImage } from './ProductImage'
-import { FREE_SHIPPING_MIN } from '../services/shipping'
 
 interface Props {
   /** Abre a tela de checkout (identificação + entrega + pagamento). */
@@ -10,9 +9,6 @@ interface Props {
 
 export function CartDrawer({ onCheckout }: Props) {
   const { items, isOpen, closeCart, removeItem, setQuantity, subtotal, count } = useCart()
-
-  const missing = Math.max(0, FREE_SHIPPING_MIN - subtotal)
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_MIN) * 100)
 
   function goCheckout() {
     closeCart()
@@ -49,20 +45,6 @@ export function CartDrawer({ onCheckout }: Props) {
           </div>
         ) : (
           <>
-            <div className="drawer__shipping">
-              {missing > 0 ? (
-                <p>
-                  Faltam <strong>{BRL.format(missing)}</strong> para o{' '}
-                  <strong>frete grátis</strong>!
-                </p>
-              ) : (
-                <p>🎉 Você ganhou <strong>frete grátis (PAC)</strong>!</p>
-              )}
-              <div className="drawer__bar">
-                <span style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-
             <ul className="drawer__list">
               {items.map((item) => {
                 const key = `${item.product.id}-${item.size ?? ''}`

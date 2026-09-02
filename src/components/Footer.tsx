@@ -1,22 +1,9 @@
-import { CLUB, COMPANY } from '../data/products'
+import { COMPANY } from '../data/products'
 import type { LegalSection } from './LegalPage'
 
 export function Footer({ onLegal }: { onLegal: (section: LegalSection) => void }) {
   return (
     <footer className="footer">
-      <div className="footer__newsletter">
-        <div>
-          <h3>Entre para o time do desconto</h3>
-          <p>Cadastre seu e-mail e ganhe 10% OFF na primeira compra.</p>
-        </div>
-        <form className="footer__form" onSubmit={(e) => e.preventDefault()}>
-          <input type="email" placeholder="seu@email.com" aria-label="Seu e-mail" required />
-          <button className="btn btn--primary" type="submit">
-            Quero meu cupom
-          </button>
-        </form>
-      </div>
-
       <div className="footer__cols">
         <div className="footer__col footer__col--brand">
           <div className="brand brand--footer">
@@ -27,8 +14,8 @@ export function Footer({ onLegal }: { onLegal: (section: LegalSection) => void }
             </span>
           </div>
           <p>
-            A loja oficial do {CLUB.name}. Produtos licenciados, entrega para
-            todo o Brasil e o carinho de quem também é da torcida.
+            A loja oficial do Grêmio Recreativo Martinica, entrega para todo o
+            Brasil e o carinho de quem também é da torcida.
           </p>
           <div className="footer__social">
             <a href="#" aria-label="Instagram">📷</a>

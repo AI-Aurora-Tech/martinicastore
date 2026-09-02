@@ -10,13 +10,10 @@ export type ProductKind =
   | 'shorts'
   | 'pet'
 
-export type CategoryId =
-  | 'camisas'
-  | 'agasalhos'
-  | 'acessorios'
-  | 'calcados'
-  | 'torcedor'
-  | 'pet'
+// Identificador de categoria. É `string` para permitir categorias criadas pelo
+// admin no painel (além das padrão: camisas, agasalhos, acessorios, calcados,
+// torcedor, pet).
+export type CategoryId = string
 
 export interface Product {
   id: string
@@ -90,4 +87,25 @@ export interface CartItem {
 export interface Category {
   id: CategoryId
   label: string
+  /** Ordem de exibição no menu/coleções. */
+  sort?: number
+}
+
+/** Banner principal da loja (editável no painel). Vários viram um carrossel. */
+export interface Banner {
+  id: string
+  /** URL (ou data URL) da imagem do banner. */
+  imageUrl: string
+  /** Título opcional sobreposto à imagem. */
+  headline?: string
+  /** Texto opcional abaixo do título. */
+  subtext?: string
+  /** Rótulo do botão (ex.: "Comprar agora"). */
+  ctaLabel?: string
+  /** Destino do clique: uma categoria (id) ou uma URL. */
+  link?: string
+  /** Banner visível na loja. */
+  active?: boolean
+  /** Ordem no carrossel. */
+  sort?: number
 }

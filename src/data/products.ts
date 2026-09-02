@@ -11,28 +11,29 @@ export const CLUB = {
 
 /**
  * Dados institucionais da empresa (item 9 — obrigatórios por lei para uma loja
- * real: CDC art. 6º/CF e Marco Civil). AJUSTE com os dados reais da sua empresa
- * antes de ir ao ar — estes são valores de exemplo.
+ * real: CDC art. 6º/CF e Marco Civil).
  */
 export const COMPANY = {
-  legalName: 'Martinica Comércio de Artigos Esportivos LTDA',
+  legalName: 'CLUBE DESPORTIVO JARDIM MARTINICA',
   tradeName: 'Martinica Store',
-  cnpj: '00.000.000/0001-00',
+  cnpj: '52.640.299/0001-42',
   stateRegistration: 'Isento',
   address: {
-    street: 'Av. Exemplo',
-    number: '1000',
-    complement: 'Loja 1',
-    neighborhood: 'Centro',
+    street: 'Rua Roque de Mingo',
+    number: '550',
+    complement: '',
+    neighborhood: 'Jardim Samara',
     city: 'São Paulo',
     uf: 'SP',
-    cep: '01000-000',
+    cep: '05759-290',
   },
-  email: 'sac@martinicastore.com.br',
+  email: 'lojamartinicaoficial@gmail.com',
   /** WhatsApp/telefone do SAC (com DDD, apenas dígitos p/ o link wa.me). */
-  whatsapp: '5511990000000',
-  whatsappLabel: '(11) 99000-0000',
+  whatsapp: '5511987019721',
+  whatsappLabel: '(11) 98701-9721',
   hours: 'Seg. a Sex., das 9h às 18h (exceto feriados)',
+  /** Atendimento presencial (loja física). */
+  presencial: 'Sábado e domingo, das 8h às 18h',
 }
 
 export const categories: Category[] = [

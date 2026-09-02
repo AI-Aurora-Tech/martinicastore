@@ -21,7 +21,6 @@ const cors = {
 }
 
 // ---- Frete (espelha src/services/shipping.ts) -----------------------------
-const FREE_SHIPPING_MIN = 299
 const UF_REGION: Record<string, string> = {
   SP: 'sudeste', RJ: 'sudeste', MG: 'sudeste', ES: 'sudeste',
   PR: 'sul', SC: 'sul', RS: 'sul',
@@ -39,16 +38,15 @@ const REGION_RATE: Record<string, { pacBase: number; pacPerKg: number; pacDays: 
 }
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-function quoteShipping(uf: string, weightGrams: number, subtotal: number) {
+function quoteShipping(uf: string, weightGrams: number) {
   const region = UF_REGION[(uf || '').toUpperCase()] ?? 'sudeste'
   const rate = REGION_RATE[region]
   const kg = Math.max(0.3, weightGrams / 1000)
   const pacPrice = round2(rate.pacBase + rate.pacPerKg * kg)
   const sedexPrice = round2(pacPrice * 1.6 + 5)
   const sedexDays = Math.max(1, Math.ceil(rate.pacDays / 2))
-  const freePac = subtotal >= FREE_SHIPPING_MIN
   return [
-    { service: 'PAC', price: freePac ? 0 : pacPrice, days: rate.pacDays },
+    { service: 'PAC', price: pacPrice, days: rate.pacDays },
     { service: 'SEDEX', price: sedexPrice, days: sedexDays },
   ]
 }
@@ -114,7 +112,7 @@ Deno.serve(async (req: Request) => {
 
     // Frete recalculado no servidor a partir da UF e do peso reais.
     const uf = String(input?.address?.uf ?? '')
-    const opts = quoteShipping(uf, weight, subtotal)
+    const opts = quoteShipping(uf, weight)
     const wanted = String(input?.shippingService ?? 'PAC').toUpperCase()
     const ship = opts.find((o) => o.service === wanted) ?? opts[0]
     const shipping = round2(ship.price)

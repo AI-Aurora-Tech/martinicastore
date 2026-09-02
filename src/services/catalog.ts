@@ -3,6 +3,7 @@ import {
   products as seedProducts,
   categories as seedCategories,
 } from '../data/products'
+import { demoCategories } from './categories'
 import type { Category, CategoryId, Product, ProductKind } from '../types'
 
 interface ProductRow {
@@ -88,7 +89,11 @@ export interface Catalog {
  */
 export async function loadCatalog(): Promise<Catalog> {
   if (!isSupabaseConfigured || !supabase) {
-    return { products: seedProducts, categories: seedCategories, source: 'demo' }
+    return {
+      products: seedProducts,
+      categories: demoCategories() ?? seedCategories,
+      source: 'demo',
+    }
   }
 
   try {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Header } from './components/Header'
-import { Hero } from './components/Hero'
+import { BannerCarousel } from './components/BannerCarousel'
 import { Benefits } from './components/Benefits'
 import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
@@ -107,7 +107,7 @@ export default function App() {
         </div>
       )}
 
-      {active === 'todos' && !query.trim() && <Hero onShop={selectCategory} />}
+      {active === 'todos' && !query.trim() && <BannerCarousel onShop={selectCategory} />}
 
       <Benefits />
 

@@ -115,10 +115,10 @@ export function LegalPage({
                 despachados em até 2 dias úteis.
               </li>
             </ul>
-            <h2>Frete grátis</h2>
+            <h2>Valor do frete</h2>
             <p>
-              Compras acima de <strong>R$ 299,00</strong> têm frete PAC grátis para
-              todo o Brasil.
+              O frete é calculado por CEP e peso, de acordo com a tabela dos
+              Correios, e exibido no carrinho antes de você finalizar a compra.
             </p>
             <h2>Acompanhamento</h2>
             <p>
@@ -220,6 +220,7 @@ export function LegalPage({
                 <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
               </li>
               <li><strong>Horário:</strong> {COMPANY.hours}</li>
+              <li><strong>Venda presencial:</strong> {COMPANY.presencial}</li>
             </ul>
           </section>
         )}

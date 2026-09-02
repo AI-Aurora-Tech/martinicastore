@@ -24,9 +24,7 @@ export function Header({ active, onSelect, query, onQuery }: Props) {
   return (
     <header className="header">
       <div className="header__topbar">
-        <span>🚚 Frete grátis acima de R$ 299</span>
-        <span className="header__topbar-sep">•</span>
-        <span>Até 10x sem juros</span>
+        <span>🚚 Entrega para todo o Brasil</span>
         <span className="header__topbar-sep">•</span>
         <span>Loja 100% oficial e segura</span>
       </div>
@@ -104,7 +102,6 @@ export function Header({ active, onSelect, query, onQuery }: Props) {
             {c.label}
           </button>
         ))}
-        <span className="nav__promo">🔥 Ofertas da Semana</span>
       </nav>
 
       {showAuth && (
