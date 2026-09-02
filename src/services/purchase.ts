@@ -125,7 +125,7 @@ export async function listPurchases(): Promise<PurchaseSummary[]> {
     byPurchase.set(k, arr)
   }
 
-  return (purchases.data ?? []).map((p) => ({
+  return (purchases.data ?? []).map((p: Record<string, unknown>) => ({
     number: Number(p.number),
     when: String(p.created_at),
     supplier: (p.supplier as string) ?? undefined,

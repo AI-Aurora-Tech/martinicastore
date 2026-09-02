@@ -78,7 +78,10 @@ export interface BannerResult {
   banner?: Banner
 }
 
-/** Cria ou atualiza um banner (upsert). */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Cria ou atualiza um banner. No Supabase, banner novo deixa o banco gerar o
+ *  uuid (o id local "bnr-..." só vale no modo demo). */
 export async function saveBanner(b: Banner): Promise<BannerResult> {
   if (!isSupabaseConfigured || !supabase) {
     const list = readDemo()
@@ -88,6 +91,17 @@ export async function saveBanner(b: Banner): Promise<BannerResult> {
     writeDemo(list)
     return { error: null, banner: b }
   }
+
+  // Novo banner (id ainda não é um uuid do banco): INSERT sem id.
+  if (!UUID_RE.test(b.id)) {
+    const row = toRow(b)
+    delete (row as Partial<BannerRow>).id
+    const { data, error } = await supabase.from('banners').insert(row).select('*').single()
+    if (error) return { error: error.message }
+    return { error: null, banner: toBanner(data as BannerRow) }
+  }
+
+  // Banner existente: upsert pelo uuid.
   const { data, error } = await supabase.from('banners').upsert(toRow(b)).select('*').single()
   if (error) return { error: error.message }
   return { error: null, banner: toBanner(data as BannerRow) }

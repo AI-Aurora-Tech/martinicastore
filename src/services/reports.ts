@@ -156,7 +156,7 @@ export async function loadReport(): Promise<ReportData> {
   const orderItemsByOrder = mapItems(orderItems.data ?? [], 'order_id')
 
   const txs: Tx[] = [
-    ...(sales.data ?? []).map((s) => ({
+    ...(sales.data ?? []).map((s: Record<string, unknown>) => ({
       kind: 'PDV' as const,
       number: Number(s.number),
       when: String(s.created_at),
@@ -164,7 +164,7 @@ export async function loadReport(): Promise<ReportData> {
       payment: String(s.payment_method),
       items: saleItemsBySale.get(String(s.id)) ?? [],
     })),
-    ...(orders.data ?? []).map((o) => ({
+    ...(orders.data ?? []).map((o: Record<string, unknown>) => ({
       kind: 'Loja' as const,
       number: Number(o.number),
       when: String(o.created_at),
