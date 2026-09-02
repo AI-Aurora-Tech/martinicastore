@@ -3417,3 +3417,37 @@ body { overflow-x: hidden; }
 .checkout__pickup-addr { color: #333; }
 .checkout__pickup-hours { color: #147a3e; }
 .checkout__phone { margin-top: 1rem; }
+
+/* ---------- PDV: fiado (pendente de recebimento) ---------- */
+.pdv__fiado {
+  display: grid;
+  gap: 0.35rem;
+  background: #fff7ef;
+  border: 1px solid #ffd9bf;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.6rem;
+}
+.pdv__fiado-note { margin: 0 0 0.3rem; font-size: 0.82rem; color: #7a4a12; }
+.pdv__fiado label { font-size: 0.75rem; font-weight: 700; color: var(--ink-soft, #2b2b2b); }
+.pdv__fiado input {
+  border: 1px solid var(--line, #e7e8ec);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.95rem;
+  outline: none;
+}
+.pdv__fiado input:focus { border-color: var(--red, #ff6a00); }
+.pdv__fiado-req { margin: 0.1rem 0 0; font-size: 0.76rem; color: #b3261e; }
+.pdv__receipt-pending {
+  display: grid;
+  gap: 0.15rem;
+  background: #fdecec;
+  border: 1px solid #f5b5b5;
+  color: #b3261e;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.6rem 0;
+  font-size: 0.85rem;
+  text-align: left;
+}

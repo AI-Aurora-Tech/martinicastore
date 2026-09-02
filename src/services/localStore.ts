@@ -16,8 +16,11 @@ export interface SaleRecord {
   subtotal: number
   discount: number
   total: number
-  payment: 'dinheiro' | 'cartao' | 'pix'
+  payment: 'dinheiro' | 'pix' | 'credito' | 'debito' | 'fiado' | 'cartao'
   operatorEmail?: string
+  status?: 'paid' | 'pending'
+  customerName?: string
+  customerPhone?: string
   items: TxItem[]
 }
 

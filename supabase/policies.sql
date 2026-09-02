@@ -125,6 +125,14 @@ create policy "sale_items_staff"
   on public.sale_items for all to authenticated
   using (public.is_staff()) with check (public.is_staff());
 
+-- Formas de pagamento do PDV (Pix, Crédito, Débito, Fiado) + fiado pendente.
+alter table public.sales add column if not exists status         text not null default 'paid';
+alter table public.sales add column if not exists customer_name  text;
+alter table public.sales add column if not exists customer_phone text;
+alter table public.sales drop constraint if exists sales_payment_method_check;
+alter table public.sales add constraint sales_payment_method_check
+  check (payment_method in ('dinheiro', 'pix', 'credito', 'debito', 'fiado', 'cartao'));
+
 -- ---- Pedidos (loja): admin vê tudo; cliente vê os seus ----
 -- INSERT NÃO é permitido ao cliente (feito pela Edge Function place-order).
 drop policy if exists "orders_insert_anyone" on public.orders;

@@ -5,6 +5,9 @@ import { loadReport, type ReportData } from '../services/reports'
 const PAYMENT_LABELS: Record<string, string> = {
   dinheiro: 'Dinheiro',
   cartao: 'Cartão',
+  credito: 'Crédito',
+  debito: 'Débito',
+  fiado: 'Fiado',
   pix: 'Pix',
   boleto: 'Boleto',
 }

@@ -22,12 +22,14 @@ interface SaleLine {
 
 const lineKey = (l: { product: Product; size?: string }) => `${l.product.id}__${l.size ?? ''}`
 
-type Payment = 'dinheiro' | 'cartao' | 'pix'
+type Payment = 'dinheiro' | 'pix' | 'credito' | 'debito' | 'fiado'
 
 const PAYMENTS: { id: Payment; label: string; icon: string }[] = [
   { id: 'dinheiro', label: 'Dinheiro', icon: '💵' },
-  { id: 'cartao', label: 'Cartão', icon: '💳' },
   { id: 'pix', label: 'Pix', icon: '⚡' },
+  { id: 'credito', label: 'Crédito', icon: '💳' },
+  { id: 'debito', label: 'Débito', icon: '🏧' },
+  { id: 'fiado', label: 'Fiado', icon: '🤝' },
 ]
 
 interface Receipt {
@@ -41,6 +43,9 @@ interface Receipt {
   received: number
   change: number
   installments: number
+  pending?: boolean
+  customerName?: string
+  customerPhone?: string
 }
 
 export function PDV({ onExit, operator, onLogout }: Props) {
@@ -52,6 +57,8 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const [payment, setPayment] = useState<Payment>('dinheiro')
   const [receivedInput, setReceivedInput] = useState('')
   const [installments, setInstallments] = useState(1)
+  const [fiadoName, setFiadoName] = useState('')
+  const [fiadoPhone, setFiadoPhone] = useState('')
   const [clock, setClock] = useState(() => new Date())
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [saving, setSaving] = useState(false)
@@ -88,8 +95,12 @@ export function PDV({ onExit, operator, onLogout }: Props) {
 
   const received = Number(receivedInput.replace(',', '.')) || 0
   const change = payment === 'dinheiro' ? received - total : 0
+  const isFiado = payment === 'fiado'
+  const fiadoOk = !isFiado || (fiadoName.trim().length > 1 && fiadoPhone.trim().length >= 8)
   const canFinish =
-    lines.length > 0 && (payment !== 'dinheiro' || received >= total)
+    lines.length > 0 &&
+    (payment !== 'dinheiro' || received >= total) &&
+    fiadoOk
 
   function addProduct(p: Product) {
     if (p.stock != null && p.stock <= 0) return
@@ -136,6 +147,8 @@ export function PDV({ onExit, operator, onLogout }: Props) {
     setReceivedInput('')
     setInstallments(1)
     setPayment('dinheiro')
+    setFiadoName('')
+    setFiadoPhone('')
   }
 
   async function finishSale() {
@@ -149,9 +162,13 @@ export function PDV({ onExit, operator, onLogout }: Props) {
       discount,
       total,
       payment,
-      received,
-      change: Math.max(0, change),
-      installments,
+      received: payment === 'dinheiro' ? received : 0,
+      change: payment === 'dinheiro' ? Math.max(0, change) : 0,
+      installments: payment === 'credito' ? installments : 1,
+      // Fiado: venda fica pendente de recebimento, com nome/telefone do comprador.
+      status: isFiado ? 'pending' : 'paid',
+      customerName: isFiado ? fiadoName.trim() : undefined,
+      customerPhone: isFiado ? fiadoPhone.trim() : undefined,
       items: lines.map((l) => ({
         productId: l.product.id,
         name: l.product.name,
@@ -184,6 +201,9 @@ export function PDV({ onExit, operator, onLogout }: Props) {
       received,
       change: Math.max(0, change),
       installments,
+      pending: isFiado,
+      customerName: isFiado ? fiadoName.trim() : undefined,
+      customerPhone: isFiado ? fiadoPhone.trim() : undefined,
     })
     resetSale()
   }
@@ -376,7 +396,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
               </div>
             )}
 
-            {payment === 'cartao' && (
+            {payment === 'credito' && (
               <div className="pdv__cash">
                 <label htmlFor="pdv-parc">Parcelas</label>
                 <select
@@ -390,6 +410,29 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {payment === 'fiado' && (
+              <div className="pdv__fiado">
+                <p className="pdv__fiado-note">🤝 Venda no <strong>fiado</strong> — ficará <strong>pendente de recebimento</strong>. Informe o comprador:</p>
+                <label htmlFor="pdv-fiado-nome">Nome do comprador</label>
+                <input
+                  id="pdv-fiado-nome"
+                  type="text"
+                  placeholder="Nome completo"
+                  value={fiadoName}
+                  onChange={(e) => setFiadoName(e.target.value)}
+                />
+                <label htmlFor="pdv-fiado-tel">Telefone / WhatsApp</label>
+                <input
+                  id="pdv-fiado-tel"
+                  inputMode="tel"
+                  placeholder="(11) 90000-0000"
+                  value={fiadoPhone}
+                  onChange={(e) => setFiadoPhone(e.target.value)}
+                />
+                {!fiadoOk && <p className="pdv__fiado-req">Preencha nome e telefone para registrar o fiado.</p>}
               </div>
             )}
 
@@ -430,7 +473,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
               disabled={!canFinish || saving}
               onClick={finishSale}
             >
-              {saving ? 'Registrando…' : `Finalizar venda · ${BRL.format(total)}`}
+              {saving ? 'Registrando…' : `${isFiado ? 'Registrar fiado' : 'Finalizar venda'} · ${BRL.format(total)}`}
             </button>
             {lines.length > 0 && !saving && (
               <button className="pdv__cancel" onClick={resetSale}>
@@ -483,7 +526,11 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                   ? 'Dinheiro'
                   : receipt.payment === 'pix'
                     ? 'Pix'
-                    : `Cartão ${receipt.installments}x`}
+                    : receipt.payment === 'debito'
+                      ? 'Cartão de débito'
+                      : receipt.payment === 'fiado'
+                        ? 'Fiado'
+                        : `Cartão de crédito ${receipt.installments}x`}
               </span>
               {receipt.payment === 'dinheiro' && (
                 <>
@@ -492,6 +539,13 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                 </>
               )}
             </div>
+            {receipt.pending && (
+              <div className="pdv__receipt-pending">
+                <strong>⚠️ PENDENTE DE RECEBIMENTO (FIADO)</strong>
+                <span>Comprador: {receipt.customerName}</span>
+                <span>Telefone: {receipt.customerPhone}</span>
+              </div>
+            )}
             <p className="pdv__receipt-thanks">Obrigado e volte sempre! 🧡</p>
             <div className="pdv__receipt-actions">
               <button className="btn btn--ghost" onClick={() => window.print()}>

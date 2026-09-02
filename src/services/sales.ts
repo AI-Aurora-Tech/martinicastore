@@ -12,15 +12,22 @@ export interface SaleItemInput {
   size?: string
 }
 
+export type SalePayment = 'dinheiro' | 'pix' | 'credito' | 'debito' | 'fiado'
+
 export interface SaleInput {
   operator: Operator
   subtotal: number
   discount: number
   total: number
-  payment: 'dinheiro' | 'cartao' | 'pix'
+  payment: SalePayment
   received: number
   change: number
   installments: number
+  /** 'paid' (padrão) ou 'pending' (fiado — pendente de recebimento). */
+  status?: 'paid' | 'pending'
+  /** Comprador (obrigatório no fiado). */
+  customerName?: string
+  customerPhone?: string
   items: SaleItemInput[]
 }
 
@@ -43,6 +50,9 @@ export async function createSale(input: SaleInput): Promise<SaleResult> {
       total: input.total,
       payment: input.payment,
       operatorEmail: input.operator.email,
+      status: input.status ?? 'paid',
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
       items: input.items.map((i) => ({
         productId: i.productId,
         name: i.name,
@@ -67,6 +77,9 @@ export async function createSale(input: SaleInput): Promise<SaleResult> {
         received: input.received,
         change: input.change,
         installments: input.installments,
+        status: input.status ?? 'paid',
+        customer_name: input.customerName ?? null,
+        customer_phone: input.customerPhone ?? null,
       })
       .select('id, number')
       .single()
