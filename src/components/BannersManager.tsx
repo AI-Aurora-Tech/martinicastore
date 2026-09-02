@@ -35,6 +35,7 @@ export function BannersManager({ onFlash }: { onFlash?: (msg: string) => void })
   async function addFromFile(file: File) {
     if (!ALLOWED.includes(file.type)) return setError('Envie um arquivo JPG ou PNG.')
     if (file.size > MAX_BYTES) return setError('Imagem muito grande (máximo 3 MB).')
+    if (!confirm('Adicionar este banner à loja?')) return
     setBusy(true)
     setError(null)
     const dataUrl = await readAsDataUrl(file).catch(() => null)
@@ -57,6 +58,9 @@ export function BannersManager({ onFlash }: { onFlash?: (msg: string) => void })
   }
 
   async function patch(b: Banner, changes: Partial<Banner>) {
+    const key = Object.keys(changes)[0] as keyof Banner
+    if (key && (b[key] ?? '') === (changes[key] ?? '')) return // sem mudança
+    if (!confirm('Salvar esta alteração do banner?')) return
     const next = { ...b, ...changes }
     setBanners((list) => list.map((x) => (x.id === b.id ? next : x)))
     const { error: err } = await saveBanner(next)
@@ -70,6 +74,7 @@ export function BannersManager({ onFlash }: { onFlash?: (msg: string) => void })
     const j = i + dir
     if (j < 0 || j >= ordered.length) return
     ;[ordered[i], ordered[j]] = [ordered[j], ordered[i]]
+    if (!confirm('Alterar a ordem dos banners?')) return
     setBusy(true)
     for (let k = 0; k < ordered.length; k++) {
       ordered[k] = { ...ordered[k], sort: k }

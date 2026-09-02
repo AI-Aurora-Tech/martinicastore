@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { readOrders, readSales, updateOrderStatusLocal } from './localStore'
+import { readOrders, readSales, updateOrderStatusLocal, updateSaleStatusLocal } from './localStore'
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'canceled'
 
@@ -17,6 +17,8 @@ export interface Transaction {
   when: string
   who: string
   email?: string
+  phone?: string
+  operator?: string
   subtotal: number
   shipping: number
   total: number
@@ -26,6 +28,11 @@ export interface Transaction {
   shippingDays?: number
   address?: string
   items: TxLine[]
+}
+
+/** Normaliza o status de uma venda do PDV: fiado = pending; senão pago. */
+function saleStatus(raw: unknown): OrderStatus {
+  return raw === 'pending' ? 'pending' : 'paid'
 }
 
 export interface TransactionsResult {
@@ -72,12 +79,14 @@ export async function listTransactions(): Promise<TransactionsResult> {
         id: `demo-sale-${s.number}`,
         number: s.number,
         when: s.createdAt,
-        who: s.operatorEmail || 'Operador',
+        who: s.customerName || s.operatorEmail || 'Operador',
+        phone: s.customerPhone,
+        operator: s.operatorEmail,
         subtotal: s.subtotal,
         shipping: 0,
         total: s.total,
         payment: s.payment,
-        status: 'concluida' as const,
+        status: saleStatus(s.status),
         items: s.items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
       })),
     ]
@@ -132,12 +141,14 @@ export async function listTransactions(): Promise<TransactionsResult> {
       id: String(s.id),
       number: Number(s.number),
       when: String(s.created_at),
-      who: (s.operator_email as string) || 'Operador',
+      who: (s.customer_name as string) || (s.operator_email as string) || 'Operador',
+      phone: (s.customer_phone as string) ?? undefined,
+      operator: (s.operator_email as string) ?? undefined,
       subtotal: Number(s.subtotal),
       shipping: 0,
       total: Number(s.total),
       payment: String(s.payment_method),
-      status: 'concluida' as const,
+      status: saleStatus(s.status),
       items: bySale.get(String(s.id)) ?? [],
     })),
   ]
@@ -150,9 +161,11 @@ export async function updateOrderStatus(
   status: OrderStatus,
 ): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured || !supabase) {
-    updateOrderStatusLocal(tx.number, status)
+    if (tx.kind === 'PDV') updateSaleStatusLocal(tx.number, status)
+    else updateOrderStatusLocal(tx.number, status)
     return { error: null }
   }
-  const { error } = await supabase.from('orders').update({ status }).eq('id', tx.id)
+  const table = tx.kind === 'PDV' ? 'sales' : 'orders'
+  const { error } = await supabase.from(table).update({ status }).eq('id', tx.id)
   return { error: error?.message ?? null }
 }

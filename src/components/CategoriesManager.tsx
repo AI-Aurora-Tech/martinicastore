@@ -25,6 +25,7 @@ export function CategoriesManager({ onFlash }: { onFlash?: (msg: string) => void
     }
     setBusy(true)
     setError(null)
+    if (!confirm(`Adicionar a categoria "${label}"?`)) return
     const cat: Category = { id, label, sort: categories.length }
     const { error: err } = await saveCategory(cat, categories)
     setBusy(false)
@@ -43,6 +44,7 @@ export function CategoriesManager({ onFlash }: { onFlash?: (msg: string) => void
       })
       return
     }
+    if (!confirm(`Renomear a categoria para "${label}"?`)) return
     setBusy(true)
     setError(null)
     const { error: err } = await saveCategory({ ...cat, label }, categories)
@@ -62,6 +64,7 @@ export function CategoriesManager({ onFlash }: { onFlash?: (msg: string) => void
     const j = i + dir
     if (j < 0 || j >= ordered.length) return
     ;[ordered[i], ordered[j]] = [ordered[j], ordered[i]]
+    if (!confirm('Alterar a ordem das categorias?')) return
     setBusy(true)
     setError(null)
     for (let k = 0; k < ordered.length; k++) {

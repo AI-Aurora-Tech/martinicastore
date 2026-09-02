@@ -19,7 +19,8 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_FLOW: OrderStatus[] = ['pending', 'paid', 'shipped', 'delivered', 'canceled']
 
 const PAYMENT_LABEL: Record<string, string> = {
-  dinheiro: 'Dinheiro', cartao: 'Cartão', pix: 'Pix', boleto: 'Boleto',
+  dinheiro: 'Dinheiro', cartao: 'Cartão', credito: 'Crédito', debito: 'Débito',
+  fiado: 'Fiado', pix: 'Pix', boleto: 'Boleto',
 }
 
 function when(iso: string) {
@@ -33,6 +34,7 @@ export function Orders() {
   const [error, setError] = useState<string | null>(null)
   const [kind, setKind] = useState<'todos' | 'Loja' | 'PDV'>('todos')
   const [status, setStatus] = useState<'todos' | OrderStatus>('todos')
+  const [nameQuery, setNameQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
 
   function load() {
@@ -45,23 +47,26 @@ export function Orders() {
   }
   useEffect(() => load(), [])
 
-  const filtered = useMemo(
-    () =>
-      txs.filter(
-        (t) =>
-          (kind === 'todos' || t.kind === kind) &&
-          (status === 'todos' || t.status === status),
-      ),
-    [txs, kind, status],
-  )
+  const filtered = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase()
+    return txs.filter(
+      (t) =>
+        (kind === 'todos' || t.kind === kind) &&
+        (status === 'todos' || t.status === status) &&
+        (q === '' ||
+          t.who.toLowerCase().includes(q) ||
+          (t.email ?? '').toLowerCase().includes(q) ||
+          (t.phone ?? '').toLowerCase().includes(q) ||
+          String(t.number).padStart(6, '0').includes(q)),
+    )
+  }, [txs, kind, status, nameQuery])
 
   const stats = useMemo(() => {
     const loja = txs.filter((t) => t.kind === 'Loja')
     return {
       total: txs.length,
       pendentes: loja.filter((t) => t.status === 'pending').length,
-      enviados: loja.filter((t) => t.status === 'shipped').length,
-      entregues: loja.filter((t) => t.status === 'delivered').length,
+      fiado: txs.filter((t) => t.kind === 'PDV' && t.payment === 'fiado' && t.status === 'pending').length,
       pdv: txs.filter((t) => t.kind === 'PDV').length,
     }
   }, [txs])
@@ -86,11 +91,18 @@ export function Orders() {
       <section className="admin__stats">
         <div className="admin__stat"><strong>{stats.total}</strong><span>transações</span></div>
         <div className="admin__stat admin__stat--warn"><strong>{stats.pendentes}</strong><span>pedidos pendentes</span></div>
-        <div className="admin__stat"><strong>{stats.enviados}</strong><span>enviados</span></div>
+        <div className="admin__stat admin__stat--danger"><strong>{stats.fiado}</strong><span>fiados a receber</span></div>
         <div className="admin__stat"><strong>{stats.pdv}</strong><span>vendas no PDV</span></div>
       </section>
 
       <div className="admin__toolbar">
+        <input
+          type="search"
+          className="admin__search"
+          placeholder="Buscar por nome, e-mail, telefone ou nº…"
+          value={nameQuery}
+          onChange={(e) => setNameQuery(e.target.value)}
+        />
         <div className="orders__filters">
           {(['todos', 'Loja', 'PDV'] as const).map((k) => (
             <button key={k} className={`chip ${kind === k ? 'chip--active' : ''}`} onClick={() => setKind(k)}>
@@ -151,12 +163,35 @@ export function Orders() {
                         <div className="orders__totrow orders__totrow--grand"><span>Total</span><span>{BRL.format(t.total)}</span></div>
                       </div>
                       <div>
-                        <h4>{t.kind === 'Loja' ? 'Cliente & entrega' : 'Operador'}</h4>
+                        <h4>{t.kind === 'Loja' ? 'Cliente & entrega' : 'Venda no PDV'}</h4>
                         <p className="orders__meta">
                           <strong>{t.who}</strong>
                           {t.email && <><br />{t.email}</>}
                         </p>
+                        {t.kind === 'PDV' && t.operator && t.operator !== t.who && (
+                          <p className="orders__meta">Operador: {t.operator}</p>
+                        )}
+                        {t.kind === 'PDV' && t.phone && (
+                          <p className="orders__meta">Telefone: {t.phone}</p>
+                        )}
                         <p className="orders__meta">Pagamento: {PAYMENT_LABEL[t.payment] ?? t.payment}</p>
+                        {t.kind === 'PDV' && t.payment === 'fiado' && (
+                          t.status === 'pending' ? (
+                            <div className="orders__fiado">
+                              <span className="orders__status orders__status--pending">Pendente de pagamento</span>
+                              <button
+                                className="btn btn--primary orders__receive"
+                                onClick={() => {
+                                  if (confirm(`Confirmar o recebimento do fiado de "${t.who}"?`)) changeStatus(t, 'paid')
+                                }}
+                              >
+                                ✓ Marcar como recebido
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="orders__meta">✓ Fiado recebido.</p>
+                          )
+                        )}
                         {t.kind === 'Loja' && (
                           <>
                             <p className="orders__meta">

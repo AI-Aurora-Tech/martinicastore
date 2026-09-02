@@ -3470,3 +3470,7 @@ body { overflow-x: hidden; }
   animation: adminFlashIn 0.18s ease;
 }
 @keyframes adminFlashIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Pedidos: fiado a receber ---------- */
+.orders__fiado { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
+.orders__receive { padding: 0.45rem 0.9rem; font-size: 0.82rem; }

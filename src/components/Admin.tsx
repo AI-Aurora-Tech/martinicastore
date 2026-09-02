@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CLUB } from '../data/products'
+import { BRL, CLUB } from '../data/products'
 import type { CategoryId, Product, ProductKind } from '../types'
 import { useCatalog } from '../context/CatalogContext'
 import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
@@ -67,10 +67,18 @@ export function Admin({ operator, onExit, onLogout }: Props) {
 
   async function changeStock(p: Product, value: number) {
     const stock = Math.max(0, Math.round(value))
+    if (stock === (p.stock ?? 0)) return
+    if (!confirm(`Alterar o estoque de "${p.name}" de ${p.stock ?? 0} para ${stock}?`)) return
     upsertLocal({ ...p, stock })
     const { error: err } = await setStock(p.id, stock)
     if (err) setError(err)
     else flash(`Estoque de "${p.name}" atualizado (${stock}).`)
+  }
+
+  /** Salva um campo do produto com confirmação. */
+  async function confirmField(p: Product, changes: Partial<Product>, question: string, okMsg: string) {
+    if (!confirm(question)) return
+    await persist({ ...p, ...changes }, okMsg)
   }
 
   async function remove(p: Product) {
@@ -82,6 +90,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   }
 
   async function changeImage(p: Product, file: File) {
+    if (!confirm(`Trocar a imagem de "${p.name}"?`)) return
     const { url, error: err } = await uploadProductImage(file)
     if (err || !url) {
       setError(err ?? 'Falha ao enviar a imagem.')
@@ -251,9 +260,9 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                   product={p}
                   categoryLabel={categories.find((c) => c.id === p.category)?.label ?? p.category}
                   onChangeStock={(v) => changeStock(p, v)}
-                  onSavePrice={(price) => persist({ ...p, price })}
-                  onSaveCost={(cost) => persist({ ...p, cost })}
-                  onToggleActive={(active) => persist({ ...p, active })}
+                  onSavePrice={(price) => confirmField(p, { price }, `Alterar o preço de "${p.name}" para ${BRL.format(price)}?`, 'Preço atualizado.')}
+                  onSaveCost={(cost) => confirmField(p, { cost }, `Alterar o custo de "${p.name}" para ${BRL.format(cost)}?`, 'Custo atualizado.')}
+                  onToggleActive={(active) => confirmField(p, { active }, `${active ? 'Ativar' : 'Desativar'} "${p.name}" na loja?`, active ? 'Produto ativado.' : 'Produto desativado.')}
                   onUploadImage={(file) => changeImage(p, file)}
                   onEdit={() => setEditing(p)}
                   onDelete={() => remove(p)}
@@ -276,6 +285,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           existingIds={products.map((p) => p.id)}
           onClose={() => setCreating(false)}
           onSave={async (p) => {
+            if (!confirm(`Criar o produto "${p.name}"?`)) return
             await persist(p, 'Produto criado.')
             setCreating(false)
           }}
@@ -289,6 +299,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           product={editing}
           onClose={() => setEditing(null)}
           onSave={async (p) => {
+            if (!confirm(`Salvar as alterações de "${p.name}"?`)) return
             await persist(p, 'Alterações salvas.')
             setEditing(null)
           }}

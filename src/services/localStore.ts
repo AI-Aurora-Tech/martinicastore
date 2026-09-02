@@ -119,3 +119,12 @@ export function updateOrderStatusLocal(number: number, status: string): void {
     all.map((o) => (o.number === number ? { ...o, status } : o)),
   )
 }
+
+/** Atualiza o status de uma venda do PDV demo (por número). */
+export function updateSaleStatusLocal(number: number, status: string): void {
+  const all = readSales()
+  write(
+    SALES_KEY,
+    all.map((s) => (s.number === number ? { ...s, status: status as SaleRecord['status'] } : s)),
+  )
+}
