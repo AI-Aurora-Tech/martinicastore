@@ -195,9 +195,7 @@ export function BannersManager() {
   )
 }
 
-const URL_RE = /^https?:\/\//i
-
-/** Campo "Link ao clicar": Nenhum, Toda a loja, Categoria, Produto ou URL. */
+/** Campo "Link ao clicar": Nenhum, Toda a loja, Categoria ou Produto. */
 function LinkPicker({
   value,
   categories,
@@ -209,22 +207,10 @@ function LinkPicker({
   products: Product[]
   onCommit: (link: string) => void
 }) {
-  const isUrl = URL_RE.test(value)
-  const selectValue = isUrl ? '__url__' : value
-  const [url, setUrl] = useState(isUrl ? value : '')
-
-  function onSelect(v: string) {
-    if (v === '__url__') {
-      onCommit(url.trim()) // aplica a URL já digitada (ou vazio)
-    } else {
-      onCommit(v)
-    }
-  }
-
   return (
     <label>
       <span>Link ao clicar</span>
-      <select value={selectValue} onChange={(e) => onSelect(e.target.value)}>
+      <select value={value} onChange={(e) => onCommit(e.target.value)}>
         <option value="">— Nenhum —</option>
         <option value="todos">Toda a loja</option>
         <optgroup label="Categorias">
@@ -237,18 +223,7 @@ function LinkPicker({
             <option key={p.id} value={`produto:${p.id}`}>{p.name}</option>
           ))}
         </optgroup>
-        <option value="__url__">URL personalizada…</option>
       </select>
-      {selectValue === '__url__' && (
-        <input
-          type="url"
-          placeholder="https://…"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onBlur={() => onCommit(url.trim())}
-          style={{ marginTop: '0.35rem' }}
-        />
-      )}
     </label>
   )
 }
