@@ -3155,3 +3155,165 @@ body { overflow-x: hidden; }
     font-size: 16px !important;
   }
 }
+
+/* ================================================================= */
+/* Product card → clickable + Product Detail Page (PDP)               */
+/* ================================================================= */
+.card__media--btn {
+  border: none;
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+}
+.card__name-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.card__name-btn:hover { color: var(--red); }
+
+.btn--dark { background: var(--ink); color: #fff; }
+.btn--dark:hover { background: #000; }
+
+/* ---- PDP ---- */
+.pdp { min-height: 100vh; background: var(--bg); }
+.pdp__top {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 0;
+}
+.pdp__back {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.pdp__back:hover { border-color: var(--red); color: var(--red); }
+.pdp__body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.pdp__media {
+  position: relative;
+  border-radius: var(--radius);
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  position: sticky;
+  top: 1rem;
+}
+.pdp__img { width: 80%; height: 80%; }
+.pdp__info { display: flex; flex-direction: column; gap: 0.5rem; }
+.pdp__cat { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+.pdp__name { font-size: 1.6rem; line-height: 1.15; }
+.pdp__prices { display: flex; align-items: baseline; gap: 0.6rem; margin-top: 0.4rem; flex-wrap: wrap; }
+.pdp__old { color: var(--muted); text-decoration: line-through; font-size: 1rem; }
+.pdp__price { font-size: 1.9rem; font-weight: 800; color: var(--ink); }
+.pdp__off { background: #e9f9ef; color: var(--green); font-weight: 800; font-size: 0.85rem; padding: 0.15rem 0.5rem; border-radius: 6px; }
+.pdp__installment { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.pdp__stock { font-size: 0.9rem; font-weight: 700; margin: 0.3rem 0; }
+.pdp__stock--low { color: var(--red); }
+.pdp__stock--out { color: #b3261e; }
+.pdp__block { margin-top: 0.6rem; }
+.pdp__label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 0.4rem; }
+.pdp__sizes { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.pdp__qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.pdp__qty button { width: 42px; height: 42px; border: none; background: var(--surface); font-size: 1.2rem; cursor: pointer; }
+.pdp__qty button:hover { background: var(--bg); }
+.pdp__qty span { min-width: 44px; text-align: center; font-weight: 800; }
+.pdp__actions { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
+.pdp__add, .pdp__buy { flex: 1; min-width: 160px; }
+.pdp__hint { color: var(--muted); font-size: 0.82rem; margin: 0.4rem 0 0; }
+.pdp__desc, .pdp__specs { margin-top: 1.5rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.pdp__desc h2, .pdp__specs h2 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+.pdp__desc p { color: var(--ink-soft); line-height: 1.6; margin: 0; }
+.pdp__specs dl { display: grid; gap: 0.4rem; margin: 0; }
+.pdp__specs dl > div { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed var(--line); padding-bottom: 0.4rem; }
+.pdp__specs dt { color: var(--muted); font-size: 0.88rem; }
+.pdp__specs dd { margin: 0; font-weight: 600; font-size: 0.88rem; text-align: right; }
+.pdp__toast {
+  position: sticky;
+  bottom: 0;
+  background: var(--ink);
+  color: #fff;
+  text-align: center;
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+}
+.pdp__toast-link { background: none; border: none; color: var(--gold); font-weight: 800; cursor: pointer; text-decoration: underline; }
+
+@media (max-width: 780px) {
+  .pdp__body { grid-template-columns: 1fr; gap: 1rem; }
+  .pdp__media { position: relative; top: auto; aspect-ratio: 4 / 3; padding: 1.2rem; }
+  .pdp__name { font-size: 1.3rem; }
+  .pdp__price { font-size: 1.6rem; }
+  .pdp__actions { position: sticky; bottom: 0.6rem; }
+}
+
+/* ---- Admin: edit button + row actions ---- */
+.admin__rowactions { display: flex; gap: 0.3rem; justify-content: flex-end; }
+.admin__edit {
+  border: none;
+  background: #eef2ff;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.admin__edit:hover { background: #dfe6ff; }
+
+/* ================================================================= */
+/* Checkout — responsivo no mobile                                    */
+/* ================================================================= */
+@media (max-width: 520px) {
+  .checkout__body { padding: 1rem 0.85rem; }
+  .checkout__card { padding: 1rem; }
+  .checkout__cep { gap: 0.5rem; }
+  .checkout__field--cep { flex: 1 1 100%; }
+  .checkout__field--cep input { width: 100%; }
+  .checkout__calc { flex: 1 1 auto; }
+  .checkout__cep-help { flex: 1 1 100%; align-self: flex-start; }
+  .checkout__ship-opt { grid-template-columns: auto 1fr auto; row-gap: 0.2rem; }
+  .checkout__ship-days { grid-column: 2 / 3; }
+  .custauth__tabs button { font-size: 0.82rem; padding: 0.5rem 0.3rem; }
+}
+
+/* Correção de overflow do checkout no mobile: itens de grid/flex precisam de
+   min-width:0 para poderem encolher abaixo do conteúdo (senão "estouram" a
+   largura e são cortados). */
+.checkout__body { min-width: 0; }
+.checkout__main,
+.checkout__summary,
+.checkout__card,
+.checkout__field,
+.custauth,
+.custauth__field { min-width: 0; }
+.checkout__field input,
+.custauth__field input,
+.checkout__card input,
+.checkout__card select,
+.checkout__card textarea { max-width: 100%; min-width: 0; }
+.checkout__items li { min-width: 0; }
+.checkout__item-info { min-width: 0; }
+.checkout__item-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

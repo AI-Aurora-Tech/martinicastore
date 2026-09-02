@@ -7,9 +7,10 @@ import { StarRating } from './StarRating'
 
 interface Props {
   product: Product
+  onOpen?: (product: Product) => void
 }
 
-export function ProductCard({ product }: Props) {
+export function ProductCard({ product, onOpen }: Props) {
   const { addItem } = useCart()
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0])
   const [added, setAdded] = useState(false)
@@ -32,7 +33,13 @@ export function ProductCard({ product }: Props) {
 
   return (
     <article className={`card ${soldOut ? 'card--out' : ''}`}>
-      <div className="card__media" style={{ background: `${product.colors[0]}14` }}>
+      <button
+        type="button"
+        className="card__media card__media--btn"
+        style={{ background: `${product.colors[0]}14` }}
+        onClick={() => onOpen?.(product)}
+        aria-label={`Ver detalhes de ${product.name}`}
+      >
         {product.badge && !soldOut && <span className="card__badge">{product.badge}</span>}
         {discount > 0 && !soldOut && <span className="card__discount">-{discount}%</span>}
         {soldOut && <span className="card__soldout">Esgotado</span>}
@@ -43,10 +50,14 @@ export function ProductCard({ product }: Props) {
           alt={product.name}
           className="card__img"
         />
-      </div>
+      </button>
 
       <div className="card__body">
-        <h3 className="card__name">{product.name}</h3>
+        <h3 className="card__name">
+          <button type="button" className="card__name-btn" onClick={() => onOpen?.(product)}>
+            {product.name}
+          </button>
+        </h3>
         <StarRating rating={product.rating} reviews={product.reviews} />
 
         <div className="card__prices">

@@ -31,6 +31,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<Product | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const list = useMemo(() => {
@@ -237,6 +238,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                   onSaveCost={(cost) => persist({ ...p, cost })}
                   onToggleActive={(active) => persist({ ...p, active })}
                   onUploadImage={(file) => changeImage(p, file)}
+                  onEdit={() => setEditing(p)}
                   onDelete={() => remove(p)}
                 />
               ))}
@@ -252,13 +254,26 @@ export function Admin({ operator, onExit, onLogout }: Props) {
       </div>
 
       {creating && (
-        <NewProductModal
+        <ProductModal
           categories={categories.map((c) => c.id)}
           existingIds={products.map((p) => p.id)}
           onClose={() => setCreating(false)}
-          onCreate={async (p) => {
+          onSave={async (p) => {
             await persist(p)
             setCreating(false)
+          }}
+        />
+      )}
+
+      {editing && (
+        <ProductModal
+          categories={categories.map((c) => c.id)}
+          existingIds={products.map((p) => p.id)}
+          product={editing}
+          onClose={() => setEditing(null)}
+          onSave={async (p) => {
+            await persist(p)
+            setEditing(null)
           }}
         />
       )}
@@ -276,11 +291,12 @@ interface RowProps {
   onSaveCost: (cost: number) => void
   onToggleActive: (active: boolean) => void
   onUploadImage: (file: File) => void
+  onEdit: () => void
   onDelete: () => void
 }
 
 function AdminRow({
-  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onDelete,
+  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete,
 }: RowProps) {
   const stock = product.stock ?? 0
   const cost = product.cost ?? 0
@@ -398,9 +414,14 @@ function AdminRow({
         </label>
       </td>
       <td>
-        <button className="admin__del" onClick={onDelete} aria-label={`Excluir ${product.name}`}>
-          🗑
-        </button>
+        <div className="admin__rowactions">
+          <button className="admin__edit" onClick={onEdit} aria-label={`Editar ${product.name}`} title="Editar informações do produto">
+            ✏️
+          </button>
+          <button className="admin__del" onClick={onDelete} aria-label={`Excluir ${product.name}`}>
+            🗑
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -411,21 +432,27 @@ function AdminRow({
 interface ModalProps {
   categories: string[]
   existingIds: string[]
+  /** Quando presente, o modal edita um produto existente. */
+  product?: Product
   onClose: () => void
-  onCreate: (p: Product) => void
+  onSave: (p: Product) => void
 }
 
-function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalProps) {
-  const [id, setId] = useState('')
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState(categories[0] ?? 'camisas')
-  const [kind, setKind] = useState<ProductKind>('jersey')
-  const [price, setPrice] = useState('')
-  const [costV, setCostV] = useState('')
-  const [stock, setStock] = useState('0')
-  const [weight, setWeight] = useState('300')
-  const [description, setDescription] = useState('')
-  const [image, setImage] = useState<string | undefined>(undefined)
+function ProductModal({ categories, existingIds, product, onClose, onSave }: ModalProps) {
+  const isEdit = !!product
+  const [id, setId] = useState(product?.id ?? '')
+  const [name, setName] = useState(product?.name ?? '')
+  const [category, setCategory] = useState(product?.category ?? categories[0] ?? 'camisas')
+  const [kind, setKind] = useState<ProductKind>(product?.kind ?? 'jersey')
+  const [price, setPrice] = useState(product ? String(product.price) : '')
+  const [oldPrice, setOldPrice] = useState(product?.oldPrice ? String(product.oldPrice) : '')
+  const [costV, setCostV] = useState(product?.cost ? String(product.cost) : '')
+  const [stock, setStock] = useState(String(product?.stock ?? 0))
+  const [weight, setWeight] = useState(String(product?.weight ?? 300))
+  const [badge, setBadge] = useState(product?.badge ?? '')
+  const [sizes, setSizes] = useState((product?.sizes ?? []).join(', '))
+  const [description, setDescription] = useState(product?.description ?? '')
+  const [image, setImage] = useState<string | undefined>(product?.image)
   const [imgBusy, setImgBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -446,24 +473,30 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
     const cleanId = id.trim().toLowerCase()
     const priceNum = Number(price.replace(',', '.'))
     if (!cleanId) return setErr('Informe um código (id).')
-    if (existingIds.includes(cleanId)) return setErr('Já existe um produto com esse código.')
+    if (!isEdit && existingIds.includes(cleanId)) return setErr('Já existe um produto com esse código.')
     if (!name.trim()) return setErr('Informe o nome.')
     if (Number.isNaN(priceNum) || priceNum < 0) return setErr('Preço inválido.')
 
-    onCreate({
+    const oldPriceNum = Number(oldPrice.replace(',', '.'))
+    const sizeList = sizes.split(',').map((s) => s.trim()).filter(Boolean)
+
+    onSave({
+      // Preserva campos não editáveis aqui (rating/reviews) ao editar.
+      ...(product ?? { rating: 5, reviews: 0 }),
       id: cleanId,
       name: name.trim(),
       category: category as CategoryId,
       kind,
       price: priceNum,
-      colors: [CLUB.primary, CLUB.dark],
+      oldPrice: oldPrice.trim() && !Number.isNaN(oldPriceNum) && oldPriceNum > 0 ? oldPriceNum : undefined,
+      colors: product?.colors ?? [CLUB.primary, CLUB.dark],
+      badge: badge.trim() || undefined,
+      sizes: sizeList.length ? sizeList : undefined,
       description: description.trim(),
-      rating: 5,
-      reviews: 0,
       cost: Math.max(0, Number(costV.replace(',', '.')) || 0),
       stock: Math.max(0, Math.round(Number(stock) || 0)),
       weight: Math.max(1, Math.round(Number(weight) || 300)),
-      active: true,
+      active: product?.active ?? true,
       image,
     })
   }
@@ -471,7 +504,7 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
   return (
     <div className="pdv__receipt-overlay" onClick={onClose}>
       <form className="admin__modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-        <h3>Novo produto</h3>
+        <h3>{isEdit ? 'Editar produto' : 'Novo produto'}</h3>
         <div className="admin__form-grid">
           <div className="admin__form-full admin__imgfield">
             <span className="admin__imgfield-label">Imagem do produto</span>
@@ -497,7 +530,9 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
               </div>
             </div>
           </div>
-          <label>Código (id)<input value={id} onChange={(e) => setId(e.target.value)} placeholder="ex.: cam-07" /></label>
+          <label>Código (id)
+            <input value={id} onChange={(e) => setId(e.target.value)} placeholder="ex.: cam-07" disabled={isEdit} />
+          </label>
           <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" /></label>
           <label>Categoria
             <select value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -510,17 +545,22 @@ function NewProductModal({ categories, existingIds, onClose, onCreate }: ModalPr
             </select>
           </label>
           <label>Preço de venda (R$)<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" /></label>
+          <label>Preço "de" (R$) — opcional<input inputMode="decimal" value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="0,00" /></label>
           <label>Preço de custo (R$)<input inputMode="decimal" value={costV} onChange={(e) => setCostV(e.target.value)} placeholder="0,00" /></label>
           <label>Estoque<input inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} /></label>
           <label>Peso (g) — frete<input inputMode="numeric" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
+          <label>Selo/etiqueta — opcional<input value={badge} onChange={(e) => setBadge(e.target.value)} placeholder="ex.: Lançamento" /></label>
+          <label className="admin__form-full">Tamanhos (separados por vírgula)
+            <input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="ex.: P, M, G, GG" />
+          </label>
           <label className="admin__form-full">Descrição
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Descrição que aparece na página do produto" />
           </label>
         </div>
         {err && <p className="pdvlogin__error">⚠️ {err}</p>}
         <div className="admin__modal-actions">
           <button type="button" className="btn btn--ghost admin__cancel" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn btn--primary">Criar produto</button>
+          <button type="submit" className="btn btn--primary">{isEdit ? 'Salvar alterações' : 'Criar produto'}</button>
         </div>
       </form>
     </div>

@@ -7,17 +7,25 @@ import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
 import { Backoffice } from './components/Backoffice'
 import { Checkout } from './components/Checkout'
+import { ProductDetail } from './components/ProductDetail'
 import { LegalPage, type LegalSection } from './components/LegalPage'
 import { useCatalog } from './context/CatalogContext'
-import type { CategoryId } from './types'
+import type { CategoryId, Product } from './types'
 
 /** A área da equipe (PDV + Gestão) fica numa URL separada da loja: /gestao. */
 const IS_BACKOFFICE = /^\/(gestao|admin|pdv)(\/|$)/.test(window.location.pathname)
 
 export default function App() {
   const { products, categories, loading } = useCatalog()
-  const [view, setView] = useState<'loja' | 'checkout' | 'legal'>('loja')
+  const [view, setView] = useState<'loja' | 'checkout' | 'legal' | 'produto'>('loja')
   const [legalSection, setLegalSection] = useState<LegalSection>('trocas')
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+
+  function openProduct(p: Product) {
+    setSelectedProduct(p)
+    setView('produto')
+    window.scrollTo({ top: 0 })
+  }
 
   function openLegal(section: LegalSection) {
     setLegalSection(section)
@@ -83,6 +91,16 @@ export default function App() {
 
   if (view === 'legal') {
     return <LegalPage initial={legalSection} onExit={() => setView('loja')} />
+  }
+
+  if (view === 'produto' && selectedProduct) {
+    return (
+      <ProductDetail
+        product={selectedProduct}
+        onExit={() => setView('loja')}
+        onGoCheckout={() => setView('checkout')}
+      />
+    )
   }
 
   return (
@@ -159,7 +177,7 @@ export default function App() {
         ) : (
           <div className="grid">
             {filtered.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={p} onOpen={openProduct} />
             ))}
           </div>
         )}
