@@ -5,17 +5,18 @@ import { Benefits } from './components/Benefits'
 import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
-import { AuthGate } from './components/AuthGate'
-import { PDV } from './components/PDV'
-import { Admin } from './components/Admin'
+import { Backoffice } from './components/Backoffice'
 import { Checkout } from './components/Checkout'
 import { LegalPage, type LegalSection } from './components/LegalPage'
 import { useCatalog } from './context/CatalogContext'
 import type { CategoryId } from './types'
 
+/** A área da equipe (PDV + Gestão) fica numa URL separada da loja: /gestao. */
+const IS_BACKOFFICE = /^\/(gestao|admin|pdv)(\/|$)/.test(window.location.pathname)
+
 export default function App() {
   const { products, categories, loading } = useCatalog()
-  const [view, setView] = useState<'loja' | 'pdv' | 'admin' | 'checkout' | 'legal'>('loja')
+  const [view, setView] = useState<'loja' | 'checkout' | 'legal'>('loja')
   const [legalSection, setLegalSection] = useState<LegalSection>('trocas')
 
   function openLegal(section: LegalSection) {
@@ -71,24 +72,9 @@ export default function App() {
       ? 'Destaques da loja'
       : activeLabel
 
-  if (view === 'pdv') {
-    return (
-      <AuthGate subtitle="Acesso ao Ponto de Venda" onExit={() => setView('loja')}>
-        {(operator, logout) => (
-          <PDV operator={operator} onLogout={logout} onExit={() => setView('loja')} />
-        )}
-      </AuthGate>
-    )
-  }
-
-  if (view === 'admin') {
-    return (
-      <AuthGate subtitle="Painel administrativo" onExit={() => setView('loja')}>
-        {(operator, logout) => (
-          <Admin operator={operator} onLogout={logout} onExit={() => setView('loja')} />
-        )}
-      </AuthGate>
-    )
+  // Área da equipe (PDV + Gestão) numa URL separada da loja.
+  if (IS_BACKOFFICE) {
+    return <Backoffice />
   }
 
   if (view === 'checkout') {
@@ -106,8 +92,6 @@ export default function App() {
         onSelect={selectCategory}
         query={query}
         onQuery={setQuery}
-        onOpenPDV={() => setView('pdv')}
-        onOpenAdmin={() => setView('admin')}
       />
 
       {payNotice && (

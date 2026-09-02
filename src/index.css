@@ -2874,3 +2874,51 @@ button {
 @media (max-width: 560px) {
   .legal__content { padding: 1.4rem 1.2rem; border-radius: 0; }
 }
+
+/* ---------- Backoffice (área da equipe: /gestao) ---------- */
+.backoffice__switch {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  background: #0d0d0f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.backoffice__brand {
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  margin-right: 0.4rem;
+  opacity: 0.85;
+}
+.backoffice__tab {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  color: #eaeaea;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.backoffice__tab:hover { background: rgba(255, 255, 255, 0.16); }
+.backoffice__tab.is-active {
+  background: var(--red, #ff6a00);
+  color: #fff;
+}
+.backoffice__store {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #eaeaea;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.backoffice__store:hover { border-color: var(--red, #ff6a00); color: #fff; }
+
+/* Link discreto de acesso da equipe no rodapé */
+.footer__staff { opacity: 0.75; }

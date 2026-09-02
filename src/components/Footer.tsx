@@ -87,7 +87,8 @@ export function Footer({ onLegal }: { onLegal: (section: LegalSection) => void }
         <p>
           <button type="button" className="footer__link" onClick={() => onLegal('privacidade')}>Política de privacidade</button> ·{' '}
           <button type="button" className="footer__link" onClick={() => onLegal('termos')}>Termos de uso</button> ·{' '}
-          <button type="button" className="footer__link" onClick={() => onLegal('trocas')}>Trocas e devoluções</button>
+          <button type="button" className="footer__link" onClick={() => onLegal('trocas')}>Trocas e devoluções</button> ·{' '}
+          <a className="footer__link footer__staff" href="/gestao">Área da equipe</a>
         </p>
       </div>
     </footer>
