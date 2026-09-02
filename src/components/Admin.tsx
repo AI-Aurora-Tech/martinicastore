@@ -152,6 +152,11 @@ export function Admin({ operator, onExit, onLogout }: Props) {
             )}
           </div>
         )}
+        {source === 'supabase' && catalogError && (
+          <div className="admin__banner admin__banner--error">
+            ⚠️ <strong>Estoque por variação indisponível</strong> — {catalogError}
+          </div>
+        )}
         {source === 'demo' && isSupabaseConfigured && (
           <div className="admin__banner admin__banner--error">
             ⚠️ <strong>Supabase configurado, mas a leitura falhou</strong> — exibindo

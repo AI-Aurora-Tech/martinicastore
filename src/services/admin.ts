@@ -93,7 +93,19 @@ export async function uploadProductImage(file: File): Promise<UploadResult> {
  */
 export async function saveProduct(p: Product): Promise<SaveResult> {
   if (!isSupabaseConfigured || !supabase) return { error: null }
-  const { error } = await supabase.from('products').upsert(toRow(p))
+  const row = toRow(p)
+  const { error } = await supabase.from('products').upsert(row)
+  if (error && /variants/i.test(error.message ?? '')) {
+    // Coluna `variants` ainda não existe (migração 0009 não aplicada): salva o
+    // produto sem as variações e avisa. As variações só persistem após a migração.
+    const { variants: _drop, ...rest } = row
+    const retry = await supabase.from('products').upsert(rest)
+    if (retry.error) return { error: retry.error.message }
+    return {
+      error:
+        'Produto salvo, MAS as variações não foram gravadas: rode a migração 0009_variants.sql (ou o supabase/policies.sql) para ativar o estoque por variação.',
+    }
+  }
   return { error: error?.message ?? null }
 }
 

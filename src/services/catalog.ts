@@ -112,18 +112,27 @@ export async function loadCatalog(): Promise<Catalog> {
     }
   }
 
-  try {
-    const [cats, prods] = await Promise.all([
-      supabase.from('categories').select('id,label').order('sort', { ascending: true }),
-      supabase
-        .from('products')
-        .select(
-          'id,name,category_id,kind,price,old_price,cost,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active,image_url,weight,variants',
-        )
-        .order('sort', { ascending: true }),
-    ])
+  const BASE_COLS =
+    'id,name,category_id,kind,price,old_price,cost,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active,image_url,weight'
+  let warn: string | undefined
 
+  try {
+    const cats = await supabase.from('categories').select('id,label').order('sort', { ascending: true })
     if (cats.error) throw cats.error
+
+    // Tenta ler com a coluna `variants`. Se ela ainda não existir (migração 0009
+    // não aplicada), tenta de novo sem ela — assim os produtos reais continuam
+    // aparecendo, com um aviso para rodar a migração.
+    type ProdResp = { data: unknown; error: { message?: string } | null }
+    let prods: ProdResp = await supabase
+      .from('products')
+      .select(`${BASE_COLS},variants`)
+      .order('sort', { ascending: true })
+    if (prods.error && /variants/i.test(prods.error.message ?? '')) {
+      warn =
+        'Coluna de variações ausente: rode a migração 0009_variants.sql (ou o supabase/policies.sql) para ativar o estoque por variação.'
+      prods = await supabase.from('products').select(BASE_COLS).order('sort', { ascending: true })
+    }
     if (prods.error) throw prods.error
 
     const categories = (cats.data as CategoryRow[]).map((c) => ({
@@ -133,12 +142,11 @@ export async function loadCatalog(): Promise<Catalog> {
     const products = (prods.data as ProductRow[]).map(toProduct)
 
     // Dados reais do banco — mesmo que `products` esteja vazio.
-    // As categorias caem para a lista padrão apenas se ainda não houver
-    // nenhuma cadastrada, para o formulário do Admin continuar utilizável.
     return {
       products,
       categories: categories.length > 0 ? categories : seedCategories,
       source: 'supabase',
+      error: warn,
     }
   } catch (err) {
     console.warn('[catalog] falha ao carregar do Supabase, usando seed local.', err)
