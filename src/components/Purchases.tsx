@@ -75,6 +75,7 @@ export function Purchases({ operatorEmail }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
   const [history, setHistory] = useState<PurchaseSummary[]>([])
 
   function loadHistory() {
@@ -415,6 +416,7 @@ export function Purchases({ operatorEmail }: Props) {
           <ul className="purch__hist-list">
             {history.map((h) => (
               <li key={h.id} className="purch__hist">
+                <div className="purch__hist-row">
                 <div className="purch__hist-main">
                   <strong>nº {String(h.number).padStart(6, '0')}</strong>
                   <small>
@@ -454,6 +456,29 @@ export function Purchases({ operatorEmail }: Props) {
                     )}
                   </div>
                 </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="purch__hist-toggle"
+                  onClick={() => setOpenId(openId === h.id ? null : h.id)}
+                >
+                  {openId === h.id
+                    ? '▲ ocultar itens'
+                    : `▼ ver ${h.items.length} ${h.items.length === 1 ? 'item comprado' : 'itens comprados'}`}
+                </button>
+                {openId === h.id && (
+                  <ul className="purch__hist-items">
+                    {h.items.map((it, idx) => (
+                      <li key={idx}>
+                        <span>{it.quantity}x {it.name}{it.size ? ` · ${it.size}` : ''}</span>
+                        <span className="purch__hist-itemcost">
+                          {BRL.format(it.unitCost)}/un · {BRL.format(it.unitCost * it.quantity)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

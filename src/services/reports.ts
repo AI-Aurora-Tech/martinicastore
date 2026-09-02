@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { readOrders, readSales } from './localStore'
+import { listContas, type Conta } from './expenses'
 
 export interface ProductProfit {
   productId: string
@@ -23,6 +24,10 @@ export interface ReportData {
   receivedProfit: number
   /** Lucro bruto ainda a receber (fiados/pedidos pendentes). */
   pendingProfit: number
+  /** Total de despesas do período (contas da loja + compras). */
+  expensesTotal: number
+  /** Saldo líquido do período = faturamento − despesas. */
+  netProfit: number
   itemsSold: number
   salesCount: number
   ordersCount: number
@@ -45,9 +50,16 @@ export interface Tx {
 
 export type Period = 'dia' | 'semana' | 'mes' | 'tudo'
 
-/** Recorta as transações pelo período escolhido (baseado em `when`). */
-export function filterByPeriod(txs: Tx[], period: Period): Tx[] {
-  if (period === 'tudo') return txs
+/**
+ * Recorta itens (com campo `when`) pelo período escolhido. Quando period='mes'
+ * e `month` (YYYY-MM) é informado, filtra exatamente aquele mês; sem `month`,
+ * usa o mês atual.
+ */
+export function filterByPeriod<T extends { when: string }>(items: T[], period: Period, month?: string): T[] {
+  if (period === 'tudo') return items
+  if (period === 'mes' && month) {
+    return items.filter((t) => (t.when || '').slice(0, 7) === month)
+  }
   const now = new Date()
   let start: Date
   if (period === 'dia') {
@@ -58,7 +70,7 @@ export function filterByPeriod(txs: Tx[], period: Period): Tx[] {
     start = new Date(now.getFullYear(), now.getMonth(), 1)
   }
   const from = start.getTime()
-  return txs.filter((t) => {
+  return items.filter((t) => {
     const d = new Date(t.when).getTime()
     return !Number.isNaN(d) && d >= from
   })
@@ -72,7 +84,7 @@ function isReceived(kind: 'PDV' | 'Loja', payment: string, status?: string): boo
   return s === 'paid' || s === 'shipped' || s === 'delivered' || s === 'concluida'
 }
 
-export function aggregate(txs: Tx[], source: 'supabase' | 'demo'): ReportData {
+export function aggregate(txs: Tx[], contas: Conta[], source: 'supabase' | 'demo'): ReportData {
   let revenue = 0
   let cost = 0
   let receivedRevenue = 0
@@ -120,6 +132,8 @@ export function aggregate(txs: Tx[], source: 'supabase' | 'demo'): ReportData {
   }
 
   const profit = revenue - cost
+  const expensesTotal = contas.reduce((s, c) => s + c.amount, 0)
+  const netProfit = revenue - expensesTotal
   const count = salesCount + ordersCount
   const byProduct = [...prodMap.values()]
     .map((p) => ({ ...p, profit: p.revenue - p.cost, margin: p.revenue ? (p.revenue - p.cost) / p.revenue : 0 }))
@@ -139,6 +153,8 @@ export function aggregate(txs: Tx[], source: 'supabase' | 'demo'): ReportData {
     receivedRevenue,
     receivedProfit,
     pendingProfit,
+    expensesTotal,
+    netProfit,
     itemsSold,
     salesCount,
     ordersCount,
@@ -237,8 +253,15 @@ export async function fetchTransactions(): Promise<{ txs: Tx[]; source: 'supabas
   return { txs, source: 'supabase' }
 }
 
+/** Busca as contas (despesas + compras) para o relatório. */
+export async function fetchContas(): Promise<Conta[]> {
+  return listContas()
+}
+
 /** Compatibilidade: relatório consolidado de tudo. */
 export async function loadReport(): Promise<ReportData> {
-  const { txs, source } = await fetchTransactions()
-  return aggregate(txs, source)
+  const [{ txs, source }, contas] = await Promise.all([fetchTransactions(), fetchContas()])
+  return aggregate(txs, contas, source)
 }
+
+export type { Conta } from './expenses'

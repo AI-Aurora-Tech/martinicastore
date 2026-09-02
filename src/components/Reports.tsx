@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { BRL } from '../data/products'
 import {
   aggregate,
+  fetchContas,
   fetchTransactions,
   filterByPeriod,
+  type Conta,
   type Period,
   type ReportData,
   type Tx,
@@ -34,19 +36,30 @@ function when(iso: string) {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR')
 }
+function currentMonth() {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
+}
+function monthLabel(m: string) {
+  const [y, mo] = m.split('-').map(Number)
+  const d = new Date(y, (mo || 1) - 1, 1)
+  return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+}
 
 export function Reports() {
   const [txs, setTxs] = useState<Tx[]>([])
+  const [contas, setContas] = useState<Conta[]>([])
   const [source, setSource] = useState<'supabase' | 'demo'>('demo')
   const [period, setPeriod] = useState<Period>('mes')
+  const [month, setMonth] = useState<string>(currentMonth())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
     setError(null)
-    fetchTransactions()
-      .then((r) => { setTxs(r.txs); setSource(r.source) })
+    Promise.all([fetchTransactions(), fetchContas()])
+      .then(([r, c]) => { setTxs(r.txs); setSource(r.source); setContas(c) })
       .catch((e) => setError(e instanceof Error ? e.message : 'Falha ao carregar relatório.'))
       .finally(() => setLoading(false))
   }
@@ -54,8 +67,12 @@ export function Reports() {
   useEffect(() => load(), [])
 
   const data: ReportData = useMemo(
-    () => aggregate(filterByPeriod(txs, period), source),
-    [txs, period, source],
+    () => aggregate(
+      filterByPeriod(txs, period, month),
+      filterByPeriod(contas, period, month),
+      source,
+    ),
+    [txs, contas, period, month, source],
   )
 
   if (loading) {
@@ -84,13 +101,22 @@ export function Reports() {
               {pd.label}
             </button>
           ))}
+          {period === 'mes' && (
+            <input
+              type="month"
+              className="reports__month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value || currentMonth())}
+            />
+          )}
         </div>
         <button className="reports__refresh" onClick={load}>↻ Atualizar</button>
       </div>
       <p className="reports__hint">
-        Consolida <strong>vendas do PDV</strong> e <strong>pedidos da loja</strong>.
-        Lucro bruto = faturamento − custo. <strong>Recebido</strong> exclui fiados e
-        pedidos ainda pendentes de pagamento.
+        {period === 'mes' ? <>Mês de <strong>{monthLabel(month)}</strong>. </> : null}
+        Consolida <strong>vendas</strong>, <strong>pedidos</strong> e <strong>despesas</strong>.
+        Lucro bruto = faturamento − custo. Lucro líquido = faturamento − despesas
+        (contas da loja + compras). <strong>Recebido</strong> exclui fiados/pedidos pendentes.
       </p>
 
       {empty ? (
@@ -132,6 +158,21 @@ export function Reports() {
             <div className="reports__kpi">
               <span>Faturamento recebido</span>
               <strong>{BRL.format(data.receivedRevenue)}</strong>
+            </div>
+          </section>
+
+          <section className="reports__kpis reports__kpis--net">
+            <div className="reports__kpi">
+              <span>Receita bruta</span>
+              <strong>{BRL.format(data.revenue)}</strong>
+            </div>
+            <div className="reports__kpi reports__kpi--expense">
+              <span>Despesas (contas + compras)</span>
+              <strong>{BRL.format(data.expensesTotal)}</strong>
+            </div>
+            <div className={`reports__kpi reports__kpi--net ${data.netProfit >= 0 ? 'is-pos' : 'is-neg'}`}>
+              <span>Lucro líquido (receita − despesas)</span>
+              <strong>{BRL.format(data.netProfit)}</strong>
             </div>
           </section>
 
