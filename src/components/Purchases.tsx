@@ -12,6 +12,7 @@ import {
 import { hasVariants } from '../services/variants'
 import { listSuppliers } from '../services/suppliers'
 import { buildPurchaseText, waLink } from '../services/whatsapp'
+import { pdfTable, printReport } from '../services/exportPdf'
 import { SuppliersModal } from './SuppliersModal'
 
 interface Props {
@@ -231,6 +232,32 @@ export function Purchases({ operatorEmail }: Props) {
     setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} marcada como paga.`)
   }
 
+  function exportPdf() {
+    const rows = history.map((h) => {
+      const itens = h.items.map((i) => `${i.quantity}x ${i.name}${i.size ? ` (${i.size})` : ''}`).join('; ')
+      const pag = `${h.paymentMethod || '—'}${h.installments && h.installments.length > 1 ? ` ${h.installments.length}x` : ''}`
+      return [
+        String(h.number).padStart(6, '0'),
+        whenDate(h.when),
+        h.supplier || '—',
+        pag,
+        h.status === 'entregue' ? 'Entregue' : 'Pendente',
+        h.paid ? 'Paga' : 'A pagar',
+        itens,
+        BRL.format(h.total),
+      ]
+    })
+    const totalGeral = history.reduce((s, h) => s + h.total, 0)
+    const body =
+      pdfTable(
+        ['Nº', 'Data', 'Fornecedor', 'Pagamento', 'Entrega', 'Situação', 'Itens', 'Total'],
+        rows,
+        ['l', 'l', 'l', 'l', 'c', 'c', 'l', 'r'],
+      ) +
+      `<p style="text-align:right;font-weight:700;margin-top:4px">Total das compras: ${BRL.format(totalGeral)}</p>`
+    printReport('Compras (pedidos)', body)
+  }
+
   function sendWhatsApp() {
     if (!lastOrder) { setError('Registre o pedido antes de enviar pelo WhatsApp.'); return }
     const text = buildPurchaseText(
@@ -409,7 +436,10 @@ export function Purchases({ operatorEmail }: Props) {
       )}
 
       <section className="purch__history">
-        <h3 className="purch__title">Compras</h3>
+        <div className="purch__hist-head">
+          <h3 className="purch__title">Compras</h3>
+          <button className="reports__refresh" onClick={exportPdf} disabled={history.length === 0}>⤓ Exportar PDF</button>
+        </div>
         {history.length === 0 ? (
           <p className="purch__empty">Nenhuma compra registrada ainda.</p>
         ) : (

@@ -11,6 +11,7 @@ import { Purchases } from './Purchases'
 import { Despesas } from './Despesas'
 import { BannersManager } from './BannersManager'
 import { CategoriesManager } from './CategoriesManager'
+import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 interface Props {
@@ -58,6 +59,42 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     const low = products.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= LOW_STOCK).length
     return { total: products.length, units, out, low }
   }, [products])
+
+  function exportProductsPdf() {
+    const rows = list.map((p) => {
+      const price = p.price ?? 0
+      const cost = p.cost ?? 0
+      const margin = price > 0 ? `${(((price - cost) / price) * 100).toFixed(1)}%` : '—'
+      const variacoes = hasVariants(p)
+        ? (p.variants ?? []).map((v) => `${v.label}: ${v.stock}`).join('; ')
+        : '—'
+      return [
+        p.name,
+        p.id,
+        categories.find((c) => c.id === p.category)?.label ?? p.category,
+        BRL.format(cost),
+        BRL.format(price),
+        margin,
+        String(p.stock ?? 0),
+        variacoes,
+        p.active === false ? 'Não' : 'Sim',
+      ]
+    })
+    const body =
+      pdfSection(undefined, pdfKpis([
+        { label: 'Produtos', value: String(stats.total) },
+        { label: 'Unidades em estoque', value: String(stats.units) },
+        { label: `Estoque baixo (≤ ${LOW_STOCK})`, value: String(stats.low) },
+        { label: 'Esgotados', value: String(stats.out) },
+      ])) +
+      pdfTable(
+        ['Produto', 'Código', 'Categoria', 'Custo', 'Preço', 'Margem', 'Estoque', 'Variações', 'Ativo'],
+        rows,
+        ['l', 'l', 'l', 'r', 'r', 'r', 'r', 'l', 'c'],
+      )
+    const sub = cat === 'todos' ? 'Todas as categorias' : (categories.find((c) => c.id === cat)?.label ?? String(cat))
+    printReport('Produtos e estoque', body, sub)
+  }
 
   async function persist(next: Product, okMsg = 'Produto salvo.') {
     upsertLocal(next)
@@ -242,6 +279,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
           </select>
+          <button className="reports__refresh" onClick={exportProductsPdf} disabled={list.length === 0}>⤓ Exportar PDF</button>
           <button className="btn btn--primary admin__new" onClick={() => setCreating(true)}>
             + Novo produto
           </button>

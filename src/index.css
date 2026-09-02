@@ -2156,6 +2156,9 @@ button {
   flex-wrap: wrap;
 }
 .reports__hint { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.reports__headbtns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.reports__refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+.purch__hist-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .reports__refresh {
   border: 1px solid var(--line);
   background: var(--surface);

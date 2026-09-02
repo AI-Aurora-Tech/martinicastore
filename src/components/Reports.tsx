@@ -10,6 +10,7 @@ import {
   type ReportData,
   type Tx,
 } from '../services/reports'
+import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
 
 const PAYMENT_LABELS: Record<string, string> = {
   dinheiro: 'Dinheiro',
@@ -88,6 +89,40 @@ export function Reports() {
 
   const empty = data.salesCount + data.ordersCount === 0
 
+  const periodLabel =
+    period === 'dia' ? 'Hoje'
+      : period === 'semana' ? 'Últimos 7 dias'
+        : period === 'mes' ? monthLabel(month)
+          : 'Todo o período'
+
+  function exportPdf() {
+    const kpis = pdfKpis([
+      { label: 'Faturamento', value: BRL.format(data.revenue) },
+      { label: 'Custo (CMV)', value: BRL.format(data.cost) },
+      { label: 'Lucro bruto', value: BRL.format(data.profit) },
+      { label: 'Margem', value: pct(data.margin) },
+      { label: 'Despesas', value: BRL.format(data.expensesTotal) },
+      { label: 'Lucro líquido', value: BRL.format(data.netProfit) },
+      { label: 'Lucro já recebido', value: BRL.format(data.receivedProfit) },
+      { label: 'Lucro a receber', value: BRL.format(data.pendingProfit) },
+    ])
+    const prod = pdfTable(
+      ['Produto', 'Qtd', 'Faturamento', 'Custo', 'Lucro', 'Margem'],
+      data.byProduct.map((p) => [p.name, p.qty, BRL.format(p.revenue), BRL.format(p.cost), BRL.format(p.profit), pct(p.margin)]),
+      ['l', 'r', 'r', 'r', 'r', 'r'],
+    )
+    const pays = pdfTable(
+      ['Forma de pagamento', 'Qtd', 'Valor'],
+      data.byPayment.map((p) => [PAYMENT_LABELS[p.method] ?? p.method, p.count, BRL.format(p.revenue)]),
+      ['l', 'r', 'r'],
+    )
+    const body =
+      pdfSection('Resumo', kpis) +
+      pdfSection('Lucro por produto', prod) +
+      pdfSection('Por forma de pagamento', pays)
+    printReport('Relatório de vendas', body, periodLabel)
+  }
+
   return (
     <div className="reports">
       <div className="reports__head">
@@ -110,7 +145,10 @@ export function Reports() {
             />
           )}
         </div>
-        <button className="reports__refresh" onClick={load}>↻ Atualizar</button>
+        <div className="reports__headbtns">
+          <button className="reports__refresh" onClick={exportPdf} disabled={empty}>⤓ Exportar PDF</button>
+          <button className="reports__refresh" onClick={load}>↻ Atualizar</button>
+        </div>
       </div>
       <p className="reports__hint">
         {period === 'mes' ? <>Mês de <strong>{monthLabel(month)}</strong>. </> : null}

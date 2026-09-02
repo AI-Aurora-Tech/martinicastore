@@ -10,6 +10,7 @@ import {
   type Conta,
   type Expense,
 } from '../services/expenses'
+import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
 
 interface Props {
   operatorEmail?: string
@@ -127,6 +128,30 @@ export function Despesas({ operatorEmail }: Props) {
     setRecurring((prev) => prev.filter((x) => x.id !== c.refId))
   }
 
+  function exportPdf() {
+    const rows = filtered.map((c) => [
+      when(c.when),
+      c.description,
+      c.category ?? '—',
+      c.source === 'compra' ? 'Compra' : c.recurring ? 'Recorrente' : 'Avulsa',
+      BRL.format(c.amount),
+      c.paid ? 'Paga' : 'A pagar',
+    ])
+    const body =
+      pdfSection(undefined, pdfKpis([
+        { label: 'A pagar', value: BRL.format(totals.aPagar) },
+        { label: 'Já pago', value: BRL.format(totals.pago) },
+        { label: `Total ${scope === 'mes' ? 'do mês' : 'geral'}`, value: BRL.format(totals.aPagar + totals.pago) },
+      ])) +
+      pdfTable(
+        ['Vencimento', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Situação'],
+        rows,
+        ['l', 'l', 'l', 'l', 'r', 'c'],
+      )
+    const sub = `${scope === 'mes' ? 'Este mês' : 'Todas as datas'} · ${statusF === 'todas' ? 'todas' : statusF === 'aberto' ? 'a pagar' : 'pagas'}`
+    printReport('Despesas (contas da loja)', body, sub)
+  }
+
   async function postRecurring(exp: Expense) {
     if (busy) return
     if (!confirm(`Lançar "${exp.description}" (${BRL.format(exp.amount)}) como conta a pagar deste mês?`)) return
@@ -231,7 +256,8 @@ export function Despesas({ operatorEmail }: Props) {
             </button>
           ))}
         </div>
-        <button className="reports__refresh" onClick={load} style={{ marginLeft: 'auto' }}>↻ Atualizar</button>
+        <button className="reports__refresh" onClick={exportPdf} disabled={filtered.length === 0} style={{ marginLeft: 'auto' }}>⤓ Exportar PDF</button>
+        <button className="reports__refresh" onClick={load}>↻ Atualizar</button>
       </div>
 
       {filtered.length === 0 ? (

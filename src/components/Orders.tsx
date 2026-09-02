@@ -6,6 +6,7 @@ import {
   type OrderStatus,
   type Transaction,
 } from '../services/management'
+import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Pendente',
@@ -71,6 +72,37 @@ export function Orders() {
     }
   }, [txs])
 
+  function exportPdf() {
+    const rows = filtered.map((t) => [
+      t.kind,
+      String(t.number).padStart(6, '0'),
+      when(t.when),
+      t.who,
+      PAYMENT_LABEL[t.payment] ?? t.payment,
+      STATUS_LABEL[t.status] ?? t.status,
+      BRL.format(t.total),
+    ])
+    const totalGeral = filtered.reduce((s, t) => s + t.total, 0)
+    const body =
+      pdfSection(undefined, pdfKpis([
+        { label: 'Transações', value: String(stats.total) },
+        { label: 'Pedidos pendentes', value: String(stats.pendentes) },
+        { label: 'Fiados a receber', value: String(stats.fiado) },
+        { label: 'Vendas no PDV', value: String(stats.pdv) },
+      ])) +
+      pdfTable(
+        ['Tipo', 'Nº', 'Data', 'Cliente', 'Pagamento', 'Status', 'Total'],
+        rows,
+        ['c', 'l', 'l', 'l', 'l', 'c', 'r'],
+      ) +
+      `<p style="text-align:right;font-weight:700;margin-top:4px">Total: ${BRL.format(totalGeral)}</p>`
+    const parts = [
+      kind === 'todos' ? 'Todos' : kind,
+      status === 'todos' ? 'todos os status' : STATUS_LABEL[status] ?? status,
+    ]
+    printReport('Pedidos e vendas', body, parts.join(' · '))
+  }
+
   async function changeStatus(tx: Transaction, next: OrderStatus) {
     setTxs((prev) => prev.map((t) => (t.id === tx.id ? { ...t, status: next } : t)))
     const { error: err } = await updateOrderStatus(tx, next)
@@ -116,7 +148,8 @@ export function Orders() {
             <option key={s} value={s}>{STATUS_LABEL[s]}</option>
           ))}
         </select>
-        <button className="reports__refresh" onClick={load} style={{ marginLeft: 'auto' }}>↻ Atualizar</button>
+        <button className="reports__refresh" onClick={exportPdf} disabled={filtered.length === 0} style={{ marginLeft: 'auto' }}>⤓ Exportar PDF</button>
+        <button className="reports__refresh" onClick={load}>↻ Atualizar</button>
       </div>
 
       {filtered.length === 0 ? (
