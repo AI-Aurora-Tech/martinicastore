@@ -1,8 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useCatalog } from '../context/CatalogContext'
 import { deleteBanner, loadBanners, newBannerId, saveBanner } from '../services/banners'
-import { uploadProductImage } from '../services/admin'
 import type { Banner } from '../types'
+
+const ALLOWED = ['image/jpeg', 'image/png']
+const MAX_BYTES = 3 * 1024 * 1024
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = () => reject(r.error)
+    r.readAsDataURL(file)
+  })
+}
 
 /** Edição do banner principal da loja (um ou vários — vira carrossel). */
 export function BannersManager() {
@@ -22,23 +33,26 @@ export function BannersManager() {
   }, [])
 
   async function addFromFile(file: File) {
+    if (!ALLOWED.includes(file.type)) return setError('Envie um arquivo JPG ou PNG.')
+    if (file.size > MAX_BYTES) return setError('Imagem muito grande (máximo 3 MB).')
     setBusy(true)
     setError(null)
-    const { url, error: upErr } = await uploadProductImage(file)
-    if (upErr || !url) {
+    const dataUrl = await readAsDataUrl(file).catch(() => null)
+    if (!dataUrl) {
       setBusy(false)
-      return setError(upErr ?? 'Falha ao enviar a imagem.')
+      return setError('Não foi possível ler a imagem.')
     }
     const banner: Banner = {
       id: newBannerId(),
-      imageUrl: url,
+      imageUrl: '',
       active: true,
       sort: banners.length,
     }
-    const { error: sErr, banner: saved } = await saveBanner(banner)
+    // A imagem sobe pelo servidor (Edge Function), junto com a criação do banner.
+    const { error: sErr, banner: saved } = await saveBanner(banner, dataUrl)
     setBusy(false)
     if (sErr) return setError(sErr)
-    setBanners((b) => [...b, saved ?? banner])
+    if (saved) setBanners((b) => [...b, saved])
   }
 
   async function patch(b: Banner, changes: Partial<Banner>) {

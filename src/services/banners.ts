@@ -27,19 +27,6 @@ function toBanner(r: BannerRow): Banner {
   }
 }
 
-function toRow(b: Banner): BannerRow {
-  return {
-    id: b.id,
-    image_url: b.imageUrl,
-    headline: b.headline ?? null,
-    subtext: b.subtext ?? null,
-    cta_label: b.ctaLabel ?? null,
-    link: b.link ?? null,
-    active: b.active ?? true,
-    sort: b.sort ?? 0,
-  }
-}
-
 function readDemo(): Banner[] {
   try {
     const raw = localStorage.getItem(DEMO_KEY)
@@ -78,33 +65,48 @@ export interface BannerResult {
   banner?: Banner
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Extrai a mensagem de erro do corpo de uma resposta de Edge Function. */
+async function fnError(error: unknown): Promise<string> {
+  let detail = error instanceof Error ? error.message : String(error)
+  const ctx = (error as { context?: unknown })?.context
+  if (ctx && typeof (ctx as Response).json === 'function') {
+    try {
+      const body = await (ctx as Response).json()
+      if (body?.error) detail = body.error
+    } catch { /* ignore */ }
+  }
+  if (/failed to send a request|fetch/i.test(detail)) {
+    detail = "Não foi possível alcançar a função 'manage-banner'. Ela provavelmente ainda não foi publicada (faça o deploy) — veja BANNERS.md."
+  }
+  return detail
+}
 
-/** Cria ou atualiza um banner. No Supabase, banner novo deixa o banco gerar o
- *  uuid (o id local "bnr-..." só vale no modo demo). */
-export async function saveBanner(b: Banner): Promise<BannerResult> {
+/**
+ * Cria ou atualiza um banner. No Supabase a gravação é feita pela Edge Function
+ * `manage-banner` (service role), que confere se você é admin — evitando o erro
+ * de RLS. `imageDataUrl` (data URL) envia uma imagem nova ao servidor.
+ */
+export async function saveBanner(b: Banner, imageDataUrl?: string): Promise<BannerResult> {
   if (!isSupabaseConfigured || !supabase) {
+    const banner = imageDataUrl ? { ...b, imageUrl: imageDataUrl } : b
     const list = readDemo()
-    const idx = list.findIndex((x) => x.id === b.id)
-    if (idx === -1) list.push(b)
-    else list[idx] = b
+    const idx = list.findIndex((x) => x.id === banner.id)
+    if (idx === -1) list.push(banner)
+    else list[idx] = banner
     writeDemo(list)
-    return { error: null, banner: b }
+    return { error: null, banner }
   }
-
-  // Novo banner (id ainda não é um uuid do banco): INSERT sem id.
-  if (!UUID_RE.test(b.id)) {
-    const row = toRow(b)
-    delete (row as Partial<BannerRow>).id
-    const { data, error } = await supabase.from('banners').insert(row).select('*').single()
-    if (error) return { error: error.message }
-    return { error: null, banner: toBanner(data as BannerRow) }
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-banner', {
+      body: { action: 'save', banner: b, imageDataUrl },
+    })
+    if (error) return { error: await fnError(error) }
+    const d = data as { banner?: Banner; error?: string } | null
+    if (d?.error) return { error: d.error }
+    return { error: null, banner: d?.banner }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Falha ao salvar o banner.' }
   }
-
-  // Banner existente: upsert pelo uuid.
-  const { data, error } = await supabase.from('banners').upsert(toRow(b)).select('*').single()
-  if (error) return { error: error.message }
-  return { error: null, banner: toBanner(data as BannerRow) }
 }
 
 /** Remove um banner. */
@@ -113,8 +115,16 @@ export async function deleteBanner(id: string): Promise<BannerResult> {
     writeDemo(readDemo().filter((b) => b.id !== id))
     return { error: null }
   }
-  const { error } = await supabase.from('banners').delete().eq('id', id)
-  return { error: error?.message ?? null }
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-banner', {
+      body: { action: 'delete', id },
+    })
+    if (error) return { error: await fnError(error) }
+    const d = data as { error?: string } | null
+    return { error: d?.error ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Falha ao excluir o banner.' }
+  }
 }
 
 /** Gera um id simples para banners no modo demo. */
