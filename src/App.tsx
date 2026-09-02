@@ -125,7 +125,15 @@ export default function App() {
         </div>
       )}
 
-      {active === 'todos' && !query.trim() && <BannerCarousel onShop={selectCategory} />}
+      {active === 'todos' && !query.trim() && (
+        <BannerCarousel
+          onShop={selectCategory}
+          onOpenProduct={(id) => {
+            const p = products.find((x) => x.id === id)
+            if (p) openProduct(p)
+          }}
+        />
+      )}
 
       <Benefits />
 

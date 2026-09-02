@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useCatalog } from '../context/CatalogContext'
 import { deleteBanner, loadBanners, newBannerId, saveBanner } from '../services/banners'
-import type { Banner } from '../types'
+import type { Banner, Category, Product } from '../types'
 
 const ALLOWED = ['image/jpeg', 'image/png']
 const MAX_BYTES = 3 * 1024 * 1024
@@ -17,7 +17,7 @@ function readAsDataUrl(file: File): Promise<string> {
 
 /** Edição do banner principal da loja (um ou vários — vira carrossel). */
 export function BannersManager() {
-  const { categories } = useCatalog()
+  const { categories, products } = useCatalog()
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -164,16 +164,12 @@ export function BannersManager() {
                       onBlur={(e) => patch(b, { ctaLabel: e.target.value })}
                     />
                   </label>
-                  <label>
-                    <span>Link ao clicar</span>
-                    <select value={b.link ?? ''} onChange={(e) => patch(b, { link: e.target.value })}>
-                      <option value="">— Nenhum —</option>
-                      <option value="todos">Toda a loja</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>Categoria: {c.label}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <LinkPicker
+                    value={b.link ?? ''}
+                    categories={categories}
+                    products={products}
+                    onCommit={(link) => patch(b, { link })}
+                  />
                 </div>
               </div>
               <div className="banners-admin__actions">
@@ -196,5 +192,63 @@ export function BannersManager() {
         </ul>
       )}
     </section>
+  )
+}
+
+const URL_RE = /^https?:\/\//i
+
+/** Campo "Link ao clicar": Nenhum, Toda a loja, Categoria, Produto ou URL. */
+function LinkPicker({
+  value,
+  categories,
+  products,
+  onCommit,
+}: {
+  value: string
+  categories: Category[]
+  products: Product[]
+  onCommit: (link: string) => void
+}) {
+  const isUrl = URL_RE.test(value)
+  const selectValue = isUrl ? '__url__' : value
+  const [url, setUrl] = useState(isUrl ? value : '')
+
+  function onSelect(v: string) {
+    if (v === '__url__') {
+      onCommit(url.trim()) // aplica a URL já digitada (ou vazio)
+    } else {
+      onCommit(v)
+    }
+  }
+
+  return (
+    <label>
+      <span>Link ao clicar</span>
+      <select value={selectValue} onChange={(e) => onSelect(e.target.value)}>
+        <option value="">— Nenhum —</option>
+        <option value="todos">Toda a loja</option>
+        <optgroup label="Categorias">
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </optgroup>
+        <optgroup label="Produtos">
+          {products.map((p) => (
+            <option key={p.id} value={`produto:${p.id}`}>{p.name}</option>
+          ))}
+        </optgroup>
+        <option value="__url__">URL personalizada…</option>
+      </select>
+      {selectValue === '__url__' && (
+        <input
+          type="url"
+          placeholder="https://…"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onBlur={() => onCommit(url.trim())}
+          style={{ marginTop: '0.35rem' }}
+        />
+      )}
+    </label>
   )
 }

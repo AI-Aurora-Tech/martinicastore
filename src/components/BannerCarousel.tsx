@@ -5,6 +5,8 @@ import { Hero } from './Hero'
 
 interface Props {
   onShop: (id: CategoryId | 'todos') => void
+  /** Abre a página de um produto (quando o link do banner é "produto:<id>"). */
+  onOpenProduct?: (productId: string) => void
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * O container é responsivo (largura total, proporção fixa) e funciona em
  * qualquer dispositivo.
  */
-export function BannerCarousel({ onShop }: Props) {
+export function BannerCarousel({ onShop, onOpenProduct }: Props) {
   const [banners, setBanners] = useState<Banner[] | null>(null)
   const [index, setIndex] = useState(0)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -52,6 +54,8 @@ export function BannerCarousel({ onShop }: Props) {
     if (!link) return
     if (/^https?:\/\//i.test(link)) {
       window.open(link, '_blank', 'noopener')
+    } else if (link.startsWith('produto:')) {
+      onOpenProduct?.(link.slice('produto:'.length))
     } else {
       onShop(link as CategoryId | 'todos')
     }
