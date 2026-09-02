@@ -4,6 +4,7 @@ import type { CategoryId, Product } from '../types'
 import { ProductImage } from './ProductImage'
 import { useCatalog } from '../context/CatalogContext'
 import { createSale } from '../services/sales'
+import { availableFor, hasVariants } from '../services/variants'
 import type { Operator } from '../services/auth'
 
 interface Props {
@@ -15,7 +16,11 @@ interface Props {
 interface SaleLine {
   product: Product
   quantity: number
+  /** Variação escolhida (quando o produto tem variações). */
+  size?: string
 }
+
+const lineKey = (l: { product: Product; size?: string }) => `${l.product.id}__${l.size ?? ''}`
 
 type Payment = 'dinheiro' | 'cartao' | 'pix'
 
@@ -51,6 +56,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [pick, setPick] = useState<Product | null>(null)
 
   useEffect(() => {
     const t = window.setInterval(() => setClock(new Date()), 1000)
@@ -87,21 +93,39 @@ export function PDV({ onExit, operator, onLogout }: Props) {
 
   function addProduct(p: Product) {
     if (p.stock != null && p.stock <= 0) return
-    setLines((prev) => {
-      const found = prev.find((l) => l.product.id === p.id)
-      if (found) {
-        return prev.map((l) =>
-          l.product.id === p.id ? { ...l, quantity: l.quantity + 1 } : l,
-        )
-      }
-      return [...prev, { product: p, quantity: 1 }]
-    })
+    // Produto com variações: escolher qual antes de adicionar.
+    if (hasVariants(p)) {
+      setPick(p)
+      return
+    }
+    addLine(p, undefined)
   }
 
-  function setQty(id: string, qty: number) {
+  function addLine(p: Product, size?: string) {
+    const avail = availableFor(p, size)
+    if (avail <= 0) return
+    setLines((prev) => {
+      const key = lineKey({ product: p, size })
+      const found = prev.find((l) => lineKey(l) === key)
+      if (found) {
+        return prev.map((l) =>
+          lineKey(l) === key ? { ...l, quantity: Math.min(avail, l.quantity + 1) } : l,
+        )
+      }
+      return [...prev, { product: p, quantity: 1, size }]
+    })
+    setPick(null)
+  }
+
+  function setQty(key: string, qty: number) {
     setLines((prev) =>
       prev
-        .map((l) => (l.product.id === id ? { ...l, quantity: Math.max(0, qty) } : l))
+        .map((l) => {
+          if (lineKey(l) !== key) return l
+          const max = availableFor(l.product, l.size)
+          const capped = l.product.stock != null ? Math.min(qty, max) : qty
+          return { ...l, quantity: Math.max(0, capped) }
+        })
         .filter((l) => l.quantity > 0),
     )
   }
@@ -134,6 +158,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
         unitPrice: l.product.price,
         unitCost: l.product.cost ?? 0,
         quantity: l.quantity,
+        size: l.size,
       })),
     })
 
@@ -145,7 +170,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
     }
 
     decrementStockLocal(
-      lines.map((l) => ({ id: l.product.id, quantity: l.quantity })),
+      lines.map((l) => ({ id: l.product.id, quantity: l.quantity, size: l.size })),
     )
 
     setReceipt({
@@ -276,17 +301,17 @@ export function PDV({ onExit, operator, onLogout }: Props) {
               </div>
             ) : (
               lines.map((l) => (
-                <div key={l.product.id} className="pdv__line">
+                <div key={lineKey(l)} className="pdv__line">
                   <div className="pdv__line-info">
-                    <strong>{l.product.name}</strong>
+                    <strong>{l.product.name}{l.size ? ` · ${l.size}` : ''}</strong>
                     <span>{BRL.format(l.product.price)} / un</span>
                   </div>
                   <div className="pdv__line-qty">
-                    <button onClick={() => setQty(l.product.id, l.quantity - 1)} aria-label="Menos">
+                    <button onClick={() => setQty(lineKey(l), l.quantity - 1)} aria-label="Menos">
                       −
                     </button>
                     <span>{l.quantity}</span>
-                    <button onClick={() => setQty(l.product.id, l.quantity + 1)} aria-label="Mais">
+                    <button onClick={() => setQty(lineKey(l), l.quantity + 1)} aria-label="Mais">
                       +
                     </button>
                   </div>
@@ -295,7 +320,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                   </strong>
                   <button
                     className="pdv__line-del"
-                    onClick={() => setQty(l.product.id, 0)}
+                    onClick={() => setQty(lineKey(l), 0)}
                     aria-label={`Remover ${l.product.name}`}
                   >
                     ✕
@@ -431,8 +456,8 @@ export function PDV({ onExit, operator, onLogout }: Props) {
             </div>
             <ul className="pdv__receipt-lines">
               {receipt.lines.map((l) => (
-                <li key={l.product.id}>
-                  <span>{l.quantity}x {l.product.name}</span>
+                <li key={lineKey(l)}>
+                  <span>{l.quantity}x {l.product.name}{l.size ? ` · ${l.size}` : ''}</span>
                   <span>{BRL.format(l.product.price * l.quantity)}</span>
                 </li>
               ))}
@@ -476,6 +501,33 @@ export function PDV({ onExit, operator, onLogout }: Props) {
                 Nova venda
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Escolha da variação (produtos com estoque por variação) --- */}
+      {pick && (
+        <div className="pdv__receipt-overlay" onClick={() => setPick(null)}>
+          <div className="pdv__pickvar" onClick={(e) => e.stopPropagation()}>
+            <h3>{pick.name}</h3>
+            <p>Escolha a variação:</p>
+            <div className="pdv__pickvar-grid">
+              {pick.variants!.map((v) => {
+                const out = v.stock <= 0
+                return (
+                  <button
+                    key={v.label}
+                    className="pdv__pickvar-opt"
+                    onClick={() => addLine(pick, v.label)}
+                    disabled={out}
+                  >
+                    <strong>{v.label}</strong>
+                    <small>{out ? 'Esgotado' : `${v.stock} un`}</small>
+                  </button>
+                )
+              })}
+            </div>
+            <button className="btn btn--ghost" onClick={() => setPick(null)}>Cancelar</button>
           </div>
         </div>
       )}

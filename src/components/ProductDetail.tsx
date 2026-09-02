@@ -3,6 +3,7 @@ import type { Product } from '../types'
 import { BRL } from '../data/products'
 import { useCart } from '../context/CartContext'
 import { useCatalog } from '../context/CatalogContext'
+import { availableFor, hasVariants, variantStock } from '../services/variants'
 import { ProductImage } from './ProductImage'
 import { StarRating } from './StarRating'
 
@@ -16,23 +17,34 @@ interface Props {
 export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
   const { addItem } = useCart()
   const { categories } = useCatalog()
-  const [size, setSize] = useState<string | undefined>(product.sizes?.[0])
+
+  const variantMode = hasVariants(product)
+  // Opções selecionáveis: variações (com estoque) ou tamanhos simples.
+  const options = variantMode ? product.variants!.map((v) => v.label) : (product.sizes ?? [])
+  const needsChoice = options.length > 0
+  const firstInStock = variantMode
+    ? product.variants!.find((v) => v.stock > 0)?.label
+    : options[0]
+  const [size, setSize] = useState<string | undefined>(firstInStock ?? options[0])
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
 
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0
-  const installment = product.price / 10
   const soldOut = product.stock != null && product.stock <= 0
-  const lowStock = product.stock != null && product.stock > 0 && product.stock <= 5
-  const needsSize = !!product.sizes?.length
+  // Estoque da opção escolhida (variação) — ou do produto quando não há variação.
+  const chosenStock = availableFor(product, size)
+  const chosenOut = needsChoice && variantMode ? chosenStock <= 0 : soldOut
+  const lowStock = !chosenOut && chosenStock > 0 && chosenStock <= 5
+  const maxQty = variantMode && size ? Math.max(1, chosenStock) : Infinity
   const categoryLabel = categories.find((c) => c.id === product.category)?.label ?? product.category
 
   function add(goToCheckout: boolean) {
-    if (soldOut) return
-    if (needsSize && !size) return
-    for (let i = 0; i < qty; i++) addItem(product, size)
+    if (soldOut || chosenOut) return
+    if (needsChoice && !size) return
+    const n = variantMode ? Math.min(qty, chosenStock) : qty
+    for (let i = 0; i < n; i++) addItem(product, size)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1400)
     if (goToCheckout) onGoCheckout()
@@ -68,29 +80,38 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
             <span className="pdp__price">{BRL.format(product.price)}</span>
             {discount > 0 && <span className="pdp__off">-{discount}%</span>}
           </div>
-          <p className="pdp__installment">ou 10x de {BRL.format(installment)} sem juros</p>
+          <p className="pdp__installment">à vista no Pix ou cartão de crédito</p>
 
           {soldOut ? (
             <p className="pdp__stock pdp__stock--out">Produto esgotado no momento.</p>
+          ) : chosenOut ? (
+            <p className="pdp__stock pdp__stock--out">Variação esgotada. Escolha outra opção.</p>
           ) : lowStock ? (
-            <p className="pdp__stock pdp__stock--low">🔥 Últimas {product.stock} unidades!</p>
+            <p className="pdp__stock pdp__stock--low">🔥 Últimas {chosenStock} unidades!</p>
           ) : null}
 
-          {needsSize && (
+          {needsChoice && (
             <div className="pdp__block">
-              <span className="pdp__label">Tamanho{size ? `: ${size}` : ''}</span>
-              <div className="pdp__sizes" role="group" aria-label="Escolha o tamanho">
-                {product.sizes!.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`chip ${size === s ? 'chip--active' : ''}`}
-                    onClick={() => setSize(s)}
-                    aria-pressed={size === s}
-                  >
-                    {s}
-                  </button>
-                ))}
+              <span className="pdp__label">
+                {variantMode ? 'Variação' : 'Tamanho'}{size ? `: ${size}` : ''}
+              </span>
+              <div className="pdp__sizes" role="group" aria-label="Escolha a variação">
+                {options.map((s) => {
+                  const out = variantMode && variantStock(product, s) <= 0
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`chip ${size === s ? 'chip--active' : ''} ${out ? 'chip--out' : ''}`}
+                      onClick={() => { setSize(s); setQty(1) }}
+                      aria-pressed={size === s}
+                      disabled={out}
+                      title={out ? 'Esgotado' : undefined}
+                    >
+                      {s}{out ? ' (esgotado)' : ''}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -100,7 +121,7 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
             <div className="pdp__qty">
               <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Diminuir">−</button>
               <span>{qty}</span>
-              <button onClick={() => setQty((q) => q + 1)} aria-label="Aumentar">+</button>
+              <button onClick={() => setQty((q) => Math.min(maxQty, q + 1))} disabled={qty >= maxQty} aria-label="Aumentar">+</button>
             </div>
           </div>
 
@@ -108,19 +129,19 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
             <button
               className={`btn btn--primary pdp__add ${added ? 'card__add--done' : ''}`}
               onClick={() => add(false)}
-              disabled={soldOut || (needsSize && !size)}
+              disabled={soldOut || chosenOut || (needsChoice && !size)}
             >
-              {soldOut ? 'Esgotado' : added ? '✓ Adicionado' : 'Adicionar à sacola'}
+              {soldOut || chosenOut ? 'Esgotado' : added ? '✓ Adicionado' : 'Adicionar à sacola'}
             </button>
             <button
               className="btn btn--dark pdp__buy"
               onClick={() => add(true)}
-              disabled={soldOut || (needsSize && !size)}
+              disabled={soldOut || chosenOut || (needsChoice && !size)}
             >
               Comprar agora
             </button>
           </div>
-          {needsSize && !size && <p className="pdp__hint">Selecione um tamanho para continuar.</p>}
+          {needsChoice && !size && <p className="pdp__hint">Selecione uma opção para continuar.</p>}
 
           {product.description && (
             <div className="pdp__desc">
@@ -134,7 +155,11 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
             <dl>
               <div><dt>Categoria</dt><dd>{categoryLabel}</dd></div>
               <div><dt>Código</dt><dd>{product.id}</dd></div>
-              {product.sizes?.length ? <div><dt>Tamanhos</dt><dd>{product.sizes.join(', ')}</dd></div> : null}
+              {variantMode ? (
+                <div><dt>Variações</dt><dd>{product.variants!.map((v) => v.label).join(', ')}</dd></div>
+              ) : product.sizes?.length ? (
+                <div><dt>Tamanhos</dt><dd>{product.sizes.join(', ')}</dd></div>
+              ) : null}
               {product.weight ? <div><dt>Peso</dt><dd>{(product.weight / 1000).toFixed(2)} kg</dd></div> : null}
             </dl>
           </div>

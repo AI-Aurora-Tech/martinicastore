@@ -28,7 +28,7 @@ const EMPTY_ADDR: Address = {
 
 const PAYMENTS = [
   { id: 'pix', label: 'Pix', icon: '⚡', note: 'aprovação na hora' },
-  { id: 'cartao', label: 'Cartão de crédito', icon: '💳', note: 'até 10x' },
+  { id: 'cartao', label: 'Cartão de crédito', icon: '💳', note: 'à vista' },
 ] as const
 
 export function Checkout({ onExit }: Props) {
@@ -127,7 +127,7 @@ export function Checkout({ onExit }: Props) {
       setPlacing(false)
       return setError(err)
     }
-    decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity })))
+    decrementStockLocal(items.map((i) => ({ id: i.product.id, quantity: i.quantity, size: i.size })))
     // Notificação "recebemos seu pedido" por WhatsApp (best-effort).
     const { sent, error: nErr } = await notifyOrder(id)
     setNotified(sent)

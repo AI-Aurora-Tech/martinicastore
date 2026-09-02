@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Product } from '../types'
 import { BRL } from '../data/products'
 import { useCart } from '../context/CartContext'
+import { hasVariants, variantStock } from '../services/variants'
 import { ProductImage } from './ProductImage'
 import { StarRating } from './StarRating'
 
@@ -12,20 +13,26 @@ interface Props {
 
 export function ProductCard({ product, onOpen }: Props) {
   const { addItem } = useCart()
-  const [size, setSize] = useState<string | undefined>(product.sizes?.[0])
+  const variantMode = hasVariants(product)
+  const options = variantMode ? product.variants!.map((v) => v.label) : (product.sizes ?? [])
+  const firstInStock = variantMode
+    ? product.variants!.find((v) => v.stock > 0)?.label
+    : options[0]
+  const [size, setSize] = useState<string | undefined>(firstInStock ?? options[0])
   const [added, setAdded] = useState(false)
 
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0
 
-  const installment = product.price / 10
   const soldOut = product.stock != null && product.stock <= 0
+  const chosenOut = variantMode && !!size && variantStock(product, size) <= 0
   const lowStock =
     product.stock != null && product.stock > 0 && product.stock <= 5
 
   function handleAdd() {
-    if (soldOut) return
+    if (soldOut || chosenOut) return
+    if (options.length && !size) return
     addItem(product, size)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1200)
@@ -66,26 +73,28 @@ export function ProductCard({ product, onOpen }: Props) {
           )}
           <span className="card__price">{BRL.format(product.price)}</span>
         </div>
-        <p className="card__installment">
-          ou 10x de {BRL.format(installment)} sem juros
-        </p>
         {lowStock && (
           <p className="card__lowstock">🔥 Últimas {product.stock} unidades!</p>
         )}
 
-        {product.sizes && (
-          <div className="card__sizes" role="group" aria-label="Escolha o tamanho">
-            {product.sizes.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`chip ${size === s ? 'chip--active' : ''}`}
-                onClick={() => setSize(s)}
-                aria-pressed={size === s}
-              >
-                {s}
-              </button>
-            ))}
+        {options.length > 0 && (
+          <div className="card__sizes" role="group" aria-label="Escolha a variação">
+            {options.map((s) => {
+              const out = variantMode && variantStock(product, s) <= 0
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  className={`chip ${size === s ? 'chip--active' : ''} ${out ? 'chip--out' : ''}`}
+                  onClick={() => setSize(s)}
+                  aria-pressed={size === s}
+                  disabled={out}
+                  title={out ? 'Esgotado' : undefined}
+                >
+                  {s}
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -93,9 +102,9 @@ export function ProductCard({ product, onOpen }: Props) {
           type="button"
           className={`btn btn--primary card__add ${added ? 'card__add--done' : ''}`}
           onClick={handleAdd}
-          disabled={soldOut}
+          disabled={soldOut || chosenOut}
         >
-          {soldOut ? 'Esgotado' : added ? '✓ Adicionado' : 'Adicionar à sacola'}
+          {soldOut ? 'Esgotado' : chosenOut ? 'Variação esgotada' : added ? '✓ Adicionado' : 'Adicionar à sacola'}
         </button>
       </div>
     </article>

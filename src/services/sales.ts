@@ -8,6 +8,8 @@ export interface SaleItemInput {
   unitPrice: number
   unitCost: number
   quantity: number
+  /** Variação vendida (para abater o estoque da variação certa). */
+  size?: string
 }
 
 export interface SaleInput {
@@ -75,6 +77,7 @@ export async function createSale(input: SaleInput): Promise<SaleResult> {
       sale_id: data.id,
       product_id: i.productId,
       name: i.name,
+      size: i.size ?? null,
       unit_price: i.unitPrice,
       unit_cost: i.unitCost,
       quantity: i.quantity,

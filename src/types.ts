@@ -15,6 +15,14 @@ export type ProductKind =
 // torcedor, pet).
 export type CategoryId = string
 
+/** Variação do produto (tamanho, cor, etc.) com estoque próprio. */
+export interface ProductVariant {
+  /** Nome da variação exibido ao cliente (ex.: "P", "M / Azul", "40"). */
+  label: string
+  /** Estoque desta variação. */
+  stock: number
+}
+
 export interface Product {
   id: string
   name: string
@@ -29,9 +37,15 @@ export interface Product {
   badge?: string
   description: string
   sizes?: string[]
+  /**
+   * Variações com estoque individual (tamanho/cor/etc.). Quando presente e não
+   * vazio, o estoque é controlado por variação; `stock` passa a ser a soma e
+   * `sizes` é ignorado (as variações viram as opções selecionáveis).
+   */
+  variants?: ProductVariant[]
   rating: number
   reviews: number
-  /** Quantidade em estoque. `undefined` = não controlado. */
+  /** Quantidade em estoque (total). `undefined` = não controlado. */
   stock?: number
   /** Produto visível na loja. `undefined`/true = ativo. */
   active?: boolean

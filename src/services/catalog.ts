@@ -25,6 +25,7 @@ interface ProductRow {
   active: boolean | null
   image_url: string | null
   weight: number | null
+  variants: unknown
 }
 
 interface CategoryRow {
@@ -32,7 +33,21 @@ interface CategoryRow {
   label: string
 }
 
+function parseVariants(raw: unknown): { label: string; stock: number }[] | undefined {
+  let arr = raw
+  if (typeof raw === 'string') {
+    try { arr = JSON.parse(raw) } catch { return undefined }
+  }
+  if (!Array.isArray(arr)) return undefined
+  const out = arr
+    .map((v) => ({ label: String((v as { label?: unknown }).label ?? '').trim(), stock: Math.max(0, Number((v as { stock?: unknown }).stock) || 0) }))
+    .filter((v) => v.label)
+  return out.length ? out : undefined
+}
+
 function toProduct(r: ProductRow): Product {
+  const variants = parseVariants(r.variants)
+  const total = variants ? variants.reduce((s, v) => s + v.stock, 0) : (r.stock == null ? undefined : Number(r.stock))
   return {
     id: r.id,
     name: r.name,
@@ -45,9 +60,10 @@ function toProduct(r: ProductRow): Product {
     badge: r.badge ?? undefined,
     description: r.description,
     sizes: r.sizes ?? undefined,
+    variants,
     rating: Number(r.rating),
     reviews: r.reviews,
-    stock: r.stock == null ? undefined : Number(r.stock),
+    stock: total,
     active: r.active ?? true,
     image: r.image_url ?? undefined,
     weight: r.weight == null ? undefined : Number(r.weight),
@@ -102,7 +118,7 @@ export async function loadCatalog(): Promise<Catalog> {
       supabase
         .from('products')
         .select(
-          'id,name,category_id,kind,price,old_price,cost,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active,image_url,weight',
+          'id,name,category_id,kind,price,old_price,cost,color_main,color_accent,badge,description,sizes,rating,reviews,stock,active,image_url,weight,variants',
         )
         .order('sort', { ascending: true }),
     ])

@@ -224,7 +224,42 @@ create policy "product_images_admin_delete"
   on storage.objects for delete to authenticated
   using (bucket_id = 'product-images' and public.is_admin());
 
--- ---- (7) Estoque abatido na aprovação do pagamento ----
+-- ---- Estoque por variação (tamanho/cor/etc.) ----
+alter table public.products   add column if not exists variants jsonb not null default '[]'::jsonb;
+alter table public.sale_items add column if not exists size text;
+
+create or replace function public.apply_stock(p_id text, p_label text, p_qty int)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_label is not null and p_label <> '' then
+    update public.products p
+       set variants = coalesce((
+         select jsonb_agg(
+           case when (elem->>'label') = p_label
+             then jsonb_set(elem, '{stock}',
+                    to_jsonb(greatest(0, coalesce((elem->>'stock')::int, 0) - p_qty)))
+             else elem end)
+         from jsonb_array_elements(p.variants) elem
+       ), p.variants)
+     where p.id = p_id;
+  end if;
+  update public.products p
+     set stock = case
+       when jsonb_typeof(p.variants) = 'array' and jsonb_array_length(p.variants) > 0
+         then (select coalesce(sum((e->>'stock')::int), 0)
+                 from jsonb_array_elements(p.variants) e)
+       else greatest(0, p.stock - p_qty)
+     end
+   where p.id = p_id;
+end;
+$$;
+grant execute on function public.apply_stock(text, text, int) to service_role;
+
+-- ---- (7) Estoque abatido na aprovação do pagamento (por produto+variação) ----
 drop trigger if exists trg_order_items_stock on public.order_items;
 
 create or replace function public.apply_order_stock(p_order_id uuid)
@@ -233,16 +268,33 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare r record;
 begin
-  update public.products p
-     set stock = greatest(0, p.stock - agg.qty)
-    from (
-      select product_id, sum(quantity) as qty
-        from public.order_items
-       where order_id = p_order_id
-       group by product_id
-    ) agg
-   where agg.product_id = p.id;
+  for r in
+    select product_id, coalesce(size, '') as size, sum(quantity)::int as qty
+      from public.order_items
+     where order_id = p_order_id
+     group by product_id, coalesce(size, '')
+  loop
+    perform public.apply_stock(r.product_id, r.size, r.qty);
+  end loop;
 end;
 $$;
 grant execute on function public.apply_order_stock(uuid) to service_role;
+
+-- ---- Trigger do PDV: abate a variação vendida ----
+create or replace function public.decrement_stock()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.apply_stock(new.product_id, new.size, new.quantity);
+  return new;
+end;
+$$;
+drop trigger if exists trg_sale_items_stock on public.sale_items;
+create trigger trg_sale_items_stock
+  after insert on public.sale_items
+  for each row execute function public.decrement_stock();

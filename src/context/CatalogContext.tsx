@@ -23,7 +23,7 @@ interface CatalogContextValue {
   /** Remove um produto da lista em memória. */
   removeLocal: (id: string) => void
   /** Abate estoque local após uma venda/pedido (mantém a UI em sincronia). */
-  decrementStockLocal: (items: { id: string; quantity: number }[]) => void
+  decrementStockLocal: (items: { id: string; quantity: number; size?: string }[]) => void
 }
 
 const CatalogContext = createContext<CatalogContextValue | null>(null)
@@ -68,12 +68,30 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const decrementStockLocal = useCallback(
-    (items: { id: string; quantity: number }[]) => {
-      const map = new Map(items.map((i) => [i.id, i.quantity]))
+    (items: { id: string; quantity: number; size?: string }[]) => {
+      // Soma o abatido por produto e por (produto+variação).
+      const byProduct = new Map<string, number>()
+      const byVariant = new Map<string, number>()
+      for (const i of items) {
+        byProduct.set(i.id, (byProduct.get(i.id) ?? 0) + i.quantity)
+        if (i.size) {
+          const k = `${i.id}__${i.size}`
+          byVariant.set(k, (byVariant.get(k) ?? 0) + i.quantity)
+        }
+      }
       setProducts((prev) =>
         prev.map((p) => {
-          const qty = map.get(p.id)
-          if (qty == null || p.stock == null) return p
+          const qty = byProduct.get(p.id)
+          if (qty == null) return p
+          if (p.variants && p.variants.length) {
+            const variants = p.variants.map((v) => {
+              const dec = byVariant.get(`${p.id}__${v.label}`) ?? 0
+              return dec ? { ...v, stock: Math.max(0, v.stock - dec) } : v
+            })
+            const total = variants.reduce((s, v) => s + Math.max(0, v.stock), 0)
+            return { ...p, variants, stock: total }
+          }
+          if (p.stock == null) return p
           return { ...p, stock: Math.max(0, p.stock - qty) }
         }),
       )

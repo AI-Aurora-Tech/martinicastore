@@ -3317,3 +3317,59 @@ body { overflow-x: hidden; }
 .checkout__items li { min-width: 0; }
 .checkout__item-info { min-width: 0; }
 .checkout__item-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Variações (estoque individual) ---------- */
+.chip--out { opacity: 0.5; text-decoration: line-through; cursor: not-allowed; }
+
+.admin__variants {
+  border: 1px dashed var(--line, #e7e8ec);
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: #fafafb;
+}
+.admin__variants-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.admin__variants-add { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+.admin__variants-hint { font-size: 0.78rem; color: #666; margin: 0.35rem 0 0.6rem; }
+.admin__variants-list { display: grid; gap: 0.45rem; }
+.admin__variant-row { display: grid; grid-template-columns: 1fr 90px auto; gap: 0.4rem; align-items: center; }
+.admin__variant-row input { padding: 0.45rem 0.6rem; border: 1px solid var(--line, #d9d9de); border-radius: 7px; font-size: 0.9rem; }
+.admin__variants-total { font-size: 0.82rem; color: #444; margin-top: 0.2rem; }
+.admin__stock-variants { font-size: 0.72rem; color: #666; white-space: nowrap; }
+
+.pdv__pickvar {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.2rem;
+  width: min(440px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.pdv__pickvar h3 { margin: 0 0 0.2rem; }
+.pdv__pickvar p { margin: 0 0 0.8rem; color: #666; font-size: 0.9rem; }
+.pdv__pickvar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.pdv__pickvar-opt {
+  border: 1.5px solid var(--line, #e7e8ec);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.7rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+.pdv__pickvar-opt:hover:not(:disabled) { border-color: var(--red, #ff6a00); }
+.pdv__pickvar-opt:disabled { opacity: 0.45; cursor: not-allowed; }
+.pdv__pickvar-opt small { color: #777; font-size: 0.75rem; }

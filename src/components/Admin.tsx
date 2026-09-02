@@ -3,6 +3,7 @@ import { CLUB } from '../data/products'
 import type { CategoryId, Product, ProductKind } from '../types'
 import { useCatalog } from '../context/CatalogContext'
 import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
+import { cleanVariants, hasVariants } from '../services/variants'
 import type { Operator } from '../services/auth'
 import { Reports } from './Reports'
 import { Orders } from './Orders'
@@ -391,17 +392,23 @@ function AdminRow({
         </span>
       </td>
       <td>
-        <div className={`admin__stock ${level}`}>
-          <button onClick={() => onChangeStock(stock - 1)} aria-label="Diminuir estoque">−</button>
-          <input
-            inputMode="numeric"
-            value={stockInput}
-            onChange={(e) => setStockInput(e.target.value)}
-            onBlur={commitStock}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-          />
-          <button onClick={() => onChangeStock(stock + 1)} aria-label="Aumentar estoque">+</button>
-        </div>
+        {hasVariants(product) ? (
+          <div className={`admin__stock ${level}`} title="Estoque por variação — edite em ✏️">
+            <span className="admin__stock-variants">{stock} · por variação</span>
+          </div>
+        ) : (
+          <div className={`admin__stock ${level}`}>
+            <button onClick={() => onChangeStock(stock - 1)} aria-label="Diminuir estoque">−</button>
+            <input
+              inputMode="numeric"
+              value={stockInput}
+              onChange={(e) => setStockInput(e.target.value)}
+              onBlur={commitStock}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            />
+            <button onClick={() => onChangeStock(stock + 1)} aria-label="Aumentar estoque">+</button>
+          </div>
+        )}
       </td>
       <td>
         <label className="admin__switch">
@@ -451,7 +458,23 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
   const [weight, setWeight] = useState(String(product?.weight ?? 300))
   const [badge, setBadge] = useState(product?.badge ?? '')
   const [sizes, setSizes] = useState((product?.sizes ?? []).join(', '))
+  const [variants, setVariants] = useState<{ label: string; stock: string }[]>(
+    (product?.variants ?? []).map((v) => ({ label: v.label, stock: String(v.stock) })),
+  )
   const [description, setDescription] = useState(product?.description ?? '')
+
+  const variantsTotal = variants.reduce((s, v) => s + Math.max(0, Math.round(Number(v.stock) || 0)), 0)
+  const usingVariants = variants.length > 0
+
+  function addVariant() {
+    setVariants((vs) => [...vs, { label: '', stock: '0' }])
+  }
+  function updateVariant(i: number, field: 'label' | 'stock', value: string) {
+    setVariants((vs) => vs.map((v, k) => (k === i ? { ...v, [field]: value } : v)))
+  }
+  function removeVariant(i: number) {
+    setVariants((vs) => vs.filter((_, k) => k !== i))
+  }
   const [image, setImage] = useState<string | undefined>(product?.image)
   const [imgBusy, setImgBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -479,6 +502,11 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
 
     const oldPriceNum = Number(oldPrice.replace(',', '.'))
     const sizeList = sizes.split(',').map((s) => s.trim()).filter(Boolean)
+    const variantList = cleanVariants(variants.map((v) => ({ label: v.label, stock: Number(v.stock) })))
+    // Com variações, o estoque total é a soma; senão, o campo Estoque.
+    const totalStock = variantList.length
+      ? variantList.reduce((s, v) => s + v.stock, 0)
+      : Math.max(0, Math.round(Number(stock) || 0))
 
     onSave({
       // Preserva campos não editáveis aqui (rating/reviews) ao editar.
@@ -491,10 +519,12 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
       oldPrice: oldPrice.trim() && !Number.isNaN(oldPriceNum) && oldPriceNum > 0 ? oldPriceNum : undefined,
       colors: product?.colors ?? [CLUB.primary, CLUB.dark],
       badge: badge.trim() || undefined,
-      sizes: sizeList.length ? sizeList : undefined,
+      // Com variações, elas viram as opções (o campo Tamanhos é ignorado).
+      sizes: variantList.length ? undefined : (sizeList.length ? sizeList : undefined),
+      variants: variantList.length ? variantList : undefined,
       description: description.trim(),
       cost: Math.max(0, Number(costV.replace(',', '.')) || 0),
-      stock: Math.max(0, Math.round(Number(stock) || 0)),
+      stock: totalStock,
       weight: Math.max(1, Math.round(Number(weight) || 300)),
       active: product?.active ?? true,
       image,
@@ -547,12 +577,56 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
           <label>Preço de venda (R$)<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" /></label>
           <label>Preço "de" (R$) — opcional<input inputMode="decimal" value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="0,00" /></label>
           <label>Preço de custo (R$)<input inputMode="decimal" value={costV} onChange={(e) => setCostV(e.target.value)} placeholder="0,00" /></label>
-          <label>Estoque<input inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} /></label>
+          <label>Estoque{usingVariants ? ' (soma das variações)' : ''}
+            <input
+              inputMode="numeric"
+              value={usingVariants ? String(variantsTotal) : stock}
+              onChange={(e) => setStock(e.target.value)}
+              disabled={usingVariants}
+              title={usingVariants ? 'Controlado pelas variações abaixo' : undefined}
+            />
+          </label>
           <label>Peso (g) — frete<input inputMode="numeric" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
           <label>Selo/etiqueta — opcional<input value={badge} onChange={(e) => setBadge(e.target.value)} placeholder="ex.: Lançamento" /></label>
-          <label className="admin__form-full">Tamanhos (separados por vírgula)
-            <input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="ex.: P, M, G, GG" />
+          <label className="admin__form-full">
+            Tamanhos (separados por vírgula){usingVariants ? ' — ignorado (usando variações)' : ''}
+            <input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="ex.: P, M, G, GG" disabled={usingVariants} />
           </label>
+
+          <div className="admin__form-full admin__variants">
+            <div className="admin__variants-head">
+              <span>Variações com estoque individual (tamanho, cor, etc.)</span>
+              <button type="button" className="btn btn--ghost admin__variants-add" onClick={addVariant}>
+                + Adicionar variação
+              </button>
+            </div>
+            <p className="admin__variants-hint">
+              Preencha para controlar o estoque por variação. Ao usar variações, o
+              cliente escolhe uma delas e só compra se houver estoque naquela opção.
+            </p>
+            {variants.length > 0 && (
+              <div className="admin__variants-list">
+                {variants.map((v, i) => (
+                  <div key={i} className="admin__variant-row">
+                    <input
+                      placeholder="Variação (ex.: M / Azul)"
+                      value={v.label}
+                      onChange={(e) => updateVariant(i, 'label', e.target.value)}
+                    />
+                    <input
+                      inputMode="numeric"
+                      placeholder="Estoque"
+                      value={v.stock}
+                      onChange={(e) => updateVariant(i, 'stock', e.target.value)}
+                    />
+                    <button type="button" className="cats__del" onClick={() => removeVariant(i)} aria-label="Remover variação">🗑</button>
+                  </div>
+                ))}
+                <div className="admin__variants-total">Total: <strong>{variantsTotal}</strong> unidades</div>
+              </div>
+            )}
+          </div>
+
           <label className="admin__form-full">Descrição
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Descrição que aparece na página do produto" />
           </label>

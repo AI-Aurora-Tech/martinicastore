@@ -7,6 +7,13 @@ export interface SaveResult {
 
 /** Converte um Product para a linha da tabela `products`. */
 function toRow(p: Product) {
+  const variants = p.variants && p.variants.length
+    ? p.variants.map((v) => ({ label: v.label, stock: Math.max(0, Math.round(v.stock)) }))
+    : []
+  // Com variações, o estoque total é a soma das variações.
+  const stock = variants.length
+    ? variants.reduce((s, v) => s + v.stock, 0)
+    : (p.stock ?? 0)
   return {
     id: p.id,
     name: p.name,
@@ -20,9 +27,10 @@ function toRow(p: Product) {
     badge: p.badge ?? null,
     description: p.description,
     sizes: p.sizes ?? null,
+    variants,
     rating: p.rating,
     reviews: p.reviews,
-    stock: p.stock ?? 0,
+    stock,
     active: p.active ?? true,
     image_url: p.image ?? null,
     weight: p.weight ?? 300,
