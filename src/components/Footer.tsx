@@ -1,6 +1,7 @@
-import { CLUB } from '../data/products'
+import { CLUB, COMPANY } from '../data/products'
+import type { LegalSection } from './LegalPage'
 
-export function Footer() {
+export function Footer({ onLegal }: { onLegal: (section: LegalSection) => void }) {
   return (
     <footer className="footer">
       <div className="footer__newsletter">
@@ -40,20 +41,23 @@ export function Footer() {
         <div className="footer__col">
           <h4>Institucional</h4>
           <ul>
-            <li><a href="#">Sobre a loja</a></li>
-            <li><a href="#">O clube</a></li>
-            <li><a href="#">Trabalhe conosco</a></li>
-            <li><a href="#">Lojas físicas</a></li>
+            <li><button type="button" className="footer__link" onClick={() => onLegal('empresa')}>Quem somos</button></li>
+            <li><button type="button" className="footer__link" onClick={() => onLegal('termos')}>Termos de uso</button></li>
+            <li><button type="button" className="footer__link" onClick={() => onLegal('privacidade')}>Política de privacidade</button></li>
           </ul>
         </div>
 
         <div className="footer__col">
           <h4>Ajuda &amp; Atendimento</h4>
           <ul>
-            <li><a href="#">Central de ajuda</a></li>
-            <li><a href="#">Trocas e devoluções</a></li>
-            <li><a href="#">Prazos de entrega</a></li>
-            <li><a href="#">Rastrear pedido</a></li>
+            <li><button type="button" className="footer__link" onClick={() => onLegal('trocas')}>Trocas e devoluções</button></li>
+            <li><button type="button" className="footer__link" onClick={() => onLegal('entrega')}>Prazos de entrega</button></li>
+            <li>
+              <a href={`https://wa.me/${COMPANY.whatsapp}`} target="_blank" rel="noreferrer">
+                Fale com o SAC (WhatsApp)
+              </a>
+            </li>
+            <li><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></li>
           </ul>
         </div>
 
@@ -76,13 +80,14 @@ export function Footer() {
 
       <div className="footer__legal">
         <p>
-          © 2026 {CLUB.store} — CNPJ 00.000.000/0001-00. Todos os direitos
-          reservados. Este é um projeto de demonstração inspirado em lojas
-          oficiais de clubes.
+          © {new Date().getFullYear()} {COMPANY.legalName} — CNPJ {COMPANY.cnpj}.
+          Todos os direitos reservados. Este é um projeto de demonstração inspirado
+          em lojas oficiais de clubes.
         </p>
         <p>
-          <a href="#">Política de privacidade</a> ·{' '}
-          <a href="#">Termos de uso</a> · <a href="#">Trocas e devoluções</a>
+          <button type="button" className="footer__link" onClick={() => onLegal('privacidade')}>Política de privacidade</button> ·{' '}
+          <button type="button" className="footer__link" onClick={() => onLegal('termos')}>Termos de uso</button> ·{' '}
+          <button type="button" className="footer__link" onClick={() => onLegal('trocas')}>Trocas e devoluções</button>
         </p>
       </div>
     </footer>

@@ -2778,3 +2778,99 @@ button {
 .paynotice--aprovado { background: #eafaf0; border: 1px solid #b7e3c7; color: #147a3e; }
 .paynotice--pendente { background: #fff4ec; border: 1px solid #ffd9bf; color: #b3600a; }
 .paynotice--falhou { background: #fdecec; border: 1px solid #f5b5b5; color: #b3261e; }
+
+/* ---------- Footer links as buttons ---------- */
+.footer__link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.footer__link:hover { color: var(--gold); }
+.footer__legal .footer__link { text-decoration: underline; }
+
+/* ---------- Legal / institutional pages ---------- */
+.legal {
+  min-height: 100vh;
+  background: #f6f6f7;
+  color: #1c1c1e;
+}
+.legal__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  background: var(--dark, #111);
+  color: #fff;
+}
+.legal__back {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+.legal__back:hover { background: var(--red, #ff6a00); }
+.legal__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem 1.4rem 0;
+  max-width: 880px;
+  margin: 0 auto;
+}
+.legal__tab {
+  background: #fff;
+  border: 1px solid #e2e2e5;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #444;
+}
+.legal__tab:hover { border-color: var(--red, #ff6a00); }
+.legal__tab.is-active {
+  background: var(--red, #ff6a00);
+  border-color: var(--red, #ff6a00);
+  color: #fff;
+}
+.legal__content {
+  max-width: 880px;
+  margin: 1.4rem auto 3rem;
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 14px;
+  padding: 2rem 2.2rem;
+  line-height: 1.65;
+}
+.legal__content h1 {
+  font-size: 1.6rem;
+  margin: 0 0 1rem;
+}
+.legal__content h2 {
+  font-size: 1.1rem;
+  margin: 1.6rem 0 0.5rem;
+  color: var(--red, #ff6a00);
+}
+.legal__content p, .legal__content li { color: #333; }
+.legal__content ul { padding-left: 1.2rem; display: grid; gap: 0.35rem; }
+.legal__content a { color: #0a58ca; text-decoration: underline; }
+.legal__company { list-style: none; padding-left: 0; }
+.legal__note {
+  margin-top: 1.6rem;
+  font-size: 0.85rem;
+  color: #777;
+  border-top: 1px solid #eee;
+  padding-top: 1rem;
+}
+@media (max-width: 560px) {
+  .legal__content { padding: 1.4rem 1.2rem; border-radius: 0; }
+}
