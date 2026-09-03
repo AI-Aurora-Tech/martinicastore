@@ -36,6 +36,12 @@ export const COMPANY = {
   presencial: 'Sábado e domingo, das 8h às 18h',
   /** Horário para retirada de pedidos na loja. */
   pickupHours: 'Sábado e domingo, das 8h às 15h',
+  /** Redes sociais oficiais. */
+  social: {
+    instagram: 'https://www.instagram.com/martinicaoficial',
+    facebook: 'https://www.facebook.com/martinicaoficial',
+    youtube: 'https://www.youtube.com/tvmartinica',
+  },
 }
 
 export const categories: Category[] = [

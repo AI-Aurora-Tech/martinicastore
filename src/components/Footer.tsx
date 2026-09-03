@@ -18,10 +18,9 @@ export function Footer({ onLegal }: { onLegal: (section: LegalSection) => void }
             Brasil e o carinho de quem também é da torcida.
           </p>
           <div className="footer__social">
-            <a href="#" aria-label="Instagram">📷</a>
-            <a href="#" aria-label="Facebook">👍</a>
-            <a href="#" aria-label="X / Twitter">✖</a>
-            <a href="#" aria-label="YouTube">▶</a>
+            <a href={COMPANY.social.instagram} target="_blank" rel="noreferrer noopener" aria-label="Instagram" title="Instagram">📷</a>
+            <a href={COMPANY.social.facebook} target="_blank" rel="noreferrer noopener" aria-label="Facebook" title="Facebook">👍</a>
+            <a href={COMPANY.social.youtube} target="_blank" rel="noreferrer noopener" aria-label="YouTube" title="YouTube">▶</a>
           </div>
         </div>
 
