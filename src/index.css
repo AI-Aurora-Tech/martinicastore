@@ -2933,6 +2933,53 @@ button {
   padding-top: 0.7rem;
   margin-top: 0.2rem;
 }
+.account__tabs { margin-bottom: 0.9rem; }
+
+/* ---------- Meus pedidos (painel do cliente) ---------- */
+.myorders { max-height: 60vh; overflow-y: auto; }
+.myorders__empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 1rem;
+  display: grid;
+  gap: 0.4rem;
+  place-items: center;
+}
+.myorders__empty span { font-size: 2rem; }
+.myorders__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.myorders__item { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.myorders__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.myorders__main { display: flex; flex-direction: column; min-width: 0; }
+.myorders__main small { color: var(--muted); font-size: 0.75rem; }
+.myorders__badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.myorders__badge.is-ok { background: #e7f6ec; color: #1b7a3d; }
+.myorders__badge.is-wait { background: #fff4e0; color: #9a6400; }
+.myorders__badge.is-danger { background: #fdecec; color: #b3261e; }
+.myorders__total { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.myorders__chev { color: var(--muted); font-size: 0.7rem; }
+.myorders__detail { padding: 0.6rem 0.9rem 0.9rem; border-top: 1px solid var(--line); background: var(--bg); }
+.myorders__items { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.myorders__items li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; }
+.myorders__totrow { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--muted); padding: 0.15rem 0; }
+.myorders__totrow--grand { color: var(--text); font-weight: 700; font-size: 0.95rem; border-top: 1px solid var(--line); margin-top: 0.2rem; padding-top: 0.4rem; }
+.myorders__addr { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--muted); }
 
 /* ---------- Aviso de pagamento (retorno do Mercado Pago) ---------- */
 .paynotice {

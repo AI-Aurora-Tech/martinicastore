@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useCustomer } from '../context/CustomerContext'
+import { formatCpf, isValidCpf } from '../services/cpf'
 
 interface Props {
   /** Chamado após login/cadastro bem-sucedido. */
@@ -12,6 +13,7 @@ export function CustomerAuth({ onDone, compact }: Props) {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [cpf, setCpf] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -29,10 +31,15 @@ export function CustomerAuth({ onDone, compact }: Props) {
       setError('Informe um WhatsApp válido (com DDD).')
       return
     }
+    if (mode === 'signup' && !isValidCpf(cpf)) {
+      setBusy(false)
+      setError('Informe um CPF válido.')
+      return
+    }
     const err =
       mode === 'login'
         ? await signIn(email, password)
-        : await signUp(name, email, password, phone)
+        : await signUp(name, email, password, phone, cpf)
     setBusy(false)
     if (err) {
       // Mensagem de "confirme o e-mail" é informativa, não erro fatal.
@@ -77,6 +84,17 @@ export function CustomerAuth({ onDone, compact }: Props) {
               placeholder="(11) 90000-0000"
               required
               autoComplete="tel"
+            />
+          </label>
+          <label className="custauth__field">
+            <span>CPF</span>
+            <input
+              inputMode="numeric"
+              value={cpf}
+              onChange={(e) => setCpf(formatCpf(e.target.value))}
+              placeholder="000.000.000-00"
+              required
+              autoComplete="off"
             />
           </label>
         </>

@@ -67,6 +67,7 @@ async function fetchProfile(id: string, email: string, fallbackName: string): Pr
     name: (row.name as string) || fallbackName,
     email,
     phone: (row.phone as string) ?? undefined,
+    cpf: (row.cpf as string) ?? undefined,
     address: rowToAddress(row),
   }
 }
@@ -76,9 +77,11 @@ export async function signUpCustomer(
   email: string,
   password: string,
   phone: string,
+  cpf: string,
 ): Promise<CustomerResult> {
   const cleanEmail = email.trim().toLowerCase()
   const cleanPhone = phone.trim()
+  const cleanCpf = cpf.replace(/\D/g, '')
 
   if (customerAuthMode === 'supabase' && supabase) {
     const { data, error } = await supabase.auth.signUp({
@@ -92,7 +95,7 @@ export async function signUpCustomer(
 
     await supabase
       .from('customers')
-      .upsert({ id: user.id, name, email: cleanEmail, phone: cleanPhone })
+      .upsert({ id: user.id, name, email: cleanEmail, phone: cleanPhone, cpf: cleanCpf })
 
     if (!data.session) {
       // Projeto exige confirmação de e-mail.
@@ -102,7 +105,7 @@ export async function signUpCustomer(
           'Conta criada! Confirme o e-mail para entrar (ou desative a confirmação em Auth → Providers → Email).',
       }
     }
-    return { customer: { id: user.id, name, email: cleanEmail, phone: cleanPhone }, error: null }
+    return { customer: { id: user.id, name, email: cleanEmail, phone: cleanPhone, cpf: cleanCpf }, error: null }
   }
 
   // Demo
@@ -115,6 +118,7 @@ export async function signUpCustomer(
     name,
     email: cleanEmail,
     phone: cleanPhone,
+    cpf: cleanCpf,
     password,
   }
   writeDemo([...list, c])
@@ -175,12 +179,13 @@ export async function getCurrentCustomer(): Promise<Customer | null> {
 /** Salva/atualiza nome, telefone e endereço do comprador. */
 export async function saveCustomerProfile(
   id: string,
-  patch: { name?: string; phone?: string; address?: Address },
+  patch: { name?: string; phone?: string; cpf?: string; address?: Address },
 ): Promise<CustomerResult> {
   if (customerAuthMode === 'supabase' && supabase) {
     const row: Record<string, unknown> = { id }
     if (patch.name !== undefined) row.name = patch.name
     if (patch.phone !== undefined) row.phone = patch.phone
+    if (patch.cpf !== undefined) row.cpf = patch.cpf.replace(/\D/g, '')
     if (patch.address) {
       Object.assign(row, {
         cep: patch.address.cep,
@@ -204,6 +209,7 @@ export async function saveCustomerProfile(
       ...list[idx],
       name: patch.name ?? list[idx].name,
       phone: patch.phone ?? list[idx].phone,
+      cpf: patch.cpf !== undefined ? patch.cpf.replace(/\D/g, '') : list[idx].cpf,
       address: patch.address ?? list[idx].address,
     }
     writeDemo(list)

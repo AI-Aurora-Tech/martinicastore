@@ -20,10 +20,10 @@ interface CustomerContextValue {
   customer: Customer | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<string | null>
-  signUp: (name: string, email: string, password: string, phone: string) => Promise<string | null>
+  signUp: (name: string, email: string, password: string, phone: string, cpf: string) => Promise<string | null>
   signOut: () => Promise<void>
   saveAddress: (address: Address, extra?: { name?: string; phone?: string }) => Promise<string | null>
-  updateProfile: (patch: { name?: string; phone?: string; address?: Address }) => Promise<string | null>
+  updateProfile: (patch: { name?: string; phone?: string; cpf?: string; address?: Address }) => Promise<string | null>
 }
 
 const CustomerContext = createContext<CustomerContextValue | null>(null)
@@ -52,8 +52,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signUp = useCallback(
-    async (name: string, email: string, password: string, phone: string) => {
-      const { customer: c, error } = await signUpCustomer(name, email, password, phone)
+    async (name: string, email: string, password: string, phone: string, cpf: string) => {
+      const { customer: c, error } = await signUpCustomer(name, email, password, phone, cpf)
       if (error || !c) return error ?? 'Falha ao cadastrar.'
       setCustomer(c)
       return null
@@ -67,7 +67,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateProfile = useCallback(
-    async (patch: { name?: string; phone?: string; address?: Address }) => {
+    async (patch: { name?: string; phone?: string; cpf?: string; address?: Address }) => {
       if (!customer) return 'Você precisa estar logado.'
       const { error } = await saveCustomerProfile(customer.id, patch)
       if (error) return error
