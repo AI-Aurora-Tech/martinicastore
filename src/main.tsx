@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Analytics } from '@vercel/analytics/react'
 import { CatalogProvider } from './context/CatalogContext'
 import { CartProvider } from './context/CartContext'
 import { CustomerProvider } from './context/CustomerContext'
@@ -15,5 +16,6 @@ createRoot(document.getElementById('root')!).render(
         </CartProvider>
       </CustomerProvider>
     </CatalogProvider>
+    <Analytics />
   </StrictMode>,
 )
