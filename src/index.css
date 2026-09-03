@@ -3563,6 +3563,11 @@ body { overflow-x: hidden; }
   font-weight: 700;
   font-size: 0.85rem;
 }
+.admin__supplierfield { display: flex; gap: 0.5rem; align-items: stretch; }
+.admin__supplierfield select { flex: 1; min-width: 0; }
+.admin__supplierfield .btn { white-space: nowrap; padding: 0.5rem 0.8rem; font-size: 0.85rem; }
+.admin__hint { display: block; margin-top: 0.3rem; font-size: 0.75rem; color: var(--muted); }
+
 .admin__variants-add {
   display: inline-block;
   margin-top: 0.2rem;

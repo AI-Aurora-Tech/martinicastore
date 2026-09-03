@@ -34,6 +34,7 @@ function toRow(p: Product) {
     active: p.active ?? true,
     image_url: p.image ?? null,
     weight: p.weight ?? 300,
+    supplier_id: p.supplierId ?? null,
   }
 }
 
@@ -93,20 +94,27 @@ export async function uploadProductImage(file: File): Promise<UploadResult> {
  */
 export async function saveProduct(p: Product): Promise<SaveResult> {
   if (!isSupabaseConfigured || !supabase) return { error: null }
-  const row = toRow(p)
-  const { error } = await supabase.from('products').upsert(row)
-  if (error && /variants/i.test(error.message ?? '')) {
-    // Coluna `variants` ainda não existe (migração 0009 não aplicada): salva o
-    // produto sem as variações e avisa. As variações só persistem após a migração.
-    const { variants: _drop, ...rest } = row
-    const retry = await supabase.from('products').upsert(rest)
-    if (retry.error) return { error: retry.error.message }
-    return {
-      error:
-        'Produto salvo, MAS as variações não foram gravadas: rode a migração 0009_variants.sql (ou o supabase/policies.sql) para ativar o estoque por variação.',
-    }
+  const row: Record<string, unknown> = toRow(p)
+  let warn: string | null = null
+
+  // Colunas opcionais que podem não existir se a migração não foi rodada.
+  const drop = (key: string) => { const { [key]: _d, ...rest } = row; return rest }
+
+  let payload: Record<string, unknown> = row
+  let { error } = await supabase.from('products').upsert(payload)
+
+  if (error && /supplier_id/i.test(error.message ?? '')) {
+    warn = 'Produto salvo, MAS o fornecedor não foi gravado: rode a migração 0017_product_supplier.sql.'
+    payload = drop('supplier_id')
+    ;({ error } = await supabase.from('products').upsert(payload))
   }
-  return { error: error?.message ?? null }
+  if (error && /variants/i.test(error.message ?? '')) {
+    warn = 'Produto salvo, MAS as variações não foram gravadas: rode a migração 0009_variants.sql (ou o supabase/policies.sql) para ativar o estoque por variação.'
+    delete payload.variants
+    ;({ error } = await supabase.from('products').upsert(payload))
+  }
+  if (error) return { error: error.message }
+  return { error: warn }
 }
 
 /** Atualiza apenas o estoque de um produto. */

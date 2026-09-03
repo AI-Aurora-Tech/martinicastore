@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BRL, CLUB } from '../data/products'
-import type { CategoryId, Product, ProductKind } from '../types'
+import type { CategoryId, Product, ProductKind, Supplier } from '../types'
+import { listSuppliers } from '../services/suppliers'
+import { SuppliersModal } from './SuppliersModal'
 import { useCatalog } from '../context/CatalogContext'
 import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
 import { cleanVariants, hasVariants } from '../services/variants'
@@ -541,6 +543,11 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
     (product?.variants ?? []).map((v) => ({ label: v.label, stock: String(v.stock) })),
   )
   const [description, setDescription] = useState(product?.description ?? '')
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [supplierId, setSupplierId] = useState(product?.supplierId ?? '')
+  const [showSuppliers, setShowSuppliers] = useState(false)
+
+  useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
 
   const variantsTotal = variants.reduce((s, v) => s + Math.max(0, Math.round(Number(v.stock) || 0)), 0)
   const usingVariants = variants.length > 0
@@ -607,6 +614,7 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
       weight: Math.max(1, Math.round(Number(weight) || 300)),
       active: product?.active ?? true,
       image,
+      supplierId: supplierId || undefined,
     })
   }
 
@@ -652,6 +660,21 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
             <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)}>
               {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
+          </label>
+          <label className="admin__form-full">
+            Fornecedor (para compra)
+            <div className="admin__supplierfield">
+              <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+                <option value="">— sem fornecedor —</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}{s.phone ? ' (📱)' : ''}</option>
+                ))}
+              </select>
+              <button type="button" className="btn btn--ghost" onClick={() => setShowSuppliers(true)}>
+                + Cadastrar
+              </button>
+            </div>
+            <small className="admin__hint">O fornecedor precisa estar cadastrado. Ele agiliza o pedido de compra deste produto.</small>
           </label>
           <label>Preço de venda (R$)<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" /></label>
           <label>Preço "de" (R$) — opcional<input inputMode="decimal" value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="0,00" /></label>
@@ -716,6 +739,12 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
           <button type="submit" className="btn btn--primary">{isEdit ? 'Salvar alterações' : 'Criar produto'}</button>
         </div>
       </form>
+      {showSuppliers && (
+        <SuppliersModal
+          onClose={() => setShowSuppliers(false)}
+          onChange={(list) => { setSuppliers(list); }}
+        />
+      )}
     </div>
   )
 }

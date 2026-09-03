@@ -113,6 +113,10 @@ export function Purchases({ operatorEmail }: Props) {
     setQuery('')
     setSuccess(null)
     setLastOrder(null)
+    // Se o produto tem fornecedor cadastrado e nenhum foi escolhido, usa o dele.
+    if (!supplierId && p.supplierId && suppliers.some((s) => s.id === p.supplierId)) {
+      setSupplierId(p.supplierId)
+    }
     if (hasVariants(p)) { setPick(p); return }
     addLine(p, undefined)
   }

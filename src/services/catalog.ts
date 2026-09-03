@@ -26,6 +26,7 @@ interface ProductRow {
   image_url: string | null
   weight: number | null
   variants: unknown
+  supplier_id?: string | null
 }
 
 interface CategoryRow {
@@ -67,6 +68,7 @@ function toProduct(r: ProductRow): Product {
     active: r.active ?? true,
     image: r.image_url ?? undefined,
     weight: r.weight == null ? undefined : Number(r.weight),
+    supplierId: r.supplier_id ?? undefined,
   }
 }
 
@@ -124,14 +126,21 @@ export async function loadCatalog(): Promise<Catalog> {
     // não aplicada), tenta de novo sem ela — assim os produtos reais continuam
     // aparecendo, com um aviso para rodar a migração.
     type ProdResp = { data: unknown; error: { message?: string } | null }
-    let prods: ProdResp = await supabase
-      .from('products')
-      .select(`${BASE_COLS},variants`)
-      .order('sort', { ascending: true })
+    const sb = supabase
+    const sel = (cols: string): Promise<ProdResp> =>
+      sb.from('products').select(cols).order('sort', { ascending: true }) as unknown as Promise<ProdResp>
+
+    let prods: ProdResp = await sel(`${BASE_COLS},variants,supplier_id`)
+    // Coluna supplier_id ausente (migração 0017 não aplicada) → tenta sem ela.
+    if (prods.error && /supplier_id/i.test(prods.error.message ?? '')) {
+      warn = 'Coluna de fornecedor do produto ausente: rode a migração 0017_product_supplier.sql para vincular fornecedores aos produtos.'
+      prods = await sel(`${BASE_COLS},variants`)
+    }
+    // Coluna variants ausente (migração 0009 não aplicada) → tenta sem ela.
     if (prods.error && /variants/i.test(prods.error.message ?? '')) {
       warn =
         'Coluna de variações ausente: rode a migração 0009_variants.sql (ou o supabase/policies.sql) para ativar o estoque por variação.'
-      prods = await supabase.from('products').select(BASE_COLS).order('sort', { ascending: true })
+      prods = await sel(BASE_COLS)
     }
     if (prods.error) throw prods.error
 

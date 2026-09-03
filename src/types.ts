@@ -53,6 +53,8 @@ export interface Product {
   image?: string
   /** Peso em gramas (para cálculo de frete). Padrão 300 g quando ausente. */
   weight?: number
+  /** Fornecedor padrão para compra (deve estar cadastrado em Fornecedores). */
+  supplierId?: string
 }
 
 export interface Address {
