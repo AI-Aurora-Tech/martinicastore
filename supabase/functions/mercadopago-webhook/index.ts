@@ -94,9 +94,8 @@ Deno.serve(async (req: Request) => {
       paid_at: new Date().toISOString(),
     }).eq('id', orderId)
 
-    // Abate o estoque de todos os itens do pedido (agora que está pago).
-    const { error: stockErr } = await supabase.rpc('apply_order_stock', { p_order_id: orderId })
-    if (stockErr) console.error('[mercadopago-webhook] baixa de estoque falhou:', stockErr.message)
+    // OBS: o estoque já foi baixado na CRIAÇÃO do pedido (trigger
+    // order_item_reserve_stock, migração 0016). Não abatemos de novo aqui.
 
     if (order.customer_phone) await sendWhatsApp(String(order.customer_phone), approvedMsg(order))
     const storeWa = Deno.env.get('STORE_WHATSAPP')

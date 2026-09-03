@@ -4,6 +4,7 @@ import { readOrders, readSales, updateOrderStatusLocal, updateSaleStatusLocal } 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'canceled'
 
 export interface TxLine {
+  productId?: string
   name: string
   quantity: number
   unitPrice: number
@@ -30,9 +31,11 @@ export interface Transaction {
   items: TxLine[]
 }
 
-/** Normaliza o status de uma venda do PDV: fiado = pending; senão pago. */
+/** Normaliza o status de uma venda do PDV: fiado = pending; cancelada; senão pago. */
 function saleStatus(raw: unknown): OrderStatus {
-  return raw === 'pending' ? 'pending' : 'paid'
+  if (raw === 'pending') return 'pending'
+  if (raw === 'canceled') return 'canceled'
+  return 'paid'
 }
 
 export interface TransactionsResult {
@@ -72,7 +75,7 @@ export async function listTransactions(): Promise<TransactionsResult> {
         shippingService: o.shippingService,
         shippingDays: o.shippingDays,
         address: o.address,
-        items: o.items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+        items: o.items.map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
       })),
       ...sales.map((s) => ({
         kind: 'PDV' as const,
@@ -87,7 +90,7 @@ export async function listTransactions(): Promise<TransactionsResult> {
         total: s.total,
         payment: s.payment,
         status: saleStatus(s.status),
-        items: s.items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+        items: s.items.map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
       })),
     ]
     txs.sort((a, b) => b.when.localeCompare(a.when))
@@ -96,9 +99,9 @@ export async function listTransactions(): Promise<TransactionsResult> {
 
   const [orders, orderItems, sales, saleItems] = await Promise.all([
     supabase.from('orders').select('*').order('created_at', { ascending: false }),
-    supabase.from('order_items').select('order_id, name, quantity, unit_price, size'),
+    supabase.from('order_items').select('order_id, product_id, name, quantity, unit_price, size'),
     supabase.from('sales').select('*').order('created_at', { ascending: false }),
-    supabase.from('sale_items').select('sale_id, name, quantity, unit_price'),
+    supabase.from('sale_items').select('sale_id, product_id, name, quantity, unit_price, size'),
   ])
   const err = orders.error || orderItems.error || sales.error || saleItems.error
   if (err) throw err
@@ -107,14 +110,14 @@ export async function listTransactions(): Promise<TransactionsResult> {
   for (const r of orderItems.data ?? []) {
     const k = String(r.order_id)
     const arr = byOrder.get(k) ?? []
-    arr.push({ name: String(r.name), quantity: Number(r.quantity), unitPrice: Number(r.unit_price), size: r.size as string | null })
+    arr.push({ productId: String(r.product_id), name: String(r.name), quantity: Number(r.quantity), unitPrice: Number(r.unit_price), size: r.size as string | null })
     byOrder.set(k, arr)
   }
   const bySale = new Map<string, TxLine[]>()
   for (const r of saleItems.data ?? []) {
     const k = String(r.sale_id)
     const arr = bySale.get(k) ?? []
-    arr.push({ name: String(r.name), quantity: Number(r.quantity), unitPrice: Number(r.unit_price) })
+    arr.push({ productId: String(r.product_id), name: String(r.name), quantity: Number(r.quantity), unitPrice: Number(r.unit_price), size: r.size as string | null })
     bySale.set(k, arr)
   }
 

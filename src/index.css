@@ -3706,3 +3706,5 @@ body { overflow-x: hidden; }
 /* ---------- Pedidos: fiado a receber ---------- */
 .orders__fiado { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
 .orders__receive { padding: 0.45rem 0.9rem; font-size: 0.82rem; }
+.orders__cancelsale { margin-top: 0.6rem; padding: 0.45rem 0.9rem; font-size: 0.82rem; color: #b3261e; border-color: #f3c4c1; }
+.orders__cancelsale:hover { background: #fdf2f1; }

@@ -24,6 +24,8 @@ interface CatalogContextValue {
   removeLocal: (id: string) => void
   /** Abate estoque local após uma venda/pedido (mantém a UI em sincronia). */
   decrementStockLocal: (items: { id: string; quantity: number; size?: string }[]) => void
+  /** Devolve estoque local ao cancelar um pedido/venda. */
+  restoreStockLocal: (items: { id: string; quantity: number; size?: string }[]) => void
 }
 
 const CatalogContext = createContext<CatalogContextValue | null>(null)
@@ -99,6 +101,37 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const restoreStockLocal = useCallback(
+    (items: { id: string; quantity: number; size?: string }[]) => {
+      const byProduct = new Map<string, number>()
+      const byVariant = new Map<string, number>()
+      for (const i of items) {
+        byProduct.set(i.id, (byProduct.get(i.id) ?? 0) + i.quantity)
+        if (i.size) {
+          const k = `${i.id}__${i.size}`
+          byVariant.set(k, (byVariant.get(k) ?? 0) + i.quantity)
+        }
+      }
+      setProducts((prev) =>
+        prev.map((p) => {
+          const qty = byProduct.get(p.id)
+          if (qty == null) return p
+          if (p.variants && p.variants.length) {
+            const variants = p.variants.map((v) => {
+              const add = byVariant.get(`${p.id}__${v.label}`) ?? 0
+              return add ? { ...v, stock: v.stock + add } : v
+            })
+            const total = variants.reduce((s, v) => s + Math.max(0, v.stock), 0)
+            return { ...p, variants, stock: total }
+          }
+          if (p.stock == null) return p
+          return { ...p, stock: p.stock + qty }
+        }),
+      )
+    },
+    [],
+  )
+
   return (
     <CatalogContext.Provider
       value={{
@@ -109,6 +142,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         error,
         refresh: load,
         upsertLocal,
+        restoreStockLocal,
         removeLocal,
         decrementStockLocal,
       }}

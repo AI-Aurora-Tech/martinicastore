@@ -7,6 +7,7 @@ import {
   type Transaction,
 } from '../services/management'
 import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
+import { useCatalog } from '../context/CatalogContext'
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Pendente',
@@ -30,6 +31,7 @@ function when(iso: string) {
 }
 
 export function Orders() {
+  const { restoreStockLocal } = useCatalog()
   const [txs, setTxs] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -104,9 +106,23 @@ export function Orders() {
   }
 
   async function changeStatus(tx: Transaction, next: OrderStatus) {
+    const wasCanceled = tx.status === 'canceled'
     setTxs((prev) => prev.map((t) => (t.id === tx.id ? { ...t, status: next } : t)))
     const { error: err } = await updateOrderStatus(tx, next)
-    if (err) setError(err)
+    if (err) {
+      setError(err)
+      setTxs((prev) => prev.map((t) => (t.id === tx.id ? { ...t, status: tx.status } : t)))
+      return
+    }
+    // Cancelou → devolve o estoque (no Supabase o trigger faz no banco; aqui
+    // mantemos o catálogo em memória em sincronia).
+    if (next === 'canceled' && !wasCanceled) {
+      restoreStockLocal(
+        tx.items
+          .filter((i) => i.productId)
+          .map((i) => ({ id: i.productId as string, quantity: i.quantity, size: i.size ?? undefined })),
+      )
+    }
   }
 
   if (loading) return <div className="reports__loading">Carregando pedidos…</div>
@@ -223,6 +239,20 @@ export function Orders() {
                             </div>
                           ) : (
                             <p className="orders__meta">✓ Fiado recebido.</p>
+                          )
+                        )}
+                        {t.kind === 'PDV' && (
+                          t.status === 'canceled' ? (
+                            <p className="orders__meta">✖ Venda cancelada — estoque devolvido.</p>
+                          ) : (
+                            <button
+                              className="btn btn--ghost orders__cancelsale"
+                              onClick={() => {
+                                if (confirm(`Cancelar a venda nº ${String(t.number).padStart(6, '0')} de "${t.who}"? O estoque será devolvido.`)) changeStatus(t, 'canceled')
+                              }}
+                            >
+                              ✖ Cancelar venda (devolver estoque)
+                            </button>
                           )
                         )}
                         {t.kind === 'Loja' && (
