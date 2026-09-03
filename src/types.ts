@@ -126,3 +126,15 @@ export interface Banner {
   /** Ordem no carrossel. */
   sort?: number
 }
+
+export interface Sponsor {
+  id: string
+  /** Nome do patrocinador (para acessibilidade). */
+  name?: string
+  /** URL (ou data URL) do logo. */
+  imageUrl: string
+  /** Página do patrocinador (abre em nova aba). */
+  link?: string
+  active?: boolean
+  sort?: number
+}

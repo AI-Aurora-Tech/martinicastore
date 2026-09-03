@@ -13,6 +13,7 @@ import { Orders } from './Orders'
 import { Purchases } from './Purchases'
 import { Despesas } from './Despesas'
 import { BannersManager } from './BannersManager'
+import { SponsorsManager } from './SponsorsManager'
 import { CategoriesManager } from './CategoriesManager'
 import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -45,7 +46,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     return { id, error: null }
   }
   const [tab, setTab] = useState<
-    'estoque' | 'categorias' | 'banners' | 'compras' | 'despesas' | 'pedidos' | 'relatorios'
+    'estoque' | 'categorias' | 'banners' | 'patrocinadores' | 'compras' | 'despesas' | 'pedidos' | 'relatorios'
   >('estoque')
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<CategoryId | 'todos'>('todos')
@@ -197,6 +198,12 @@ export function Admin({ operator, onExit, onLogout }: Props) {
             🖼️ Banners
           </button>
           <button
+            className={`admin__tab ${tab === 'patrocinadores' ? 'admin__tab--active' : ''}`}
+            onClick={() => setTab('patrocinadores')}
+          >
+            🤝 Patrocinadores
+          </button>
+          <button
             className={`admin__tab ${tab === 'compras' ? 'admin__tab--active' : ''}`}
             onClick={() => setTab('compras')}
           >
@@ -260,6 +267,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
 
         {tab === 'categorias' && <CategoriesManager onFlash={flash} />}
         {tab === 'banners' && <BannersManager onFlash={flash} />}
+        {tab === 'patrocinadores' && <SponsorsManager onFlash={flash} />}
         {tab === 'compras' && <Purchases operatorEmail={operator.email} />}
         {tab === 'despesas' && <Despesas operatorEmail={operator.email} />}
         {tab === 'pedidos' && <Orders />}

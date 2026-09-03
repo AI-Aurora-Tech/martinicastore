@@ -382,8 +382,9 @@ button {
   max-width: var(--max);
   margin: 1.5rem auto;
   padding: 0 1.25rem;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
 }
 .benefits__item {
@@ -394,6 +395,8 @@ button {
   display: flex;
   gap: 0.8rem;
   align-items: center;
+  flex: 1 1 240px;
+  max-width: 320px;
 }
 .benefits__icon {
   font-size: 1.6rem;
@@ -413,10 +416,12 @@ button {
   max-width: var(--max);
   margin: 2rem auto;
   padding: 0 1.25rem;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
 }
+.collections__card { flex: 1 1 160px; max-width: 220px; }
 .collections__card {
   border: none;
   border-radius: var(--radius);
@@ -456,6 +461,55 @@ button {
   font-size: 0.8rem;
   color: var(--gold);
   font-weight: 700;
+}
+
+/* ---------- Patrocinadores (loja) ---------- */
+.sponsors {
+  max-width: var(--max);
+  margin: 2.5rem auto;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  border-top: 1px solid var(--line);
+}
+.sponsors__title { font-size: 1.05rem; margin: 0 0 1.1rem; color: var(--muted); font-weight: 700; }
+.sponsors__grid { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.2rem 2rem; }
+.sponsors__item { display: inline-flex; align-items: center; justify-content: center; height: 60px; }
+.sponsors__item img {
+  max-height: 60px;
+  max-width: 150px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.9;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+a.sponsors__item { cursor: pointer; }
+a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
+
+/* ---------- Patrocinadores (painel) ---------- */
+.sponsors-admin__add { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0.4rem 0 1rem; cursor: pointer; }
+.sponsors-admin__add.is-busy { pointer-events: none; opacity: 0.7; }
+.sponsors-admin__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.8rem; }
+.sponsors-admin__item {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+.sponsors-admin__item.is-off { opacity: 0.55; }
+.sponsors-admin__logo { display: flex; align-items: center; justify-content: center; height: 60px; background: var(--bg); border-radius: 8px; overflow: hidden; }
+.sponsors-admin__logo img { max-height: 56px; max-width: 110px; object-fit: contain; }
+.sponsors-admin__fields { display: grid; grid-template-columns: 1fr 2fr; gap: 0.6rem; min-width: 0; }
+.sponsors-admin__actions { display: flex; flex-direction: column; gap: 0.4rem; }
+.sponsors-admin__actions .btn { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+.sponsors-admin__del { color: #b3261e; }
+@media (max-width: 720px) {
+  .sponsors-admin__item { grid-template-columns: 1fr; }
+  .sponsors-admin__fields { grid-template-columns: 1fr; }
+  .sponsors-admin__actions { flex-direction: row; flex-wrap: wrap; }
 }
 
 /* ---------- Vitrine / Grid ---------- */

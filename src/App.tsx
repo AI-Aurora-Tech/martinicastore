@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Header } from './components/Header'
 import { BannerCarousel } from './components/BannerCarousel'
 import { Benefits } from './components/Benefits'
+import { Sponsors } from './components/Sponsors'
 import { ProductCard } from './components/ProductCard'
 import { CartDrawer } from './components/CartDrawer'
 import { Footer } from './components/Footer'
@@ -190,6 +191,8 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {active === 'todos' && !query.trim() && <Sponsors />}
 
       <Footer onLegal={openLegal} />
       <CartDrawer onCheckout={() => setView('checkout')} />
