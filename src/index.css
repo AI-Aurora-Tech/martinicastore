@@ -961,14 +961,20 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   display: grid;
   place-items: center;
-  font-size: 1.05rem;
+  color: #fff;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-.footer__social a:hover {
-  background: var(--red);
+.footer__social a svg { display: block; }
+.footer__social a:hover { transform: translateY(-2px); }
+/* Cores originais de cada plataforma no hover */
+.footer__social--ig:hover {
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
 }
+.footer__social--fb:hover { background: #1877f2; }
+.footer__social--yt:hover { background: #ff0000; }
 .footer__pay {
   display: flex;
   flex-wrap: wrap;
