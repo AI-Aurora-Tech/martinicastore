@@ -32,7 +32,8 @@ function toRow(p: Product) {
     reviews: p.reviews,
     stock,
     active: p.active ?? true,
-    image_url: p.image ?? null,
+    image_url: p.image ?? (p.images && p.images.length ? p.images[0] : null),
+    images: p.images && p.images.length ? p.images : null,
     weight: p.weight ?? 300,
     supplier_id: p.supplierId ?? null,
   }
@@ -94,18 +95,20 @@ export async function uploadProductImage(file: File): Promise<UploadResult> {
  */
 export async function saveProduct(p: Product): Promise<SaveResult> {
   if (!isSupabaseConfigured || !supabase) return { error: null }
-  const row: Record<string, unknown> = toRow(p)
+  const payload: Record<string, unknown> = toRow(p)
   let warn: string | null = null
 
-  // Colunas opcionais que podem não existir se a migração não foi rodada.
-  const drop = (key: string) => { const { [key]: _d, ...rest } = row; return rest }
-
-  let payload: Record<string, unknown> = row
   let { error } = await supabase.from('products').upsert(payload)
 
+  // Remove colunas opcionais ausentes (migração não rodada) e tenta de novo.
+  if (error && /images/i.test(error.message ?? '')) {
+    warn = 'Produto salvo, MAS as fotos extras não foram gravadas: rode a migração 0019_product_images.sql.'
+    delete payload.images
+    ;({ error } = await supabase.from('products').upsert(payload))
+  }
   if (error && /supplier_id/i.test(error.message ?? '')) {
     warn = 'Produto salvo, MAS o fornecedor não foi gravado: rode a migração 0017_product_supplier.sql.'
-    payload = drop('supplier_id')
+    delete payload.supplier_id
     ;({ error } = await supabase.from('products').upsert(payload))
   }
   if (error && /variants/i.test(error.message ?? '')) {

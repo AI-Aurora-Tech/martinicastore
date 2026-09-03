@@ -29,6 +29,12 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
 
+  // Galeria de fotos (a 1ª é a principal). Fallback para a foto única/ilustração.
+  const gallery = product.images && product.images.length
+    ? product.images
+    : (product.image ? [product.image] : [])
+  const [photo, setPhoto] = useState<string | undefined>(gallery[0] ?? product.image)
+
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0
@@ -57,17 +63,34 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
       </header>
 
       <div className="pdp__body">
-        <div className="pdp__media" style={{ background: `${product.colors[0]}14` }}>
-          {product.badge && !soldOut && <span className="card__badge">{product.badge}</span>}
-          {discount > 0 && !soldOut && <span className="card__discount">-{discount}%</span>}
-          {soldOut && <span className="card__soldout">Esgotado</span>}
-          <ProductImage
-            kind={product.kind}
-            colors={product.colors}
-            image={product.image}
-            alt={product.name}
-            className="pdp__img"
-          />
+        <div className="pdp__gallery">
+          <div className="pdp__media" style={{ background: `${product.colors[0]}14` }}>
+            {product.badge && !soldOut && <span className="card__badge">{product.badge}</span>}
+            {discount > 0 && !soldOut && <span className="card__discount">-{discount}%</span>}
+            {soldOut && <span className="card__soldout">Esgotado</span>}
+            <ProductImage
+              kind={product.kind}
+              colors={product.colors}
+              image={photo}
+              alt={product.name}
+              className="pdp__img"
+            />
+          </div>
+          {gallery.length > 1 && (
+            <div className="pdp__thumbs" role="list">
+              {gallery.map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`pdp__thumb ${photo === src ? 'is-active' : ''}`}
+                  onClick={() => setPhoto(src)}
+                  aria-label={`Ver foto ${i + 1}`}
+                >
+                  <img src={src} alt="" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="pdp__info">

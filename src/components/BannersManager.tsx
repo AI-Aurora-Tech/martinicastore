@@ -68,6 +68,21 @@ export function BannersManager({ onFlash }: { onFlash?: (msg: string) => void })
     else onFlash?.('Banner atualizado.')
   }
 
+  async function changeImage(b: Banner, file: File) {
+    if (!ALLOWED.includes(file.type)) return setError('Envie um arquivo JPG ou PNG.')
+    if (file.size > MAX_BYTES) return setError('Imagem muito grande (máximo 3 MB).')
+    if (!confirm('Trocar a imagem deste banner?')) return
+    setBusy(true)
+    setError(null)
+    const dataUrl = await readAsDataUrl(file).catch(() => null)
+    if (!dataUrl) { setBusy(false); return setError('Não foi possível ler a imagem.') }
+    const { error: err, banner: saved } = await saveBanner(b, dataUrl)
+    setBusy(false)
+    if (err) return setError(err)
+    if (saved) setBanners((list) => list.map((x) => (x.id === b.id ? saved : x)))
+    onFlash?.('Imagem do banner atualizada.')
+  }
+
   async function move(b: Banner, dir: -1 | 1) {
     const ordered = [...banners]
     const i = ordered.findIndex((x) => x.id === b.id)
@@ -143,7 +158,19 @@ export function BannersManager({ onFlash }: { onFlash?: (msg: string) => void })
         <ul className="banners-admin__list">
           {banners.map((b, i) => (
             <li key={b.id} className="banners-admin__item">
-              <img className="banners-admin__thumb" src={b.imageUrl} alt="" />
+              <div className="banners-admin__thumbwrap">
+                <img className="banners-admin__thumb" src={b.imageUrl} alt="" />
+                <label className="banners-admin__changeimg">
+                  {busy ? '…' : '🖼️ Trocar imagem'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    hidden
+                    disabled={busy}
+                    onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) changeImage(b, f) }}
+                  />
+                </label>
+              </div>
               <div className="banners-admin__fields">
                 <label>
                   <span>Título (opcional)</span>

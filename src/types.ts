@@ -49,8 +49,10 @@ export interface Product {
   stock?: number
   /** Produto visível na loja. `undefined`/true = ativo. */
   active?: boolean
-  /** URL (ou data URL) da foto do produto. Sem valor = usa a ilustração SVG. */
+  /** URL (ou data URL) da foto principal do produto. Sem valor = ilustração SVG. */
   image?: string
+  /** Todas as fotos do produto (a 1ª é a principal). */
+  images?: string[]
   /** Peso em gramas (para cálculo de frete). Padrão 300 g quando ausente. */
   weight?: number
   /** Fornecedor padrão para compra (deve estar cadastrado em Fornecedores). */

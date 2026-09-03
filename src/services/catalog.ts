@@ -27,6 +27,18 @@ interface ProductRow {
   weight: number | null
   variants: unknown
   supplier_id?: string | null
+  images?: unknown
+}
+
+/** Lê `images` (jsonb array de strings) com tolerância a string JSON. */
+function parseImages(raw: unknown): string[] | undefined {
+  let arr = raw
+  if (typeof raw === 'string') {
+    try { arr = JSON.parse(raw) } catch { return undefined }
+  }
+  if (!Array.isArray(arr)) return undefined
+  const out = arr.map((x) => String(x)).filter((s) => s.trim().length > 0)
+  return out.length ? out : undefined
 }
 
 interface CategoryRow {
@@ -67,6 +79,7 @@ function toProduct(r: ProductRow): Product {
     stock: total,
     active: r.active ?? true,
     image: r.image_url ?? undefined,
+    images: parseImages(r.images),
     weight: r.weight == null ? undefined : Number(r.weight),
     supplierId: r.supplier_id ?? undefined,
   }
@@ -130,7 +143,12 @@ export async function loadCatalog(): Promise<Catalog> {
     const sel = (cols: string): Promise<ProdResp> =>
       sb.from('products').select(cols).order('sort', { ascending: true }) as unknown as Promise<ProdResp>
 
-    let prods: ProdResp = await sel(`${BASE_COLS},variants,supplier_id`)
+    let prods: ProdResp = await sel(`${BASE_COLS},variants,supplier_id,images`)
+    // Coluna images ausente (migração 0019 não aplicada) → tenta sem ela.
+    if (prods.error && /images/i.test(prods.error.message ?? '')) {
+      warn = 'Coluna de fotos do produto ausente: rode a migração 0019_product_images.sql para ativar múltiplas fotos por produto.'
+      prods = await sel(`${BASE_COLS},variants,supplier_id`)
+    }
     // Coluna supplier_id ausente (migração 0017 não aplicada) → tenta sem ela.
     if (prods.error && /supplier_id/i.test(prods.error.message ?? '')) {
       warn = 'Coluna de fornecedor do produto ausente: rode a migração 0017_product_supplier.sql para vincular fornecedores aos produtos.'

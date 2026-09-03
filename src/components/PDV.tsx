@@ -93,13 +93,15 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const total = Math.max(0, subtotal - discount)
 
   const received = Number(receivedInput.replace(',', '.')) || 0
-  const change = payment === 'dinheiro' ? received - total : 0
+  // Dinheiro: se o valor recebido não for informado, assume pagamento exato
+  // (troco 0). Só calcula troco quando o operador digita quanto recebeu.
+  const change = payment === 'dinheiro' && received > 0 ? received - total : 0
   const isFiado = payment === 'fiado'
   // Fiado exige apenas o nome; telefone é opcional.
   const fiadoOk = !isFiado || fiadoName.trim().length > 1
   const canFinish =
     lines.length > 0 &&
-    (payment !== 'dinheiro' || received >= total) &&
+    (payment !== 'dinheiro' || received === 0 || received >= total) &&
     fiadoOk
 
   function addProduct(p: Product) {
@@ -162,7 +164,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
       discount,
       total,
       payment,
-      received: payment === 'dinheiro' ? received : 0,
+      received: payment === 'dinheiro' ? (received > 0 ? received : total) : 0,
       change: payment === 'dinheiro' ? Math.max(0, change) : 0,
       installments: payment === 'credito' ? installments : 1,
       // Fiado: venda fica pendente de recebimento, com nome/telefone do comprador.
@@ -380,11 +382,11 @@ export function PDV({ onExit, operator, onLogout }: Props) {
 
             {payment === 'dinheiro' && (
               <div className="pdv__cash">
-                <label htmlFor="pdv-rec">Valor recebido (R$)</label>
+                <label htmlFor="pdv-rec">Valor recebido (R$) <small style={{ color: 'var(--muted)', fontWeight: 400 }}>— opcional (em branco = valor exato)</small></label>
                 <input
                   id="pdv-rec"
                   inputMode="decimal"
-                  placeholder="0,00"
+                  placeholder="em branco = valor exato"
                   value={receivedInput}
                   onChange={(e) => setReceivedInput(e.target.value)}
                 />

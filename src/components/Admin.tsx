@@ -613,20 +613,30 @@ function ProductModal({ categories, existingIds, onCreateCategory, product, onCl
   function removeVariant(i: number) {
     setVariants((vs) => vs.filter((_, k) => k !== i))
   }
-  const [image, setImage] = useState<string | undefined>(product?.image)
+  const [images, setImages] = useState<string[]>(
+    product?.images && product.images.length ? product.images : (product?.image ? [product.image] : []),
+  )
   const [imgBusy, setImgBusy] = useState(false)
   const [err, setErr] = useState('')
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
-    if (!file) return
+    if (files.length === 0) return
     setImgBusy(true)
     setErr('')
-    const { url, error } = await uploadProductImage(file)
+    for (const file of files) {
+      const { url, error } = await uploadProductImage(file)
+      if (error || !url) { setErr(error ?? 'Falha ao enviar a imagem.'); break }
+      setImages((prev) => [...prev, url])
+    }
     setImgBusy(false)
-    if (error || !url) return setErr(error ?? 'Falha ao enviar a imagem.')
-    setImage(url)
+  }
+  function removeImage(i: number) {
+    setImages((prev) => prev.filter((_, k) => k !== i))
+  }
+  function makePrimary(i: number) {
+    setImages((prev) => (i <= 0 ? prev : [prev[i], ...prev.filter((_, k) => k !== i)]))
   }
 
   function submit(e: React.FormEvent) {
@@ -664,7 +674,8 @@ function ProductModal({ categories, existingIds, onCreateCategory, product, onCl
       stock: totalStock,
       weight: Math.max(1, Math.round(Number(weight) || 300)),
       active: product?.active ?? true,
-      image,
+      image: images[0],
+      images: images.length ? images : undefined,
       supplierId: supplierId || undefined,
     })
   }
@@ -675,28 +686,26 @@ function ProductModal({ categories, existingIds, onCreateCategory, product, onCl
         <h3>{isEdit ? 'Editar produto' : 'Novo produto'}</h3>
         <div className="admin__form-grid">
           <div className="admin__form-full admin__imgfield">
-            <span className="admin__imgfield-label">Imagem do produto</span>
-            <div className="admin__imgfield-row">
-              <div className="admin__imgpreview">
-                {image ? (
-                  <img src={image} alt="Pré-visualização" />
-                ) : (
-                  <span aria-hidden="true">🖼️</span>
-                )}
-              </div>
-              <div className="admin__imgfield-actions">
-                <label className="btn btn--ghost admin__imgbtn">
-                  {imgBusy ? 'Enviando…' : image ? 'Trocar imagem' : 'Escolher imagem'}
-                  <input type="file" accept="image/png,image/jpeg" onChange={handleFile} hidden />
-                </label>
-                {image && (
-                  <button type="button" className="admin__imgremove" onClick={() => setImage(undefined)}>
-                    Remover
-                  </button>
-                )}
-                <small>JPG ou PNG, até 3 MB. Opcional — sem imagem usa a ilustração.</small>
-              </div>
+            <span className="admin__imgfield-label">Fotos do produto</span>
+            <div className="admin__gallery">
+              {images.map((src, i) => (
+                <div key={i} className={`admin__gallery-item ${i === 0 ? 'is-primary' : ''}`}>
+                  <img src={src} alt={`Foto ${i + 1}`} />
+                  {i === 0 && <span className="admin__gallery-badge">Principal</span>}
+                  <div className="admin__gallery-tools">
+                    {i > 0 && (
+                      <button type="button" title="Tornar principal" onClick={() => makePrimary(i)}>★</button>
+                    )}
+                    <button type="button" title="Remover" onClick={() => removeImage(i)}>✕</button>
+                  </div>
+                </div>
+              ))}
+              <label className={`admin__gallery-add ${imgBusy ? 'is-busy' : ''}`}>
+                {imgBusy ? 'Enviando…' : (images.length ? '＋ Adicionar foto' : '＋ Escolher fotos')}
+                <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleFile} hidden disabled={imgBusy} />
+              </label>
             </div>
+            <small className="admin__hint">JPG, PNG ou WEBP, até 3 MB cada. A 1ª foto é a principal (use ★ para promover outra). Sem foto, usa a ilustração.</small>
           </div>
           <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" /></label>
           <label>Código (id)
