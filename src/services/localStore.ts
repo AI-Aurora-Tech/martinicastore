@@ -36,6 +36,8 @@ export interface OrderRecord {
   customerName?: string
   customerEmail?: string
   status?: string
+  paymentStatus?: string
+  mpPreferenceId?: string
   shippingService?: string
   shippingDays?: number
   address?: string

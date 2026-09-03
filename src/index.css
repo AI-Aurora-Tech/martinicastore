@@ -2980,6 +2980,18 @@ button {
 .myorders__totrow { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--muted); padding: 0.15rem 0; }
 .myorders__totrow--grand { color: var(--text); font-weight: 700; font-size: 0.95rem; border-top: 1px solid var(--line); margin-top: 0.2rem; padding-top: 0.4rem; }
 .myorders__addr { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--muted); }
+.myorders__pay { padding: 0.35rem 0.7rem; font-size: 0.8rem; white-space: nowrap; }
+.myorders__paybig { margin: 0.3rem 0 0.2rem; }
+.myorders__expire {
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.78rem;
+  color: #9a6400;
+  background: #fff8ec;
+  border-top: 1px solid var(--line);
+}
+.myorders__expire.is-danger { color: #b3261e; background: #fdf2f1; }
+.myorders__expire strong { white-space: nowrap; }
 
 /* ---------- Aviso de pagamento (retorno do Mercado Pago) ---------- */
 .paynotice {

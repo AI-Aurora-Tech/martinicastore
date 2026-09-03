@@ -5,6 +5,9 @@ import { BRL } from '../data/products'
 import { formatCep, lookupCep, onlyDigits } from '../services/shipping'
 import { formatCpf, isValidCpf } from '../services/cpf'
 import { listMyOrders, type MyOrder } from '../services/myOrders'
+import { createPayment } from '../services/payment'
+
+const PAY_WINDOW_MS = 24 * 60 * 60 * 1000
 
 interface Props {
   onClose: () => void
@@ -27,6 +30,10 @@ function when(iso: string) {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('pt-BR')
 }
+function whenFull(iso: string) {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR')
+}
 
 export function AccountModal({ onClose }: Props) {
   const { customer, updateProfile } = useCustomer()
@@ -37,6 +44,21 @@ export function AccountModal({ onClose }: Props) {
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [ordersErr, setOrdersErr] = useState<string | null>(null)
   const [openOrder, setOpenOrder] = useState<string | null>(null)
+  const [payingId, setPayingId] = useState<string | null>(null)
+  const [payMsg, setPayMsg] = useState<string | null>(null)
+
+  async function finishPayment(o: MyOrder) {
+    if (payingId) return
+    setPayingId(o.id)
+    setPayMsg(null)
+    const { initPoint, error } = await createPayment(o.id, o.payment, window.location.origin)
+    if (initPoint) {
+      window.location.href = initPoint
+      return
+    }
+    setPayingId(null)
+    setPayMsg(error || 'Pagamento online indisponível no momento. Fale com a loja pelo WhatsApp.')
+  }
 
   useEffect(() => {
     if (!customer) return
@@ -132,22 +154,54 @@ export function AccountModal({ onClose }: Props) {
                 <p>Você ainda não fez nenhum pedido.</p>
               </div>
             ) : (
+              <>
               <ul className="myorders__list">
                 {orders.map((o) => {
-                  const st = STATUS[o.status] ?? { label: o.status, cls: 'wait' }
                   const isOpen = openOrder === o.id
                   const units = o.items.reduce((s, i) => s + i.quantity, 0)
+                  // Janela de pagamento (24h) para pedidos pendentes com pagamento online.
+                  const pendingOnline = o.status === 'pending' && o.online
+                  const expiresAt = new Date(new Date(o.when).getTime() + PAY_WINDOW_MS)
+                  const expired = pendingOnline && Date.now() > expiresAt.getTime()
+                  const canPay = pendingOnline && !expired
+                  const st = expired
+                    ? { label: 'Pagamento expirado', cls: 'danger' }
+                    : STATUS[o.status] ?? { label: o.status, cls: 'wait' }
                   return (
                     <li key={o.id} className="myorders__item">
-                      <button className="myorders__row" onClick={() => setOpenOrder(isOpen ? null : o.id)}>
+                      <div className="myorders__row" role="button" tabIndex={0}
+                        onClick={() => setOpenOrder(isOpen ? null : o.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') setOpenOrder(isOpen ? null : o.id) }}>
                         <div className="myorders__main">
                           <strong>Pedido nº {String(o.number).padStart(6, '0')}</strong>
                           <small>{when(o.when)} · {units} {units === 1 ? 'item' : 'itens'}</small>
                         </div>
                         <span className={`myorders__badge is-${st.cls}`}>{st.label}</span>
                         <strong className="myorders__total">{BRL.format(o.total)}</strong>
-                        <span className="myorders__chev">{isOpen ? '▲' : '▼'}</span>
-                      </button>
+                        {canPay ? (
+                          <button
+                            className="btn btn--primary myorders__pay"
+                            disabled={payingId === o.id}
+                            onClick={(e) => { e.stopPropagation(); finishPayment(o) }}
+                          >
+                            {payingId === o.id ? '…' : '💳 Pagar'}
+                          </button>
+                        ) : (
+                          <span className="myorders__chev">{isOpen ? '▲' : '▼'}</span>
+                        )}
+                      </div>
+
+                      {canPay && (
+                        <p className="myorders__expire">
+                          ⏳ Finalize o pagamento até <strong>{whenFull(expiresAt.toISOString())}</strong> ou o pedido será cancelado automaticamente.
+                        </p>
+                      )}
+                      {expired && (
+                        <p className="myorders__expire is-danger">
+                          ⚠️ O pagamento não foi efetuado em 24h — este pedido foi/será cancelado. Faça um novo pedido, se quiser.
+                        </p>
+                      )}
+
                       {isOpen && (
                         <div className="myorders__detail">
                           <ul className="myorders__items">
@@ -164,6 +218,15 @@ export function AccountModal({ onClose }: Props) {
                             <span>{o.shipping > 0 ? BRL.format(o.shipping) : 'Grátis'}</span>
                           </div>
                           <div className="myorders__totrow myorders__totrow--grand"><span>Total</span><span>{BRL.format(o.total)}</span></div>
+                          {canPay && (
+                            <button
+                              className="btn btn--primary btn--block myorders__paybig"
+                              disabled={payingId === o.id}
+                              onClick={() => finishPayment(o)}
+                            >
+                              {payingId === o.id ? 'Abrindo pagamento…' : '💳 Finalizar pagamento'}
+                            </button>
+                          )}
                           {o.address && <p className="myorders__addr">📍 {o.address}</p>}
                           {o.shippingService === 'RETIRADA' && (
                             <p className="myorders__addr">🏪 Retirada na loja (Sáb. e Dom., 8h–15h)</p>
@@ -174,6 +237,8 @@ export function AccountModal({ onClose }: Props) {
                   )
                 })}
               </ul>
+              {payMsg && <p className="custauth__error" style={{ marginTop: '0.6rem' }}>⚠️ {payMsg}</p>}
+              </>
             )}
           </div>
         ) : (

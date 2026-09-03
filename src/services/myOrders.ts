@@ -22,6 +22,8 @@ export interface MyOrder {
   shippingService?: string
   shippingDays?: number
   address?: string
+  /** Pedido com pagamento online iniciado (tem preferência do Mercado Pago). */
+  online: boolean
   items: MyOrderItem[]
 }
 
@@ -52,6 +54,7 @@ export async function listMyOrders(customer: Customer): Promise<MyOrder[]> {
         shippingService: o.shippingService,
         shippingDays: o.shippingDays,
         address: o.address,
+        online: !!(o.mpPreferenceId || o.paymentStatus),
         items: o.items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
       }))
   }
@@ -91,6 +94,7 @@ export async function listMyOrders(customer: Customer): Promise<MyOrder[]> {
     shippingService: (o.shipping_service as string) ?? undefined,
     shippingDays: (o.shipping_days as number) ?? undefined,
     address: addrString(o),
+    online: !!(o.mp_preference_id || o.payment_status),
     items: itemsByOrder.get(String(o.id)) ?? [],
   }))
 }
