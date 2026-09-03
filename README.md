@@ -10,6 +10,118 @@ clube, preços em Real e carrinho de compras funcional.
 
 Identidade visual em **laranja e preto**.
 
+---
+
+## 🍔 Lanchonete Martinica — app de gestão de lanchonete
+
+Além da loja, este repositório traz o **Lanchonete Martinica**, um aplicativo
+completo de gestão de lanchonete que roda numa URL própria e é totalmente
+independente do e-commerce.
+
+- **Onde abrir:** `/lanchonete` (ex.: `http://localhost:5173/lanchonete` em
+  desenvolvimento).
+- **Onde fica o código:** `src/lanchonete/` — nada da loja é importado por ele.
+- **Onde ficam os dados:** `localStorage` do navegador. Não precisa de banco,
+  de Supabase nem de qualquer configuração para funcionar.
+
+### Acessos de demonstração
+
+| Perfil | Usuário | Senha | O que enxerga |
+| --- | --- | --- | --- |
+| Administrador | `admin` | `martinica` | Tudo: painel, produtos, estoque, compras, contas a pagar, financeiro e usuários |
+| Operador de PDV | `caixa` | `1234` | Apenas a vitrine de vendas e a fila de pedidos |
+
+> As credenciais ficam no cadastro de usuários (editável pelo Admin) e são
+> guardadas em texto puro no navegador — é um app de demonstração local, não
+> um sistema de autenticação para produção.
+
+### Telas
+
+**PDV (tela do operador)** — tema escuro, separada da gestão.
+
+- Vitrine com **imagem e preço de todos os itens de venda**, busca e filtro por
+  categoria (Lanches, Porções, Bebidas, Sobremesas, Combos).
+- Cada card mostra quantas porções o estoque ainda permite vender; itens sem
+  estoque ficam bloqueados.
+- Carrinho lateral com quantidade, observação por item ("sem cebola"), tipo de
+  atendimento (balcão, mesa, entrega), cliente e desconto em R$.
+- **Formas de pagamento**: dinheiro (com valor recebido, atalhos de cédula e
+  cálculo de troco), Pix, débito, crédito, vale-refeição e fiado.
+- Ao finalizar, o sistema pergunta **"Deseja imprimir o pedido?"** e imprime um
+  comprovante não fiscal de 76 mm (cupom de impressora térmica).
+
+**Fila de pedidos** — todo pedido nasce em *Na fila* e caminha por *Em preparo*
+→ *Pronto* → **baixa em *Entregue***. O cancelamento **devolve os insumos ao
+estoque**. A tela mostra o tempo de espera de cada comanda e as baixas do dia.
+
+**Gestão (tema claro, só para Admin)**
+
+- **Painel** — vendas do dia, lucro bruto, fila, contas vencendo, insumos a
+  repor e itens esgotados.
+- **Produtos** — cadastro dos itens de venda (nome, categoria, preço, foto ou
+  ilustração) e da **ficha técnica**.
+- **Estoque** — insumos com unidade (kg / L / un), saldo, mínimo, custo médio e
+  valor em estoque, mais o painel de **porções disponíveis por produto**.
+- **Compras** — entrada de mercadoria por **Kg ou unidade**.
+- **Contas a pagar** — as parcelas geradas pelas compras e as **despesas
+  avulsas** (aluguel, energia, salários…), com baixa de pagamento.
+- **Financeiro** — receitas e despesas consolidadas.
+- **Usuários** — perfis Admin e PDV.
+
+### Como o estoque reflete o que é comprado e vendido
+
+Cada produto tem uma **ficha técnica**: quanto de cada insumo sai do estoque a
+cada porção vendida. A disponibilidade de um item é o gargalo da sua ficha.
+
+> Uma porção de batata frita usa **500 g**. Comprando **5 kg de batata**, o
+> estoque passa a ter **10 porções** para venda. Vendidas 2 porções, saem 1 kg
+> do saldo e restam 8 porções. Vale para todo insumo comprado a peso — carne,
+> frango, calabresa, açaí — e também para os vendidos por unidade (latas,
+> long necks, pães).
+
+A tela de compras mostra esse reflexo **antes** de confirmar a entrada: ao
+lançar 5 kg de batata, ela informa quantas porções de cada produto aquilo rende.
+
+### Compras → contas a pagar
+
+Ao registrar uma compra o app faz, de uma vez:
+
+1. **Entrada no estoque** na unidade base do insumo (5 kg de batata comprados em
+   kg, ou 5000 g comprados em g, chegam como 5 kg).
+2. **Recálculo do custo médio ponderado** do insumo — o que mantém o CMV e as
+   margens dos produtos atualizados.
+3. **Geração das contas a pagar**, uma por parcela, com o **vencimento** e a
+   **forma de pagamento** escolhidos na compra (as parcelas seguintes vencem
+   mês a mês).
+
+### Financeiro
+
+O módulo apresenta o período em dois regimes, para não contar o mesmo dinheiro
+duas vezes:
+
+- **Competência** — vendas brutas − descontos = receita líquida; − custo dos
+  insumos vendidos (CMV) = lucro bruto; − despesas operacionais = resultado.
+- **Caixa** — entradas das vendas recebidas − contas efetivamente pagas no
+  período = saldo de caixa (as vendas fiado aparecem à parte, como a receber).
+
+Complementam a visão: receita por dia, receita por forma de pagamento, despesas
+por categoria, itens mais vendidos, contas em aberto e vencidas.
+
+### Rodando
+
+```bash
+npm install
+npm run dev
+# loja:        http://localhost:5173/
+# lanchonete:  http://localhost:5173/lanchonete
+```
+
+Em produção (Vercel), `vercel.json` já reescreve `/lanchonete` para o
+`index.html`. Em *Usuários → Dados do sistema* há o botão **Restaurar dados de
+demonstração**, que zera pedidos, compras e contas e devolve o cadastro inicial.
+
+---
+
 ## ✨ Funcionalidades
 
 ### 🏬 Loja (frente de loja / e-commerce)

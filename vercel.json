@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/gestao/:path*", "destination": "/index.html" },
-    { "source": "/gestao", "destination": "/index.html" }
+    { "source": "/gestao", "destination": "/index.html" },
+    { "source": "/lanchonete/:path*", "destination": "/index.html" },
+    { "source": "/lanchonete", "destination": "/index.html" }
   ]
 }
