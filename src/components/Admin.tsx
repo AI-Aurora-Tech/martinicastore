@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BRL, CLUB } from '../data/products'
-import type { CategoryId, Product, ProductKind, Supplier } from '../types'
+import type { Category, CategoryId, Product, ProductKind, Supplier } from '../types'
 import { listSuppliers } from '../services/suppliers'
+import { saveCategory, slugify } from '../services/categories'
 import { SuppliersModal } from './SuppliersModal'
 import { useCatalog } from '../context/CatalogContext'
 import { deleteProduct, saveProduct, setStock, uploadProductImage } from '../services/admin'
@@ -29,7 +30,20 @@ const KINDS: ProductKind[] = [
 ]
 
 export function Admin({ operator, onExit, onLogout }: Props) {
-  const { products, categories, source, error: catalogError, upsertLocal, removeLocal } = useCatalog()
+  const { products, categories, source, error: catalogError, upsertLocal, upsertCategoryLocal, removeLocal } = useCatalog()
+
+  /** Cria uma categoria a partir do rótulo (usada direto no cadastro do produto). */
+  async function createCategory(label: string): Promise<{ id: string | null; error: string | null }> {
+    const clean = label.trim()
+    if (!clean) return { id: null, error: 'Informe o nome da categoria.' }
+    const id = slugify(clean) || `cat-${Date.now().toString(36)}`
+    if (categories.some((c) => c.id === id)) return { id: null, error: 'Já existe uma categoria com esse nome.' }
+    const cat: Category = { id, label: clean, sort: categories.length }
+    const { error: err } = await saveCategory(cat, categories)
+    if (err) return { id: null, error: err }
+    upsertCategoryLocal(cat)
+    return { id, error: null }
+  }
   const [tab, setTab] = useState<
     'estoque' | 'categorias' | 'banners' | 'compras' | 'despesas' | 'pedidos' | 'relatorios'
   >('estoque')
@@ -329,8 +343,9 @@ export function Admin({ operator, onExit, onLogout }: Props) {
 
       {creating && (
         <ProductModal
-          categories={categories.map((c) => c.id)}
+          categories={categories}
           existingIds={products.map((p) => p.id)}
+          onCreateCategory={createCategory}
           onClose={() => setCreating(false)}
           onSave={async (p) => {
             if (!confirm(`Criar o produto "${p.name}"?`)) return
@@ -342,8 +357,9 @@ export function Admin({ operator, onExit, onLogout }: Props) {
 
       {editing && (
         <ProductModal
-          categories={categories.map((c) => c.id)}
+          categories={categories}
           existingIds={products.map((p) => p.id)}
+          onCreateCategory={createCategory}
           product={editing}
           onClose={() => setEditing(null)}
           onSave={async (p) => {
@@ -518,19 +534,46 @@ function AdminRow({
 // ---------------------------------------------------------------------------
 
 interface ModalProps {
-  categories: string[]
+  categories: Category[]
   existingIds: string[]
+  /** Cria uma categoria nova a partir do rótulo; devolve o id gerado. */
+  onCreateCategory: (label: string) => Promise<{ id: string | null; error: string | null }>
   /** Quando presente, o modal edita um produto existente. */
   product?: Product
   onClose: () => void
   onSave: (p: Product) => void
 }
 
-function ProductModal({ categories, existingIds, product, onClose, onSave }: ModalProps) {
+/** Gera um id único a partir de uma base (slug do nome). */
+function makeUniqueId(base: string, existing: string[]): string {
+  const clean = base || 'produto'
+  if (!existing.includes(clean)) return clean
+  let n = 2
+  while (existing.includes(`${clean}-${n}`)) n++
+  return `${clean}-${n}`
+}
+
+function ProductModal({ categories, existingIds, onCreateCategory, product, onClose, onSave }: ModalProps) {
   const isEdit = !!product
-  const [id, setId] = useState(product?.id ?? '')
+  const [id] = useState(product?.id ?? '')
   const [name, setName] = useState(product?.name ?? '')
-  const [category, setCategory] = useState(product?.category ?? categories[0] ?? 'camisas')
+  const [category, setCategory] = useState(product?.category ?? categories[0]?.id ?? 'camisas')
+  // Criação de categoria direto no cadastro.
+  const [newCatMode, setNewCatMode] = useState(false)
+  const [newCatLabel, setNewCatLabel] = useState('')
+  const [catBusy, setCatBusy] = useState(false)
+
+  async function createCat() {
+    if (catBusy) return
+    setCatBusy(true)
+    setErr('')
+    const { id: newId, error } = await onCreateCategory(newCatLabel)
+    setCatBusy(false)
+    if (error || !newId) { setErr(error ?? 'Falha ao criar categoria.'); return }
+    setCategory(newId)
+    setNewCatLabel('')
+    setNewCatMode(false)
+  }
   const [kind, setKind] = useState<ProductKind>(product?.kind ?? 'jersey')
   const [price, setPrice] = useState(product ? String(product.price) : '')
   const [oldPrice, setOldPrice] = useState(product?.oldPrice ? String(product.oldPrice) : '')
@@ -551,6 +594,7 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
 
   const variantsTotal = variants.reduce((s, v) => s + Math.max(0, Math.round(Number(v.stock) || 0)), 0)
   const usingVariants = variants.length > 0
+  const previewId = isEdit ? id : (name.trim() ? makeUniqueId(slugify(name.trim()), existingIds) : '')
 
   function addVariant() {
     setVariants((vs) => [...vs, { label: '', stock: '0' }])
@@ -579,12 +623,11 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    const cleanId = id.trim().toLowerCase()
     const priceNum = Number(price.replace(',', '.'))
-    if (!cleanId) return setErr('Informe um código (id).')
-    if (!isEdit && existingIds.includes(cleanId)) return setErr('Já existe um produto com esse código.')
     if (!name.trim()) return setErr('Informe o nome.')
     if (Number.isNaN(priceNum) || priceNum < 0) return setErr('Preço inválido.')
+    // Novo produto: id gerado automaticamente a partir do nome (único).
+    const cleanId = isEdit ? id : makeUniqueId(slugify(name.trim()), existingIds)
 
     const oldPriceNum = Number(oldPrice.replace(',', '.'))
     const sizeList = sizes.split(',').map((s) => s.trim()).filter(Boolean)
@@ -647,14 +690,36 @@ function ProductModal({ categories, existingIds, product, onClose, onSave }: Mod
               </div>
             </div>
           </div>
-          <label>Código (id)
-            <input value={id} onChange={(e) => setId(e.target.value)} placeholder="ex.: cam-07" disabled={isEdit} />
-          </label>
           <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" /></label>
-          <label>Categoria
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <label>Código (id)
+            <input value={previewId || '—'} disabled placeholder="gerado automaticamente" />
+            {!isEdit && <small className="admin__hint">Gerado automaticamente a partir do nome.</small>}
+          </label>
+          <label className="admin__form-full">Categoria
+            {newCatMode ? (
+              <div className="admin__newcat">
+                <input
+                  value={newCatLabel}
+                  onChange={(e) => setNewCatLabel(e.target.value)}
+                  placeholder="Nome da nova categoria"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createCat() } }}
+                  autoFocus
+                />
+                <button type="button" className="btn btn--primary" disabled={catBusy || !newCatLabel.trim()} onClick={createCat}>
+                  {catBusy ? '…' : 'Criar'}
+                </button>
+                <button type="button" className="btn btn--ghost" onClick={() => { setNewCatMode(false); setNewCatLabel('') }}>
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <div className="admin__catfield">
+                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+                <button type="button" className="btn btn--ghost" onClick={() => setNewCatMode(true)}>+ Nova categoria</button>
+              </div>
+            )}
           </label>
           <label>Tipo (ilustração)
             <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)}>

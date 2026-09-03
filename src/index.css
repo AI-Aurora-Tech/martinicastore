@@ -3567,6 +3567,9 @@ body { overflow-x: hidden; }
 .admin__supplierfield select { flex: 1; min-width: 0; }
 .admin__supplierfield .btn { white-space: nowrap; padding: 0.5rem 0.8rem; font-size: 0.85rem; }
 .admin__hint { display: block; margin-top: 0.3rem; font-size: 0.75rem; color: var(--muted); }
+.admin__catfield, .admin__newcat { display: flex; gap: 0.5rem; align-items: stretch; }
+.admin__catfield select, .admin__newcat input { flex: 1; min-width: 0; }
+.admin__catfield .btn, .admin__newcat .btn { white-space: nowrap; padding: 0.5rem 0.8rem; font-size: 0.85rem; }
 
 .admin__variants-add {
   display: inline-block;

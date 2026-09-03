@@ -20,6 +20,8 @@ interface CatalogContextValue {
   refresh: () => void
   /** Insere ou atualiza um produto na lista em memória (reflexo imediato na UI). */
   upsertLocal: (product: Product) => void
+  /** Insere ou atualiza uma categoria na lista em memória. */
+  upsertCategoryLocal: (category: Category) => void
   /** Remove um produto da lista em memória. */
   removeLocal: (id: string) => void
   /** Abate estoque local após uma venda/pedido (mantém a UI em sincronia). */
@@ -67,6 +69,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   const removeLocal = useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id))
+  }, [])
+
+  const upsertCategoryLocal = useCallback((category: Category) => {
+    setCategories((prev) => {
+      const idx = prev.findIndex((c) => c.id === category.id)
+      if (idx === -1) return [...prev, category]
+      const next = [...prev]
+      next[idx] = category
+      return next
+    })
   }, [])
 
   const decrementStockLocal = useCallback(
@@ -142,6 +154,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         error,
         refresh: load,
         upsertLocal,
+        upsertCategoryLocal,
         restoreStockLocal,
         removeLocal,
         decrementStockLocal,
