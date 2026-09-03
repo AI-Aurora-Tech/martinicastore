@@ -72,7 +72,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
 
   const catalog = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       const okCat = cat === 'todos' || p.category === cat
       const okText =
         q === '' ||
@@ -80,6 +80,12 @@ export function PDV({ onExit, operator, onLogout }: Props) {
         p.id.toLowerCase().includes(q)
       return okCat && okText
     })
+    // Produtos esgotados vão para o FINAL da lista.
+    const soldOut = (p: (typeof products)[number]) => (p.stock != null && p.stock <= 0 ? 1 : 0)
+    return list
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => soldOut(a.p) - soldOut(b.p) || a.i - b.i)
+      .map((x) => x.p)
   }, [products, query, cat])
 
   const subtotal = useMemo(

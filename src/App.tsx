@@ -59,7 +59,7 @@ export default function App() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       const isActive = p.active !== false
       const byCategory = active === 'todos' || p.category === active
       const bySearch =
@@ -68,6 +68,12 @@ export default function App() {
         p.description.toLowerCase().includes(q)
       return isActive && byCategory && bySearch
     })
+    // Produtos indisponíveis (esgotados) vão para o FINAL da lista.
+    const soldOut = (p: (typeof products)[number]) => (p.stock != null && p.stock <= 0 ? 1 : 0)
+    return list
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => soldOut(a.p) - soldOut(b.p) || a.i - b.i)
+      .map((x) => x.p)
   }, [products, active, query])
 
   const activeLabel =

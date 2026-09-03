@@ -15,13 +15,15 @@ interface Props {
  */
 export function ProductImage({ kind, colors, className, image, alt }: Props) {
   if (image) {
+    // Preenche a caixa (aspect-ratio do container) sem esticá-la: absolute evita
+    // que uma foto retrato/paisagem aumente a altura do container; contain = sem cortes.
     return (
       <img
         src={image}
         alt={alt ?? ''}
         className={className}
         loading="lazy"
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
       />
     )
   }

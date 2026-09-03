@@ -1176,11 +1176,13 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   transform: translateY(-2px);
 }
 .pdv__product-img {
+  position: relative;
   aspect-ratio: 1 / 1;
   border-radius: 8px;
   display: grid;
   place-items: center;
   padding: 0.6rem;
+  overflow: hidden;
 }
 .pdv__product-img svg {
   width: 70%;
@@ -3547,16 +3549,24 @@ body { overflow-x: hidden; }
   position: relative;
   border-radius: var(--radius);
   aspect-ratio: 1 / 1;
-  display: grid;
-  place-items: center;
-  padding: 2rem;
-  position: sticky;
-  top: 1rem;
+  overflow: hidden;
 }
-.pdp__img { width: 80%; height: 80%; }
-.pdp__gallery { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: 0.7rem; }
+/* A foto preenche a caixa (com respiro) SEM esticar a altura do container:
+   absolute => não empurra o aspect-ratio; object-fit: contain => sem cortes. */
+.pdp__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8%;
+  box-sizing: border-box;
+}
+/* Bloco (não flex): assim o aspect-ratio do .pdp__media resolve normalmente.
+   Num flex-column o container crescia até a altura natural da foto. */
+.pdp__gallery { position: sticky; top: 1rem; display: block; }
 .pdp__gallery .pdp__media { position: relative; top: auto; }
-.pdp__thumbs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pdp__thumbs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
 .pdp__thumb {
   width: 64px; height: 64px; padding: 0;
   border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
@@ -3611,10 +3621,14 @@ body { overflow-x: hidden; }
 
 @media (max-width: 780px) {
   .pdp__body { grid-template-columns: 1fr; gap: 1rem; }
-  .pdp__media { position: relative; top: auto; aspect-ratio: 4 / 3; padding: 1.2rem; }
+  /* No celular a galeria NÃO fica fixa (evita sobrepor o conteúdo). */
+  .pdp__gallery { position: static; top: auto; }
+  .pdp__media { position: relative; top: auto; aspect-ratio: 1 / 1; padding: 1.2rem; }
+  .pdp__gallery .pdp__media { width: 100%; }
   .pdp__name { font-size: 1.3rem; }
   .pdp__price { font-size: 1.6rem; }
-  .pdp__actions { position: sticky; bottom: 0.6rem; }
+  /* Botões fluem normalmente (sem barra fixa que sobrepunha os campos). */
+  .pdp__actions { position: static; bottom: auto; }
 }
 
 /* ---- Admin: edit button + row actions ---- */
