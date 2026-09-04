@@ -10,7 +10,7 @@ export function Hero({ onShop }: Props) {
       <div className="hero__content">
         <span className="hero__eyebrow">Coleção 2026 já chegou</span>
         <h1 className="hero__title">
-          Vista o manto do <span>Timão da Martinica</span>
+          Vista o manto da <span>Martinica</span>
         </h1>
         <p className="hero__text">
           O novo uniforme oficial, agasalhos e tudo o que o torcedor precisa

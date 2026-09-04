@@ -85,7 +85,7 @@ export const products: Product[] = [
     colors: ['#f4f4f4', '#ff6a00'],
     badge: 'Lançamento',
     description:
-      'O manto branco do Timão da Martinica. Design clássico com detalhes em laranja e gola em ribana.',
+      'O manto branco da Martinica. Design clássico com detalhes em laranja e gola em ribana.',
     sizes: SIZES,
     rating: 4.8,
     reviews: 341,

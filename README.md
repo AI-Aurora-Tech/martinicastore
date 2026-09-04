@@ -1,8 +1,7 @@
 # Martinica Store 🛍️⚽
 
 Loja virtual (e-commerce) da torcida do **Martinica FC**, inspirada no modelo
-de lojas oficiais de clubes de futebol como a
-[ShopTimão](https://www.shoptimao.com.br/). Vende camisas, agasalhos, calçados,
+de lojas oficiais de clubes de futebol. Vende camisas, agasalhos, calçados,
 acessórios, produtos de torcedor e itens pet — tudo com identidade visual de
 clube, preços em Real e carrinho de compras funcional.
 
