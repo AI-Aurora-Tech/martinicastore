@@ -3,6 +3,7 @@ import type { Product } from '../types'
 import { BRL } from '../data/products'
 import { useCart } from '../context/CartContext'
 import { hasVariants, variantStock } from '../services/variants'
+import { productPath } from '../services/seo'
 import { ProductImage } from './ProductImage'
 import { StarRating } from './StarRating'
 
@@ -38,13 +39,21 @@ export function ProductCard({ product, onOpen }: Props) {
     window.setTimeout(() => setAdded(false), 1200)
   }
 
+  const href = productPath(product.id)
+  const open = (e: React.MouseEvent) => {
+    // Deixa o navegador abrir em nova aba (ctrl/cmd/clique do meio); senão, SPA.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || (e as React.MouseEvent).button === 1) return
+    e.preventDefault()
+    onOpen?.(product)
+  }
+
   return (
     <article className={`card ${soldOut ? 'card--out' : ''}`}>
-      <button
-        type="button"
+      <a
+        href={href}
         className="card__media card__media--btn"
         style={{ background: `${product.colors[0]}14` }}
-        onClick={() => onOpen?.(product)}
+        onClick={open}
         aria-label={`Ver detalhes de ${product.name}`}
       >
         {product.badge && !soldOut && <span className="card__badge">{product.badge}</span>}
@@ -57,13 +66,13 @@ export function ProductCard({ product, onOpen }: Props) {
           alt={product.name}
           className="card__img"
         />
-      </button>
+      </a>
 
       <div className="card__body">
         <h3 className="card__name">
-          <button type="button" className="card__name-btn" onClick={() => onOpen?.(product)}>
+          <a href={href} className="card__name-btn" onClick={open}>
             {product.name}
-          </button>
+          </a>
         </h3>
         <StarRating rating={product.rating} reviews={product.reviews} />
 

@@ -3509,6 +3509,8 @@ body { overflow-x: hidden; }
   width: 100%;
   font: inherit;
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 }
 .card__name-btn {
   border: none;
@@ -3519,6 +3521,8 @@ body { overflow-x: hidden; }
   color: inherit;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
+  display: inline;
 }
 .card__name-btn:hover { color: var(--red); }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Header } from './components/Header'
 import { BannerCarousel } from './components/BannerCarousel'
 import { Benefits } from './components/Benefits'
@@ -11,10 +11,17 @@ import { Checkout } from './components/Checkout'
 import { ProductDetail } from './components/ProductDetail'
 import { LegalPage, type LegalSection } from './components/LegalPage'
 import { useCatalog } from './context/CatalogContext'
+import { clearProductSeo, productPath, setProductSeo } from './services/seo'
 import type { CategoryId, Product } from './types'
 
 /** A área da equipe (PDV + Gestão) fica numa URL separada da loja: /gestao. */
 const IS_BACKOFFICE = /^\/(gestao|admin|pdv)(\/|$)/.test(window.location.pathname)
+
+/** Id do produto no deep-link inicial (/produto/<id>), capturado antes dos efeitos. */
+const INITIAL_PRODUCT_ID = (() => {
+  const m = window.location.pathname.match(/^\/produto\/(.+)$/)
+  return m ? decodeURIComponent(m[1]) : null
+})()
 
 export default function App() {
   const { products, categories, loading } = useCatalog()
@@ -47,6 +54,45 @@ export default function App() {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
+
+  // Deep-link /produto/<id>: abre o produto direto quando o catálogo carrega.
+  useEffect(() => {
+    if (selectedProduct || products.length === 0 || !INITIAL_PRODUCT_ID) return
+    const p = products.find((x) => x.id === INITIAL_PRODUCT_ID)
+    if (p) { setSelectedProduct(p); setView('produto') }
+  }, [products, selectedProduct])
+
+  // Botão voltar/avançar do navegador.
+  useEffect(() => {
+    const onPop = () => {
+      const m = window.location.pathname.match(/^\/produto\/(.+)$/)
+      if (m) {
+        const p = products.find((x) => x.id === decodeURIComponent(m[1]))
+        if (p) { setSelectedProduct(p); setView('produto'); return }
+      }
+      setSelectedProduct(null)
+      setView('loja')
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [products])
+
+  // Sincroniza URL + SEO com o produto aberto.
+  const seoInit = useRef(true)
+  useEffect(() => {
+    if (view === 'produto' && selectedProduct) {
+      setProductSeo(selectedProduct)
+      const path = productPath(selectedProduct.id)
+      if (window.location.pathname !== path) window.history.pushState({}, '', path)
+    } else {
+      clearProductSeo()
+      // No 1º render não mexe na URL — deixa o deep-link (/produto/<id>) resolver.
+      if (!seoInit.current && /^\/produto\//.test(window.location.pathname)) {
+        window.history.replaceState({}, '', '/')
+      }
+    }
+    seoInit.current = false
+  }, [view, selectedProduct])
 
   function selectCategory(id: CategoryId | 'todos') {
     setActive(id)

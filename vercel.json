@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/gestao/:path*", "destination": "/index.html" },
-    { "source": "/gestao", "destination": "/index.html" }
+    { "source": "/gestao", "destination": "/index.html" },
+    { "source": "/produto/:path*", "destination": "/index.html" }
   ]
 }
