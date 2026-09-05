@@ -1,0 +1,10 @@
+# Martinica Store
+User-agent: *
+Allow: /
+
+# Área da equipe (não indexar o painel/PDV)
+Disallow: /gestao
+Disallow: /admin
+Disallow: /pdv
+
+Sitemap: https://www.martinicaoficial.com.br/sitemap.xml
