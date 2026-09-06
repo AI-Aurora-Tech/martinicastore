@@ -1728,21 +1728,32 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   .pdv__clock { display: none; }
   .pdv__top { padding: 0.45rem 0.7rem; gap: 0.5rem; }
   .pdv__brand small { display: none; }
-  .pdv__brand strong { font-size: 0.82rem; white-space: nowrap; }
-  .pdv__brand .brand__mark { width: 32px; height: 32px; font-size: 1rem; border-radius: 9px; }
+  /* A marca cede espaço (e trunca) para "Voltar à loja" e "Sair" caberem —
+     antes o "Sair" ficava fora da tela, cortado pelo clip do #root. */
+  .pdv__brand { flex: 0 1 auto; min-width: 0; }
+  .pdv__brand > div { min-width: 0; }
+  .pdv__brand strong {
+    display: block;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pdv__brand .brand__mark { width: 32px; height: 32px; font-size: 1rem; border-radius: 9px; flex: 0 0 auto; }
   .pdv__exit,
-  .pdv__logout { padding: 0.35rem 0.6rem; font-size: 0.72rem; white-space: nowrap; }
+  .pdv__logout { flex: 0 0 auto; padding: 0.35rem 0.6rem; font-size: 0.72rem; white-space: nowrap; }
   .pdv__exit { margin-left: auto; }
-  .backoffice--pdv .backoffice__switch {
+  .backoffice__switch {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding: 0.3rem 0.6rem;
     gap: 0.3rem;
   }
-  .backoffice--pdv .backoffice__brand { display: none; }
-  .backoffice--pdv .backoffice__tab,
-  .backoffice--pdv .backoffice__role,
-  .backoffice--pdv .backoffice__store {
+  .backoffice__brand { display: none; }
+  .backoffice__tab,
+  .backoffice__role,
+  .backoffice__store {
+    flex: 0 0 auto;
     white-space: nowrap;
     font-size: 0.72rem;
     padding: 0.28rem 0.6rem;
@@ -2492,24 +2503,49 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .admin__gallery-add:hover { border-color: var(--red); }
 
 /* ---------- Admin: abas, custo/margem ---------- */
+/* São 8 abas: no celular elas não cabem na largura da tela. Como o #root usa
+   `overflow-x: clip`, sem rolagem horizontal aqui as abas seguintes ficavam
+   inalcançáveis. A faixa rola na horizontal e as abas nunca encolhem. */
 .admin__tabs {
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.4rem;
   border-bottom: 2px solid var(--line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+.admin__tabs::-webkit-scrollbar {
+  height: 4px;
+}
+.admin__tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin__tabs::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
 }
 .admin__tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  scroll-snap-align: start;
   border: none;
   background: none;
   padding: 0.7rem 1rem;
   font-weight: 700;
   font-size: 0.92rem;
   color: var(--muted);
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
+  /* Sublinhado por dentro do botão: com a faixa rolando, uma borda "puxada"
+     para fora (margin negativa) seria cortada pelo overflow. */
+  box-shadow: inset 0 -3px 0 transparent;
 }
 .admin__tab--active {
   color: var(--red);
-  border-bottom-color: var(--red);
+  box-shadow: inset 0 -3px 0 var(--red);
 }
 .admin__margin {
   font-weight: 700;
@@ -3662,9 +3698,10 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 /* ---------- Admin: categorias ---------- */
 .cats__head h3, .banners-admin .cats__head h3 { margin: 0 0 0.2rem; }
 .cats__head p { margin: 0 0 1rem; color: #666; font-size: 0.9rem; }
-.cats__add { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.cats__add { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
 .cats__add input {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   padding: 0.6rem 0.8rem;
   border: 1px solid #d9d9de;
   border-radius: 8px;
@@ -3691,7 +3728,15 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   line-height: 1;
 }
 .cats__order button:disabled { opacity: 0.35; cursor: default; }
-.cats__label { flex: 1; padding: 0.45rem 0.6rem; border: 1px solid #e2e2e5; border-radius: 7px; }
+.cats__label {
+  /* `min-width: 0` vence a largura intrínseca do input: sem isso a linha
+     estourava a tela no celular e o botão de excluir ficava inalcançável. */
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #e2e2e5;
+  border-radius: 7px;
+}
 .cats__id { color: #999; font-size: 0.8rem; font-family: monospace; }
 .cats__count { color: #666; font-size: 0.8rem; white-space: nowrap; }
 .cats__del {
@@ -3705,6 +3750,18 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 .cats__del:disabled { opacity: 0.4; cursor: default; }
 .cats__empty { color: #888; padding: 0.8rem; }
+
+/* No celular a linha da categoria quebra em duas: nome + ações em cima,
+   identificador e contagem embaixo. */
+@media (max-width: 560px) {
+  .cats__row { flex-wrap: wrap; gap: 0.5rem 0.6rem; }
+  .cats__order { order: 1; }
+  .cats__label { order: 2; flex: 1 1 120px; }
+  .cats__del { order: 3; }
+  .cats__id { order: 4; }
+  .cats__count { order: 5; }
+  .cats__add input { flex: 1 1 140px; min-width: 0; }
+}
 
 /* ---------- Admin: banners ---------- */
 .banners-admin__hint {
@@ -3770,6 +3827,18 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   .banners-admin__item { grid-template-columns: 1fr; }
   .banners-admin__thumb { width: 100%; }
   .banners-admin__actions { flex-direction: row; align-items: center; }
+}
+
+@media (max-width: 720px) {
+  .admin__body { padding: 0.9rem; gap: 0.8rem; }
+  .admin__tabs { gap: 0.15rem; }
+  .admin__tab { padding: 0.6rem 0.7rem; font-size: 0.85rem; }
+}
+
+/* Celulares estreitos: em vez de truncar a marca em "MARTINI…", mostra só o
+   selo — a barra de ferramentas logo acima já diz Gestão / Ponto de Venda. */
+@media (max-width: 430px) {
+  .pdv__brand > div { display: none; }
 }
 
 /* ================================================================= */
