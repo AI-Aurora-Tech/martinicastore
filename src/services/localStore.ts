@@ -67,7 +67,7 @@ export interface PurchaseRecord {
   total: number
   paymentMethod?: string
   paid?: boolean
-  status?: 'pendente' | 'entregue'
+  status?: 'pendente' | 'entregue' | 'cancelado'
   installments?: Installment[]
   items: PurchaseItem[]
 }

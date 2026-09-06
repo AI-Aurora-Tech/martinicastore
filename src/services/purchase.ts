@@ -56,7 +56,7 @@ export interface PurchaseSummary {
   total: number
   paymentMethod?: string
   paid?: boolean
-  status?: 'pendente' | 'entregue'
+  status?: 'pendente' | 'entregue' | 'cancelado'
   installments?: Installment[]
   items: PurchaseSummaryItem[]
 }
@@ -171,6 +171,97 @@ export async function notifyPurchase(purchaseId: string | null): Promise<NotifyP
   }
 }
 
+/** Uma compra só pode ser editada enquanto está pendente. */
+export function canEditPurchase(p: Pick<PurchaseSummary, 'status'>): boolean {
+  return (p.status ?? 'pendente') === 'pendente'
+}
+
+/**
+ * CANCELA a compra. Se ela já estava ENTREGUE, o estoque que entrou é devolvido
+ * (RPC `cancel_purchase`, migração 0021). A compra continua no histórico,
+ * marcada como cancelada, e sai das contas a pagar e do relatório financeiro.
+ */
+export async function cancelPurchase(p: PurchaseSummary): Promise<{ error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    updatePurchaseLocal(p.number, { status: 'cancelado' })
+    return { error: null }
+  }
+  const { error } = await supabase.rpc('cancel_purchase', { p_purchase_id: p.id })
+  return { error: error?.message ?? null }
+}
+
+/**
+ * EDITA uma compra pendente: fornecedor, pagamento, parcelas e itens. Os itens
+ * são regravados por inteiro. Não mexe em estoque — uma compra pendente ainda
+ * não deu entrada.
+ */
+export async function updatePurchase(
+  p: PurchaseSummary,
+  input: PurchaseInput,
+): Promise<{ error: string | null }> {
+  if (!canEditPurchase(p)) {
+    return { error: 'Só dá para editar uma compra pendente.' }
+  }
+  const total = input.items.reduce((s, i) => s + i.unitCost * i.quantity, 0)
+  const installments: Installment[] | undefined = input.paid
+    ? undefined
+    : (input.installments ?? []).map((x) => ({ n: x.n, amount: x.amount, dueDate: x.dueDate, paid: false }))
+
+  if (!isSupabaseConfigured || !supabase) {
+    updatePurchaseLocal(p.number, {
+      supplier: input.supplier,
+      total,
+      paymentMethod: input.paymentMethod,
+      paid: !!input.paid,
+      installments,
+      items: input.items.map((i) => ({
+        productId: i.productId, name: i.name, quantity: i.quantity, unitCost: i.unitCost, size: i.size,
+      })),
+    })
+    return { error: null }
+  }
+
+  try {
+    const { error: upErr } = await supabase
+      .from('purchases')
+      .update({
+        supplier: input.supplier ?? null,
+        supplier_id: input.supplierId ?? null,
+        supplier_phone: input.supplierPhone ?? null,
+        total,
+        payment_method: input.paymentMethod ?? null,
+        paid: !!input.paid,
+        paid_at: input.paid ? new Date().toISOString() : null,
+        installments: installments ?? null,
+      })
+      .eq('id', p.id)
+    if (upErr) throw upErr
+
+    // Itens: apaga e regrava. Depende do gatilho legado
+    // `trg_purchase_items_stock` estar removido (migração 0021), senão cada
+    // edição somaria estoque.
+    const { error: delErr } = await supabase.from('purchase_items').delete().eq('purchase_id', p.id)
+    if (delErr) throw delErr
+    const { error: insErr } = await supabase.from('purchase_items').insert(
+      input.items.map((i) => ({
+        purchase_id: p.id,
+        product_id: i.productId,
+        name: i.name,
+        size: i.size ?? null,
+        quantity: i.quantity,
+        unit_cost: i.unitCost,
+        line_total: i.unitCost * i.quantity,
+      })),
+    )
+    if (insErr) throw insErr
+    return { error: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao salvar as alterações.'
+    console.error('[purchase] erro ao editar:', err)
+    return { error: message }
+  }
+}
+
 /** Marca a compra como ENTREGUE e dá entrada no estoque (por variação). */
 export async function receivePurchase(p: PurchaseSummary): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured || !supabase) {
@@ -260,7 +351,7 @@ export async function listPurchases(): Promise<PurchaseSummary[]> {
     total: Number(p.total),
     paymentMethod: (p.payment_method as string) ?? undefined,
     paid: Boolean(p.paid),
-    status: ((p.status as string) ?? 'pendente') as 'pendente' | 'entregue',
+    status: ((p.status as string) ?? 'pendente') as PurchaseSummary['status'],
     installments: (p.installments as Installment[] | null) ?? undefined,
     items: byPurchase.get(String(p.id)) ?? [],
   }))

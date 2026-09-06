@@ -3,11 +3,14 @@ import { BRL } from '../data/products'
 import type { Product, ProductVariant, Supplier } from '../types'
 import { useCatalog } from '../context/CatalogContext'
 import {
+  canEditPurchase,
+  cancelPurchase,
   createPurchase,
   listPurchases,
   markPurchasePaid,
   notifyPurchase,
   receivePurchase,
+  updatePurchase,
   type PurchaseSummary,
 } from '../services/purchase'
 import { hasVariants } from '../services/variants'
@@ -82,6 +85,8 @@ export function Purchases({ operatorEmail }: Props) {
     { id: string | null; supplierName?: string; hasDestino: boolean } | null
   >(null)
   const [sendingWa, setSendingWa] = useState(false)
+  /** Compra sendo editada (null = registrando uma nova). */
+  const [editing, setEditing] = useState<PurchaseSummary | null>(null)
   const [pick, setPick] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -158,12 +163,15 @@ export function Purchases({ operatorEmail }: Props) {
       setError('Informe a data de vencimento de cada parcela.')
       return
     }
-    if (!confirm(`Registrar esta compra (${BRL.format(total)})?`)) return
+    const pergunta = editing
+      ? `Salvar as alterações da compra nº ${String(editing.number).padStart(6, '0')} (${BRL.format(total)})?`
+      : `Registrar esta compra (${BRL.format(total)})?`
+    if (!confirm(pergunta)) return
     setSaving(true)
     setError(null)
     setSuccess(null)
 
-    const { number, id, error: err } = await createPurchase({
+    const payload = {
       supplier: supplier?.name,
       supplierId: supplier?.id,
       supplierPhone: supplier?.phone,
@@ -174,7 +182,21 @@ export function Purchases({ operatorEmail }: Props) {
       items: lines.map((l) => ({
         productId: l.product.id, name: l.product.name, quantity: l.quantity, unitCost: l.unitCost, size: l.size,
       })),
-    })
+    }
+
+    // Editando: salva por cima e volta ao modo "nova compra".
+    if (editing) {
+      const { error: upErr } = await updatePurchase(editing, payload)
+      setSaving(false)
+      if (upErr) { setError(upErr); return }
+      const num = String(editing.number).padStart(6, '0')
+      cancelEdit()
+      setSuccess(`Compra nº ${num} atualizada.`)
+      loadHistory()
+      return
+    }
+
+    const { number, id, error: err } = await createPurchase(payload)
     setSaving(false)
     if (err) { setError(err); return }
 
@@ -218,6 +240,89 @@ export function Purchases({ operatorEmail }: Props) {
       } else {
         const add = its.reduce((s, i) => s + i.quantity, 0)
         upsertLocal({ ...p, stock: (p.stock ?? 0) + add })
+      }
+    }
+  }
+
+  /** Carrega a compra no formulário de cima para edição. */
+  function startEdit(h: PurchaseSummary) {
+    if (!canEditPurchase(h)) return
+    const carregadas: Line[] = []
+    const faltando: string[] = []
+    for (const it of h.items) {
+      const prod = products.find((p) => p.id === it.productId)
+      if (prod) carregadas.push({ product: prod, quantity: it.quantity, unitCost: it.unitCost, size: it.size })
+      else faltando.push(it.name)
+    }
+    setEditing(h)
+    setLines(carregadas)
+    setSupplierId(suppliers.find((s) => s.name === h.supplier)?.id ?? '')
+    setPayment(h.paymentMethod || 'Pix')
+    setPaid(!!h.paid)
+    const parc = h.installments?.length ?? 1
+    setParcelas(Math.max(1, parc))
+    setDueDates(h.installments?.length ? h.installments.map((i) => i.dueDate) : [todayISO()])
+    setLastOrder(null)
+    setSuccess(null)
+    setError(
+      faltando.length
+        ? `Itens que não estão mais no catálogo foram deixados de fora: ${faltando.join(', ')}.`
+        : null,
+    )
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditing(null)
+    setLines([])
+    setPaid(false)
+    setParcelas(1)
+    setDueDates([todayISO()])
+    setError(null)
+    setSuccess(null)
+  }
+
+  async function cancel(h: PurchaseSummary) {
+    if (busyId || h.status === 'cancelado') return
+    const devolve = h.status === 'entregue'
+      ? '\n\nO estoque que entrou com esta compra será DEVOLVIDO (retirado do estoque).'
+      : ''
+    if (!confirm(
+      `Cancelar a compra nº ${String(h.number).padStart(6, '0')}?${devolve}`
+      + '\n\nEla sai das contas a pagar e do relatório financeiro, mas continua no histórico.'
+    )) return
+    setBusyId(h.id)
+    setError(null)
+    const { error: err } = await cancelPurchase(h)
+    setBusyId(null)
+    if (err) { setError(err); return }
+    if (editing?.id === h.id) cancelEdit()
+    if (h.status === 'entregue') removeStockLocal(h.items)
+    setHistory((prev) => prev.map((x) => (x.id === h.id ? { ...x, status: 'cancelado' } : x)))
+    setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} cancelada.`)
+    loadHistory()
+  }
+
+  /** Espelha no catálogo em memória a devolução de estoque do cancelamento. */
+  function removeStockLocal(items: PurchaseSummary['items']) {
+    const byProduct = new Map<string, PurchaseSummary['items']>()
+    for (const i of items) {
+      const arr = byProduct.get(i.productId) ?? []
+      arr.push(i)
+      byProduct.set(i.productId, arr)
+    }
+    for (const [pid, its] of byProduct) {
+      const p = products.find((x) => x.id === pid)
+      if (!p) continue
+      if (p.variants && p.variants.length) {
+        const variants: ProductVariant[] = p.variants.map((v) => {
+          const sub = its.filter((i) => i.size === v.label).reduce((s, i) => s + i.quantity, 0)
+          return sub ? { ...v, stock: Math.max(0, v.stock - sub) } : v
+        })
+        upsertLocal({ ...p, variants, stock: variants.reduce((s, v) => s + Math.max(0, v.stock), 0) })
+      } else {
+        const sub = its.reduce((s, i) => s + i.quantity, 0)
+        upsertLocal({ ...p, stock: Math.max(0, (p.stock ?? 0) - sub) })
       }
     }
   }
@@ -289,7 +394,19 @@ export function Purchases({ operatorEmail }: Props) {
   return (
     <div className="purch">
       <section className="purch__new admin__tablewrap" style={{ padding: '1.1rem 1.2rem' }}>
-        <h3 className="purch__title">Novo pedido de compra</h3>
+        <h3 className="purch__title">
+          {editing
+            ? `Editando a compra nº ${String(editing.number).padStart(6, '0')}`
+            : 'Novo pedido de compra'}
+        </h3>
+        {editing && (
+          <p className="purch__hint" style={{ marginTop: 0 }}>
+            Alterando itens, fornecedor, pagamento e parcelas.{' '}
+            <button type="button" className="checkout__link" onClick={cancelEdit}>
+              cancelar edição
+            </button>
+          </p>
+        )}
 
         <div className="purch__top">
           <label className="checkout__field">
@@ -425,7 +542,11 @@ export function Purchases({ operatorEmail }: Props) {
             {sendingWa ? 'Enviando…' : 'Enviar pedido (WhatsApp)'}
           </button>
           <button className="btn btn--primary purch__register" disabled={saving || lines.length === 0} onClick={register}>
-            {saving ? 'Registrando…' : '🧾 Registrar pedido de compra'}
+            {saving
+              ? 'Salvando…'
+              : editing
+                ? '💾 Salvar alterações'
+                : '🧾 Registrar pedido de compra'}
           </button>
         </div>
         <p className="purch__hint">O estoque só é somado quando você marca a compra como <strong>Entregue</strong> abaixo.</p>
@@ -472,13 +593,19 @@ export function Purchases({ operatorEmail }: Props) {
                     {h.installments && h.installments.length > 1 ? ` · ${h.installments.length}x` : ''}
                   </small>
                   <div className="purch__badges">
-                    <span className={`purch__badge ${h.status === 'entregue' ? 'is-ok' : 'is-wait'}`}>
-                      {h.status === 'entregue' ? '✓ Entregue' : '⏳ Pendente de entrega'}
-                    </span>
-                    <span className={`purch__badge ${h.paid ? 'is-ok' : 'is-danger'}`}>
-                      {h.paid ? '✓ Paga' : '💰 A pagar'}
-                    </span>
-                    {h.installments && h.installments.length > 1 && !h.paid && (
+                    {h.status === 'cancelado' ? (
+                      <span className="purch__badge is-danger">✖ Cancelada</span>
+                    ) : (
+                      <span className={`purch__badge ${h.status === 'entregue' ? 'is-ok' : 'is-wait'}`}>
+                        {h.status === 'entregue' ? '✓ Entregue' : '⏳ Pendente de entrega'}
+                      </span>
+                    )}
+                    {h.status !== 'cancelado' && (
+                      <span className={`purch__badge ${h.paid ? 'is-ok' : 'is-danger'}`}>
+                        {h.paid ? '✓ Paga' : '💰 A pagar'}
+                      </span>
+                    )}
+                    {h.status !== 'cancelado' && h.installments && h.installments.length > 1 && !h.paid && (
                       <span className="purch__badge is-wait">
                         {h.installments.filter((i) => i.paid).length}/{h.installments.length} parcelas pagas
                       </span>
@@ -496,11 +623,37 @@ export function Purchases({ operatorEmail }: Props) {
                 <div className="purch__hist-side">
                   <strong className="purch__hist-total">{BRL.format(h.total)}</strong>
                   <div className="purch__hist-actions">
-                    {h.status !== 'entregue' && (
-                      <button className="btn btn--primary" disabled={busyId === h.id} onClick={() => deliver(h)}>↧ Entregue</button>
-                    )}
-                    {!h.paid && (
-                      <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
+                    {h.status === 'cancelado' ? (
+                      <span className="purch__meta-cancel">Compra cancelada — fora do financeiro.</span>
+                    ) : (
+                      <>
+                        {h.status !== 'entregue' && (
+                          <button className="btn btn--primary" disabled={busyId === h.id} onClick={() => deliver(h)}>↧ Entregue</button>
+                        )}
+                        {!h.paid && (
+                          <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
+                        )}
+                        {canEditPurchase(h) && (
+                          <button
+                            className="btn btn--ghost"
+                            disabled={busyId === h.id || saving}
+                            onClick={() => startEdit(h)}
+                            title="Alterar itens, fornecedor, pagamento e parcelas"
+                          >
+                            ✎ Editar
+                          </button>
+                        )}
+                        <button
+                          className="btn btn--ghost purch__cancelbtn"
+                          disabled={busyId === h.id}
+                          onClick={() => cancel(h)}
+                          title={h.status === 'entregue'
+                            ? 'Cancelar e devolver o estoque que entrou'
+                            : 'Cancelar esta compra'}
+                        >
+                          ✖ Cancelar
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

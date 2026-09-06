@@ -166,6 +166,8 @@ export async function listContas(): Promise<Conta[]> {
     recurrence: e.recurrence,
   }))
   const fromPurchases: Conta[] = purchases.flatMap((p) => {
+    // Compra cancelada não é conta a pagar nem despesa do período.
+    if (p.status === 'cancelado') return []
     const label = `Compra nº ${String(p.number).padStart(6, '0')}${p.supplier ? ` · ${p.supplier}` : ''}`
     // Compra parcelada (não à vista) => uma conta por parcela, com o seu vencimento.
     if (p.installments && p.installments.length > 0) {

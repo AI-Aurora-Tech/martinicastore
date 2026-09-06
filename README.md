@@ -108,6 +108,10 @@ Aba **"Compras"** para comprar de fornecedores e **dar entrada no estoque**:
   estoque de cada produto é **somado** e o **custo do produto é atualizado**
   para o custo da compra (melhora o cálculo de margem/lucro).
 - **Histórico de compras** com fornecedor, data e total.
+- **Editar** um pedido de compra enquanto ele está pendente (itens, fornecedor,
+  pagamento e parcelas) e **cancelar** a qualquer momento. Cancelar uma compra já
+  entregue devolve ao estoque o que tinha entrado; em qualquer caso ela sai das
+  contas a pagar e do relatório financeiro, mas continua no histórico.
 - **Cadastro de fornecedores** (nome, WhatsApp, CNPJ, contato) e envio do
   **pedido de compra pelo WhatsApp** (link wa.me com a mensagem pronta).
 - No modo Supabase grava em `purchases`/`purchase_items` e um *trigger* soma ao
