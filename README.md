@@ -113,9 +113,9 @@ Aba **"Compras"** para comprar de fornecedores e **dar entrada no estoque**:
 - No modo Supabase grava em `purchases`/`purchase_items` e um *trigger* soma ao
   estoque; no modo demo, tudo fica no navegador.
 
-> **Notificação de pedidos por WhatsApp (Z-API):** com a Z-API configurada
-> (segredos na Edge Function `notify-order`), cada pedido online avisa a **loja**
-> e o **cliente** por WhatsApp. Veja o SETUP.md.
+> **Notificação de pedidos por WhatsApp (Evolution API):** com a Evolution API
+> configurada (segredos na Edge Function `notify-order`), cada pedido online
+> avisa a **loja** e o **cliente** por WhatsApp. Veja o SETUP.md.
 
 #### 🧾 Pedidos (aba do Admin)
 
@@ -155,12 +155,13 @@ Duas Edge Functions: `create-payment` (cria a preferência) e
 `MP_ACCESS_TOKEN` configurado, a loja segue no fluxo sem pagamento online (nada
 quebra).
 
-### 📲 Notificação do pedido por WhatsApp (Z-API)
+### 📲 Notificação do pedido por WhatsApp (Evolution API)
 
 A confirmação do pedido é enviada por **WhatsApp** (não por e-mail). Quem envia
 é uma **Supabase Edge Function** (`supabase/functions/notify-order`) que lê o
-pedido no banco (service role) e envia via **[Z-API](https://www.z-api.io/)**
-para a **loja** e para o **cliente**. O checkout chama a função depois de gravar
+pedido no banco (service role) e envia via
+**[Evolution API](https://doc.evolution-api.com/)** para a **loja** e para o
+**cliente**. O checkout chama a função depois de gravar
 o pedido (best-effort: se falhar, a compra continua e a tela avisa o motivo).
 
 O **WhatsApp é obrigatório no cadastro** do cliente, e ele pode editar os dados
@@ -169,11 +170,12 @@ em **"Minha conta"** (nome, WhatsApp e endereço).
 Resumo (passo a passo completo em
 [`supabase/functions/notify-order/SETUP.md`](supabase/functions/notify-order/SETUP.md)):
 
-1. Crie uma instância na **Z-API** e **conecte o WhatsApp** (QR Code).
+1. Suba a **Evolution API** num servidor com **URL pública HTTPS** (ela é
+   auto-hospedada), crie a instância e **conecte o WhatsApp** (QR Code).
 2. Publique a função — CLI `supabase functions deploy notify-order` **ou** pelo
    Dashboard (Edge Functions → Create → colar o `index.ts`).
-3. Configure os segredos: `ZAPI_INSTANCE_ID`, `ZAPI_INSTANCE_TOKEN`,
-   `ZAPI_CLIENT_TOKEN` e `STORE_WHATSAPP` (número da loja).
+3. Configure os segredos: `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`,
+   `EVOLUTION_INSTANCE` e `STORE_WHATSAPP` (número da loja).
    `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente da função.
 
 > No **modo demo** (sem Supabase) não há backend — o pedido é só registrado

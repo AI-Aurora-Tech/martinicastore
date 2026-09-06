@@ -76,6 +76,13 @@ export function filterByPeriod<T extends { when: string }>(items: T[], period: P
   })
 }
 
+/**
+ * Cancelados ficam fora do relatório financeiro: não somam faturamento, custo,
+ * lucro, itens vendidos nem ticket médio. Vale para os dois lados — venda do PDV
+ * e pedido da loja.
+ */
+const isCanceled = (status: unknown) => String(status ?? '').toLowerCase() === 'canceled'
+
 /** Um pedido/venda conta como RECEBIDO quando o dinheiro entrou no caixa. */
 function isReceived(kind: 'PDV' | 'Loja', payment: string, status?: string): boolean {
   const s = (status ?? '').toLowerCase()
@@ -173,17 +180,19 @@ export async function fetchTransactions(): Promise<{ txs: Tx[]; source: 'supabas
     const sales = readSales()
     const orders = readOrders()
     const txs: Tx[] = [
-      ...sales.map((s) => ({
-        kind: 'PDV' as const,
-        number: s.number,
-        when: s.createdAt,
-        total: s.total,
-        payment: s.payment,
-        received: isReceived('PDV', s.payment, s.status),
-        items: s.items,
-      })),
+      ...sales
+        .filter((s) => !isCanceled(s.status))
+        .map((s) => ({
+          kind: 'PDV' as const,
+          number: s.number,
+          when: s.createdAt,
+          total: s.total,
+          payment: s.payment,
+          received: isReceived('PDV', s.payment, s.status),
+          items: s.items,
+        })),
       ...orders
-        .filter((o) => (o.status ?? '').toLowerCase() !== 'canceled')
+        .filter((o) => !isCanceled(o.status))
         .map((o) => ({
           kind: 'Loja' as const,
           number: o.number,
@@ -228,17 +237,19 @@ export async function fetchTransactions(): Promise<{ txs: Tx[]; source: 'supabas
   const orderItemsByOrder = mapItems(orderItems.data ?? [], 'order_id')
 
   const txs: Tx[] = [
-    ...(sales.data ?? []).map((s: Record<string, unknown>) => ({
-      kind: 'PDV' as const,
-      number: Number(s.number),
-      when: String(s.created_at),
-      total: Number(s.total),
-      payment: String(s.payment_method),
-      received: isReceived('PDV', String(s.payment_method), s.status as string | undefined),
-      items: saleItemsBySale.get(String(s.id)) ?? [],
-    })),
+    ...(sales.data ?? [])
+      .filter((s: Record<string, unknown>) => !isCanceled(s.status))
+      .map((s: Record<string, unknown>) => ({
+        kind: 'PDV' as const,
+        number: Number(s.number),
+        when: String(s.created_at),
+        total: Number(s.total),
+        payment: String(s.payment_method),
+        received: isReceived('PDV', String(s.payment_method), s.status as string | undefined),
+        items: saleItemsBySale.get(String(s.id)) ?? [],
+      })),
     ...(orders.data ?? [])
-      .filter((o: Record<string, unknown>) => String(o.status ?? '').toLowerCase() !== 'canceled')
+      .filter((o: Record<string, unknown>) => !isCanceled(o.status))
       .map((o: Record<string, unknown>) => ({
         kind: 'Loja' as const,
         number: Number(o.number),

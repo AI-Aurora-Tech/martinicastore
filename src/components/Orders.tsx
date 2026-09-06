@@ -243,15 +243,15 @@ export function Orders() {
                         )}
                         {t.kind === 'PDV' && (
                           t.status === 'canceled' ? (
-                            <p className="orders__meta">✖ Venda cancelada — estoque devolvido.</p>
+                            <p className="orders__meta">✖ Venda cancelada — estoque devolvido e valor fora do relatório.</p>
                           ) : (
                             <button
                               className="btn btn--ghost orders__cancelsale"
                               onClick={() => {
-                                if (confirm(`Cancelar a venda nº ${String(t.number).padStart(6, '0')} de "${t.who}"? O estoque será devolvido.`)) changeStatus(t, 'canceled')
+                                if (confirm(`Cancelar a venda nº ${String(t.number).padStart(6, '0')} de "${t.who}"?\n\nO estoque volta e o valor sai do relatório financeiro. A venda continua no histórico, marcada como cancelada.`)) changeStatus(t, 'canceled')
                               }}
                             >
-                              ✖ Cancelar venda (devolver estoque)
+                              ✖ Cancelar venda
                             </button>
                           )
                         )}

@@ -18,7 +18,7 @@ export interface SaleRecord {
   total: number
   payment: 'dinheiro' | 'pix' | 'credito' | 'debito' | 'fiado' | 'cartao'
   operatorEmail?: string
-  status?: 'paid' | 'pending'
+  status?: 'paid' | 'pending' | 'canceled'
   customerName?: string
   customerPhone?: string
   items: TxItem[]
