@@ -84,9 +84,9 @@ export function SuppliersModal({ onClose, onChange }: Props) {
                 placeholder="120363XXXXXXXXXXXX@g.us"
               />
               <small className="sup-modal__hint">
-                Opcional. Com o grupo preenchido, o pedido de compra é enviado para lá
-                automaticamente ao registrar. Sem ele, continua valendo o botão de enviar
-                pelo WhatsApp do contato.
+                Opcional. Com o grupo preenchido, "Enviar pedido (WhatsApp)" manda o pedido
+                para o grupo. Sem ele, vai para o WhatsApp acima. O WhatsApp da loja precisa
+                participar do grupo.
               </small>
             </label>
             <label>Contato<input value={form.contact ?? ''} onChange={(e) => set('contact', e.target.value)} placeholder="Nome do vendedor" /></label>

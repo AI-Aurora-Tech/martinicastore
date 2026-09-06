@@ -12,7 +12,6 @@ import {
 } from '../services/purchase'
 import { hasVariants } from '../services/variants'
 import { listSuppliers } from '../services/suppliers'
-import { buildPurchaseText, waLink } from '../services/whatsapp'
 import { pdfTable, printReport } from '../services/exportPdf'
 import { SuppliersModal } from './SuppliersModal'
 
@@ -29,8 +28,6 @@ interface Line {
 
 const PAYMENTS = ['Pix', 'Dinheiro', 'Cartão', 'Boleto', 'Transferência']
 const MAX_PARCELAS = 24
-
-interface POLine { name: string; quantity: number; unitCost: number }
 
 function when(iso: string) {
   const d = new Date(iso)
@@ -60,6 +57,16 @@ function splitAmounts(total: number, n: number): number[] {
 }
 const lineKey = (l: { product: Product; size?: string }) => `${l.product.id}__${l.size ?? ''}`
 
+/** Traduz os motivos que a Edge Function devolve. */
+const MOTIVO: Record<string, string> = {
+  demo: 'Modo demo: sem backend para enviar o WhatsApp. Configure o Supabase.',
+  'sem-destino': 'O fornecedor não tem grupo nem WhatsApp cadastrado. Preencha em "Gerenciar".',
+  'sem-fornecedor': 'Esta compra foi registrada sem fornecedor, então não há para quem enviar.',
+  'sem-grupo': 'O fornecedor não tem grupo de WhatsApp cadastrado.',
+  forbidden: 'Sua conta não tem permissão para enviar. Entre com um usuário admin.',
+  unauthorized: 'Sessão expirada. Entre novamente na Gestão.',
+}
+
 export function Purchases({ operatorEmail }: Props) {
   const { products, upsertLocal } = useCatalog()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -71,7 +78,10 @@ export function Purchases({ operatorEmail }: Props) {
   const [paid, setPaid] = useState(false)
   const [parcelas, setParcelas] = useState(1)
   const [dueDates, setDueDates] = useState<string[]>([todayISO()])
-  const [lastOrder, setLastOrder] = useState<{ supplierName?: string; supplierPhone?: string; lines: POLine[] } | null>(null)
+  const [lastOrder, setLastOrder] = useState<
+    { id: string | null; supplierName?: string; hasDestino: boolean } | null
+  >(null)
+  const [sendingWa, setSendingWa] = useState(false)
   const [pick, setPick] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -170,30 +180,16 @@ export function Purchases({ operatorEmail }: Props) {
 
     // Guarda o pedido registrado: só agora o botão de WhatsApp fica ativo.
     setLastOrder({
+      id,
       supplierName: supplier?.name,
-      supplierPhone: supplier?.phone,
-      lines: lines.map((l) => ({
-        name: `${l.product.name}${l.size ? ` (${l.size})` : ''}`, quantity: l.quantity, unitCost: l.unitCost,
-      })),
+      hasDestino: Boolean(supplier?.whatsappGroup?.trim() || supplier?.phone?.trim()),
     })
     const parcelaMsg = paid
       ? 'paga (à vista)'
       : `a pagar em ${parcelas}x`
-
-    // Fornecedor com grupo cadastrado → manda o pedido para lá. A compra já
-    // está registrada; um envio que falhe só vira aviso na tela.
-    let envioMsg = ' Agora você pode enviar o pedido pelo WhatsApp.'
-    if (supplier?.whatsappGroup?.trim()) {
-      const { sent, reason } = await notifyPurchase(id)
-      envioMsg = sent
-        ? ` Pedido enviado ao grupo de "${supplier.name}" no WhatsApp.`
-        : ` ⚠️ Não consegui enviar ao grupo de "${supplier.name}" (${reason ?? 'motivo desconhecido'}) —`
-          + ' envie pelo botão do WhatsApp.'
-    }
-
     setSuccess(
-      `Compra registrada${number ? ` (nº ${String(number).padStart(6, '0')})` : ''} — ${parcelaMsg}.`
-        + `${envioMsg} O estoque será somado quando marcar como ENTREGUE.`,
+      `Compra registrada${number ? ` (nº ${String(number).padStart(6, '0')})` : ''} — ${parcelaMsg}. `
+        + 'Agora clique em "Enviar pedido (WhatsApp)". O estoque será somado quando marcar como ENTREGUE.',
     )
     setLines([])
     setPaid(false)
@@ -275,15 +271,19 @@ export function Purchases({ operatorEmail }: Props) {
     printReport('Compras (pedidos)', body)
   }
 
-  function sendWhatsApp() {
+  /** Envia o pedido pela Evolution — direto, sem abrir o WhatsApp no navegador. */
+  async function sendWhatsApp() {
     if (!lastOrder) { setError('Registre o pedido antes de enviar pelo WhatsApp.'); return }
-    const text = buildPurchaseText(
-      { name: lastOrder.supplierName } as Supplier,
-      lastOrder.lines,
-    )
-    const link = waLink(lastOrder.supplierPhone, text)
-    if (!link) { setError('O fornecedor deste pedido não tem WhatsApp cadastrado.'); return }
-    window.open(link, '_blank', 'noopener')
+    setError(null)
+    setSendingWa(true)
+    const { sent, reason } = await notifyPurchase(lastOrder.id)
+    setSendingWa(false)
+    const quem = lastOrder.supplierName ? `"${lastOrder.supplierName}"` : 'o fornecedor'
+    if (sent) {
+      setSuccess(`Pedido enviado para ${quem} no WhatsApp.`)
+      return
+    }
+    setError(MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
   }
 
   return (
@@ -411,17 +411,18 @@ export function Purchases({ operatorEmail }: Props) {
           </div>
           <button
             className="btn btn--wa purch__wa"
-            disabled={!lastOrder || !lastOrder.supplierPhone}
+            disabled={!lastOrder || !lastOrder.hasDestino || sendingWa}
             onClick={sendWhatsApp}
             title={
               !lastOrder
                 ? 'Registre o pedido de compra primeiro'
-                : lastOrder.supplierPhone
-                  ? 'Enviar pedido ao fornecedor pelo WhatsApp'
-                  : 'O fornecedor deste pedido não tem WhatsApp cadastrado'
+                : lastOrder.hasDestino
+                  ? 'Envia o pedido pelo WhatsApp da loja, sem abrir o navegador'
+                  : 'O fornecedor não tem grupo nem WhatsApp cadastrado'
             }
           >
-            <span aria-hidden="true">💬</span> Enviar pedido (WhatsApp)
+            <span aria-hidden="true">💬</span>{' '}
+            {sendingWa ? 'Enviando…' : 'Enviar pedido (WhatsApp)'}
           </button>
           <button className="btn btn--primary purch__register" disabled={saving || lines.length === 0} onClick={register}>
             {saving ? 'Registrando…' : '🧾 Registrar pedido de compra'}

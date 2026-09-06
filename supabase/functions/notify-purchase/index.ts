@@ -1,7 +1,9 @@
 // Supabase Edge Function: notify-purchase
-// Envia o PEDIDO DE COMPRA para o grupo de WhatsApp do fornecedor (Evolution
-// API). Lê a compra no banco com a service role — o Admin só informa o
-// purchaseId. O destino vem de `suppliers.whatsapp_group` (migração 0020).
+// Envia o PEDIDO DE COMPRA pelo WhatsApp (Evolution API). Lê a compra no banco
+// com a service role — o Admin só informa o purchaseId.
+//
+// Destino: o GRUPO do fornecedor (`suppliers.whatsapp_group`, migração 0020) e,
+// quando não houver grupo, o telefone dele (`suppliers.phone`).
 //
 // Deploy:  supabase functions deploy notify-purchase
 // Segredos: EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE
@@ -105,15 +107,18 @@ Deno.serve(async (req: Request) => {
       .single()
     if (!purchase) return json({ sent: false, error: 'compra não encontrada' })
 
-    // Destino: o grupo cadastrado no fornecedor da compra.
+    // Destino: o grupo cadastrado no fornecedor; sem grupo, o WhatsApp dele.
     if (!purchase.supplier_id) return json({ sent: false, error: 'sem-fornecedor' })
     const { data: supplier } = await supabase
       .from('suppliers')
-      .select('name, whatsapp_group')
+      .select('name, phone, whatsapp_group')
       .eq('id', purchase.supplier_id)
       .maybeSingle()
     const grupo = String(supplier?.whatsapp_group ?? '').trim()
-    if (!grupo) return json({ sent: false, error: 'sem-grupo' })
+    const telefone = String(supplier?.phone ?? purchase.supplier_phone ?? '').trim()
+    const destino = grupo || telefone
+    const via = grupo ? 'grupo' : 'telefone'
+    if (!destino) return json({ sent: false, error: 'sem-destino' })
 
     const { data: items } = await supabase
       .from('purchase_items')
@@ -121,8 +126,8 @@ Deno.serve(async (req: Request) => {
       .eq('purchase_id', purchaseId)
     if (!items?.length) return json({ sent: false, error: 'compra sem itens' })
 
-    await sendWhatsApp(grupo, purchaseText(purchase, items, 'Martinica Store'))
-    return json({ sent: true, to: waDestination(grupo), supplier: supplier?.name ?? null })
+    await sendWhatsApp(destino, purchaseText(purchase, items, 'Martinica Store'))
+    return json({ sent: true, via, to: waDestination(destino), supplier: supplier?.name ?? null })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[notify-purchase]', message)

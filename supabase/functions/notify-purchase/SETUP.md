@@ -1,10 +1,15 @@
 # Pedido de compra no grupo do fornecedor (Evolution API)
 
-Ao registrar uma compra no Admin, o pedido é enviado automaticamente para o
-**grupo de WhatsApp do fornecedor** — desde que o grupo esteja cadastrado.
+Em **Gestão → Compras**, depois de registrar o pedido, o botão
+**"Enviar pedido (WhatsApp)"** manda a mensagem direto pela Evolution — sem
+abrir o WhatsApp Web, sem nova aba, sem clicar em "enviar" de novo.
 
-Sem grupo cadastrado nada muda: a compra é registrada normalmente e continua
-valendo o botão de enviar pelo WhatsApp do contato.
+Destino, nesta ordem:
+
+1. o **grupo de WhatsApp** cadastrado no fornecedor;
+2. sem grupo, o **WhatsApp** do fornecedor.
+
+Sem nenhum dos dois, o botão fica desabilitado e a dica explica o motivo.
 
 ---
 
@@ -75,14 +80,16 @@ dígitos, então 16 ou mais é tratado como grupo e o sufixo é adicionado.
 1. Cadastre o grupo em um fornecedor.
 2. **Compras → Novo pedido de compra**, escolha esse fornecedor, adicione itens
    e registre.
-3. A mensagem cai no grupo, e a tela diz se o envio funcionou.
+3. Clique em **"Enviar pedido (WhatsApp)"**. A mensagem cai no grupo e a tela
+   diz se funcionou — nada abre no navegador.
 
 ## Problemas comuns
 
 | Mensagem na tela | Causa | Solução |
 |---|---|---|
-| `sem-grupo` | fornecedor sem o campo preenchido | cadastre o grupo no fornecedor |
-| `sem-fornecedor` | compra registrada sem escolher fornecedor | selecione o fornecedor antes de registrar |
+| "não tem grupo nem WhatsApp cadastrado" | fornecedor sem os dois campos | preencha grupo ou WhatsApp em "Gerenciar" |
+| "registrada sem fornecedor" | compra registrada sem escolher fornecedor | selecione o fornecedor antes de registrar |
+| "Modo demo: sem backend" | rodando sem Supabase | o envio precisa das Edge Functions |
 | `Evolution 400` | a loja não está no grupo, ou o id está errado | confira o id e se o WhatsApp da loja participa do grupo |
 | `forbidden` | quem chamou não é admin | entre na Gestão com uma conta de admin |
 | "Failed to send a request…" | função não publicada | `supabase functions deploy notify-purchase` |
