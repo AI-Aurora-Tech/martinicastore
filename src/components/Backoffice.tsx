@@ -35,7 +35,7 @@ function Shell({ operator, logout }: { operator: Operator; logout: () => Promise
   }
 
   return (
-    <div className="backoffice">
+    <div className={`backoffice ${current === 'pdv' ? 'backoffice--pdv' : ''}`}>
       <div className="backoffice__switch" role="tablist" aria-label="Área da equipe">
         <span className="backoffice__brand">MARTINICA · Equipe</span>
         {isAdmin && (

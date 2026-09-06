@@ -55,6 +55,25 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [flashMsg, setFlashMsg] = useState<string | null>(null)
 
+  // A faixa de abas rola na horizontal no celular: mantém a aba ativa à vista
+  // (só rola a própria faixa, nunca a página).
+  const tabsRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    const nav = tabsRef.current
+    const active = nav?.querySelector<HTMLElement>('.admin__tab--active')
+    if (!nav || !active) return
+    // Coordenadas de viewport: `offsetLeft` seria relativo ao offsetParent,
+    // não à faixa, e deslocaria a rolagem.
+    const navBox = nav.getBoundingClientRect()
+    const box = active.getBoundingClientRect()
+    const margin = 12
+    if (box.left < navBox.left + margin) {
+      nav.scrollBy({ left: box.left - navBox.left - margin, behavior: 'smooth' })
+    } else if (box.right > navBox.right - margin) {
+      nav.scrollBy({ left: box.right - navBox.right + margin, behavior: 'smooth' })
+    }
+  }, [tab])
+
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function flash(msg: string) {
     setFlashMsg(msg)
@@ -178,7 +197,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
       </header>
 
       <div className="admin__body">
-        <nav className="admin__tabs">
+        <nav className="admin__tabs" ref={tabsRef} aria-label="Seções da gestão">
           <button
             className={`admin__tab ${tab === 'estoque' ? 'admin__tab--active' : ''}`}
             onClick={() => setTab('estoque')}

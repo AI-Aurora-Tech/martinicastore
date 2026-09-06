@@ -64,11 +64,23 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [pick, setPick] = useState<Product | null>(null)
+  /** Em telas estreitas o cupom vira uma gaveta (bottom sheet) sobre o catálogo. */
+  const [saleOpen, setSaleOpen] = useState(false)
 
   useEffect(() => {
     const t = window.setInterval(() => setClock(new Date()), 1000)
     return () => window.clearInterval(t)
   }, [])
+
+  // Esc fecha a gaveta da venda (telas estreitas).
+  useEffect(() => {
+    if (!saleOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSaleOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [saleOpen])
 
   const catalog = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -150,6 +162,7 @@ export function PDV({ onExit, operator, onLogout }: Props) {
   }
 
   function resetSale() {
+    setSaleOpen(false)
     setLines([])
     setDiscountInput('')
     setReceivedInput('')
@@ -318,10 +331,18 @@ export function PDV({ onExit, operator, onLogout }: Props) {
         </section>
 
         {/* --- Cupom da venda atual --- */}
-        <aside className="pdv__sale">
+        <aside className={`pdv__sale ${saleOpen ? 'pdv__sale--open' : ''}`}>
           <div className="pdv__sale-head">
             <h2>Venda atual</h2>
             <span>{itemCount} {itemCount === 1 ? 'item' : 'itens'}</span>
+            <button
+              type="button"
+              className="pdv__sale-close"
+              onClick={() => setSaleOpen(false)}
+              aria-label="Fechar venda atual e voltar ao catálogo"
+            >
+              ✕
+            </button>
           </div>
 
           <div className="pdv__lines">
@@ -362,135 +383,169 @@ export function PDV({ onExit, operator, onLogout }: Props) {
           </div>
 
           <div className="pdv__pay">
-            <div className="pdv__discount">
-              <label htmlFor="pdv-desc">Desconto (R$)</label>
-              <input
-                id="pdv-desc"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
-              />
-            </div>
+            <div className="pdv__pay-scroll">
+              <div className="pdv__methods" role="group" aria-label="Forma de pagamento">
+                {PAYMENTS.map((m) => (
+                  <button
+                    key={m.id}
+                    className={`pdv__method ${payment === m.id ? 'pdv__method--active' : ''}`}
+                    onClick={() => setPayment(m.id)}
+                  >
+                    <span aria-hidden="true">{m.icon}</span>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
 
-            <div className="pdv__methods" role="group" aria-label="Forma de pagamento">
-              {PAYMENTS.map((m) => (
-                <button
-                  key={m.id}
-                  className={`pdv__method ${payment === m.id ? 'pdv__method--active' : ''}`}
-                  onClick={() => setPayment(m.id)}
-                >
-                  <span aria-hidden="true">{m.icon}</span>
-                  {m.label}
-                </button>
-              ))}
-            </div>
+              {payment === 'dinheiro' && (
+                <div className="pdv__cash">
+                  <label htmlFor="pdv-rec">
+                    Valor recebido (R$){' '}
+                    <small style={{ color: 'var(--muted)', fontWeight: 400 }}>
+                      — opcional (em branco = valor exato)
+                    </small>
+                  </label>
+                  <input
+                    id="pdv-rec"
+                    inputMode="decimal"
+                    placeholder="em branco = valor exato"
+                    value={receivedInput}
+                    onChange={(e) => setReceivedInput(e.target.value)}
+                  />
+                  <div className="pdv__quickcash">
+                    {[50, 100, 200].map((v) => (
+                      <button key={v} onClick={() => setReceivedInput(String(v))}>
+                        {BRL.format(v)}
+                      </button>
+                    ))}
+                    <button onClick={() => setReceivedInput(total.toFixed(2))}>Exato</button>
+                  </div>
+                </div>
+              )}
 
-            {payment === 'dinheiro' && (
-              <div className="pdv__cash">
-                <label htmlFor="pdv-rec">Valor recebido (R$) <small style={{ color: 'var(--muted)', fontWeight: 400 }}>— opcional (em branco = valor exato)</small></label>
+              {payment === 'credito' && (
+                <div className="pdv__cash">
+                  <label htmlFor="pdv-parc">Parcelas</label>
+                  <select
+                    id="pdv-parc"
+                    value={installments}
+                    onChange={(e) => setInstallments(Number(e.target.value))}
+                  >
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}x de {BRL.format(total / n)} sem juros
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {payment === 'fiado' && (
+                <div className="pdv__fiado">
+                  <p className="pdv__fiado-note">
+                    🤝 Venda no <strong>fiado</strong> — ficará <strong>pendente de recebimento</strong>. Informe o comprador:
+                  </p>
+                  <label htmlFor="pdv-fiado-nome">Nome do comprador</label>
+                  <input
+                    id="pdv-fiado-nome"
+                    type="text"
+                    placeholder="Nome completo"
+                    value={fiadoName}
+                    onChange={(e) => setFiadoName(e.target.value)}
+                  />
+                  <label htmlFor="pdv-fiado-tel">Telefone / WhatsApp (opcional)</label>
+                  <input
+                    id="pdv-fiado-tel"
+                    inputMode="tel"
+                    placeholder="(11) 90000-0000"
+                    value={fiadoPhone}
+                    onChange={(e) => setFiadoPhone(e.target.value)}
+                  />
+                  {!fiadoOk && (
+                    <p className="pdv__fiado-req">Informe o nome do comprador para registrar o fiado.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="pdv__discount">
+                <label htmlFor="pdv-desc">Desconto (R$)</label>
                 <input
-                  id="pdv-rec"
+                  id="pdv-desc"
                   inputMode="decimal"
-                  placeholder="em branco = valor exato"
-                  value={receivedInput}
-                  onChange={(e) => setReceivedInput(e.target.value)}
+                  placeholder="0,00"
+                  value={discountInput}
+                  onChange={(e) => setDiscountInput(e.target.value)}
                 />
-                <div className="pdv__quickcash">
-                  {[50, 100, 200].map((v) => (
-                    <button key={v} onClick={() => setReceivedInput(String(v))}>
-                      {BRL.format(v)}
-                    </button>
-                  ))}
-                  <button onClick={() => setReceivedInput(total.toFixed(2))}>Exato</button>
+              </div>
+            </div>
+            <div className="pdv__pay-actions">
+              <dl className="pdv__totals">
+                <div>
+                  <dt>Subtotal</dt>
+                  <dd>{BRL.format(subtotal)}</dd>
                 </div>
-              </div>
-            )}
-
-            {payment === 'credito' && (
-              <div className="pdv__cash">
-                <label htmlFor="pdv-parc">Parcelas</label>
-                <select
-                  id="pdv-parc"
-                  value={installments}
-                  onChange={(e) => setInstallments(Number(e.target.value))}
-                >
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n}x de {BRL.format(total / n)} sem juros
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {payment === 'fiado' && (
-              <div className="pdv__fiado">
-                <p className="pdv__fiado-note">🤝 Venda no <strong>fiado</strong> — ficará <strong>pendente de recebimento</strong>. Informe o comprador:</p>
-                <label htmlFor="pdv-fiado-nome">Nome do comprador</label>
-                <input
-                  id="pdv-fiado-nome"
-                  type="text"
-                  placeholder="Nome completo"
-                  value={fiadoName}
-                  onChange={(e) => setFiadoName(e.target.value)}
-                />
-                <label htmlFor="pdv-fiado-tel">Telefone / WhatsApp (opcional)</label>
-                <input
-                  id="pdv-fiado-tel"
-                  inputMode="tel"
-                  placeholder="(11) 90000-0000"
-                  value={fiadoPhone}
-                  onChange={(e) => setFiadoPhone(e.target.value)}
-                />
-                {!fiadoOk && <p className="pdv__fiado-req">Informe o nome do comprador para registrar o fiado.</p>}
-              </div>
-            )}
-
-
-            <dl className="pdv__totals">
-              <div>
-                <dt>Subtotal</dt>
-                <dd>{BRL.format(subtotal)}</dd>
-              </div>
-              {discount > 0 && (
-                <div className="pdv__totals-disc">
-                  <dt>Desconto</dt>
-                  <dd>− {BRL.format(discount)}</dd>
+                {discount > 0 && (
+                  <div className="pdv__totals-disc">
+                    <dt>Desconto</dt>
+                    <dd>− {BRL.format(discount)}</dd>
+                  </div>
+                )}
+                <div className="pdv__totals-grand">
+                  <dt>Total</dt>
+                  <dd>{BRL.format(total)}</dd>
                 </div>
+                {payment === 'dinheiro' && received > 0 && (
+                  <div className="pdv__totals-change">
+                    <dt>Troco</dt>
+                    <dd>{BRL.format(Math.max(0, change))}</dd>
+                  </div>
+                )}
+              </dl>
+
+              {saveError && (
+                <p className="pdv__saveerror" role="alert">
+                  ⚠️ {saveError}
+                </p>
               )}
-              <div className="pdv__totals-grand">
-                <dt>Total</dt>
-                <dd>{BRL.format(total)}</dd>
-              </div>
-              {payment === 'dinheiro' && received > 0 && (
-                <div className="pdv__totals-change">
-                  <dt>Troco</dt>
-                  <dd>{BRL.format(Math.max(0, change))}</dd>
-                </div>
-              )}
-            </dl>
-
-            {saveError && (
-              <p className="pdv__saveerror" role="alert">
-                ⚠️ {saveError}
-              </p>
-            )}
-            <button
-              className="btn btn--primary btn--block pdv__finish"
-              disabled={!canFinish || saving}
-              onClick={finishSale}
-            >
-              {saving ? 'Registrando…' : `${isFiado ? 'Registrar fiado' : 'Finalizar venda'} · ${BRL.format(total)}`}
-            </button>
-            {lines.length > 0 && !saving && (
-              <button className="pdv__cancel" onClick={resetSale}>
-                Cancelar venda
+              <button
+                className="btn btn--primary btn--block pdv__finish"
+                disabled={!canFinish || saving}
+                onClick={finishSale}
+              >
+                {saving ? 'Registrando…' : `${isFiado ? 'Registrar fiado' : 'Finalizar venda'} · ${BRL.format(total)}`}
               </button>
-            )}
+              {lines.length > 0 && !saving && (
+                <button className="pdv__cancel" onClick={resetSale}>
+                  Cancelar venda
+                </button>
+              )}
+            </div>
           </div>
         </aside>
+
+        {saleOpen && (
+          <div
+            className="pdv__sale-backdrop"
+            onClick={() => setSaleOpen(false)}
+            aria-hidden="true"
+          />
+        )}
       </div>
+
+      {/* --- Barra fixa (telas estreitas): resumo + abre a gaveta da venda --- */}
+      <button
+        type="button"
+        className={`pdv__mobilebar ${saleOpen ? 'pdv__mobilebar--hidden' : ''}`}
+        onClick={() => setSaleOpen(true)}
+      >
+        <span className="pdv__mobilebar-info">
+          <small>{itemCount} {itemCount === 1 ? 'item' : 'itens'}</small>
+          <strong>{BRL.format(total)}</strong>
+        </span>
+        <span className="pdv__mobilebar-cta">
+          {lines.length === 0 ? 'Ver venda' : 'Pagamento e finalizar'} →
+        </span>
+      </button>
 
       {/* --- Comprovante --- */}
       {receipt && (

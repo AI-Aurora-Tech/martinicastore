@@ -1066,20 +1066,23 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 /* PDV — Ponto de Venda                                       */
 /* ========================================================= */
 .pdv {
-  min-height: 100vh;
+  /* Altura travada no viewport: o PDV nunca rola a página inteira — cada
+     coluna rola por dentro. `dvh` acompanha a barra do navegador no celular. */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow: hidden;
 }
 .pdv__top {
+  flex: 0 0 auto;
   background: var(--ink);
   color: #fff;
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 0.8rem 1.25rem;
-  position: sticky;
-  top: 0;
   z-index: 10;
 }
 .pdv__brand {
@@ -1122,15 +1125,17 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   background: rgba(255, 255, 255, 0.12);
 }
 .pdv__body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 400px;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 420px);
   gap: 1rem;
-  padding: 1rem 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  align-items: start;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 /* --- Catálogo --- */
@@ -1139,6 +1144,13 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.pdv__search {
+  flex: 0 0 auto;
 }
 .pdv__search input {
   width: 100%;
@@ -1152,17 +1164,23 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border-color: var(--red);
 }
 .pdv__cats {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin: 0.8rem 0;
+  max-height: 5.4rem;
+  overflow-y: auto;
 }
 .pdv__products {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
   gap: 0.75rem;
-  max-height: calc(100vh - 220px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-right: 0.25rem;
 }
 .pdv__product {
@@ -1223,17 +1241,35 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 84px;
-  max-height: calc(100vh - 104px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 .pdv__sale-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.1rem;
+  gap: 0.6rem;
+  padding: 0.85rem 1.1rem;
   border-bottom: 1px solid var(--line);
+}
+/* Só existe na gaveta das telas estreitas. */
+.pdv__sale-close {
+  display: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.pdv__sale-backdrop {
+  display: none;
 }
 .pdv__sale-head h2 {
   font-size: 1.1rem;
@@ -1243,15 +1279,18 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   font-size: 0.85rem;
 }
 .pdv__lines {
-  flex: 1;
+  /* base 0: a lista fica com a sobra de altura e rola por dentro, sem nunca
+     disputar espaço com o bloco de pagamento — mas nunca some por completo. */
+  flex: 1 1 0;
+  min-height: 7rem;
   overflow-y: auto;
-  padding: 0.5rem 1.1rem;
-  min-height: 120px;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.4rem 1.1rem;
 }
 .pdv__lines-empty {
   text-align: center;
   color: var(--muted);
-  padding: 2rem 1rem;
+  padding: 1.4rem 1rem;
 }
 .pdv__lines-empty span {
   font-size: 2.2rem;
@@ -1267,7 +1306,10 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border-bottom: 1px solid var(--line);
 }
 .pdv__line-info strong {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: 0.82rem;
   line-height: 1.2;
 }
@@ -1313,14 +1355,45 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 
 /* --- Pagamento --- */
+/* O bloco de pagamento nunca é cortado: ele encolhe antes da lista de itens
+   e, se ainda assim não couber, rola por dentro — mas os totais e o botão
+   "Finalizar venda" ficam grudados no rodapé (sticky) e sempre visíveis. */
 .pdv__pay {
+  /* Mantém a altura natural (formas de pagamento inteiras à vista) e só
+     encolhe — rolando por dentro — quando nem ele sozinho couber. */
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-top: 2px solid var(--ink);
-  padding: 0.9rem 1.1rem 1.1rem;
   background: #fafafa;
+}
+/* Formas de pagamento e campos: única parte que rola quando falta altura. */
+.pdv__pay-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.9rem 1.1rem 0.1rem;
+}
+/* Rodapé real (não sobrepõe nada): totais + finalizar, sempre visíveis. */
+.pdv__pay-actions {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.1rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  background: #fafafa;
+  box-shadow: 0 -8px 12px -8px rgba(17, 17, 17, 0.22);
 }
 .pdv__discount,
 .pdv__cash {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+.pdv__discount {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
 }
 .pdv__discount label,
 .pdv__cash label {
@@ -1329,6 +1402,13 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   font-weight: 700;
   color: var(--muted);
   margin-bottom: 0.3rem;
+}
+.pdv__discount label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.pdv__discount input {
+  text-align: right;
 }
 .pdv__discount input,
 .pdv__cash input,
@@ -1346,18 +1426,19 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border-color: var(--red);
 }
 .pdv__quickcash {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+  margin-top: 0.4rem;
 }
 .pdv__quickcash button {
   border: 1px solid var(--line);
   background: #fff;
   border-radius: 8px;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.78rem;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 .pdv__quickcash button:hover {
   border-color: var(--red);
@@ -1551,15 +1632,222 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   background: var(--bg);
 }
 
+/* ---------- Barra fixa de resumo (telas estreitas) ---------- */
+.pdv__mobilebar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: none;
+  text-align: left;
+  color: #fff;
+  background: var(--ink);
+  padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -6px 20px rgba(17, 17, 17, 0.22);
+}
+.pdv__mobilebar-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.pdv__mobilebar-info small {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+.pdv__mobilebar-info strong {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.pdv__mobilebar-cta {
+  background: var(--red);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* ---------- Tablet / celular: cupom vira gaveta sobre o catálogo ---------- */
 @media (max-width: 900px) {
-  .pdv__body { grid-template-columns: 1fr; }
-  .pdv__sale { position: static; max-height: none; }
-  .pdv__products { max-height: none; }
+  .pdv__body {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.75rem 0.9rem calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+  .pdv__mobilebar {
+    display: flex;
+  }
+  .pdv__mobilebar--hidden {
+    display: none;
+  }
+  .pdv__sale-close {
+    display: inline-flex;
+  }
+  .pdv__sale {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 70;
+    height: auto;
+    max-height: 90dvh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -14px 34px rgba(17, 17, 17, 0.22);
+    transform: translateY(102%);
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0.22s ease;
+  }
+  .pdv__sale--open {
+    transform: none;
+    visibility: visible;
+  }
+  .pdv__sale-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 69;
+    background: rgba(17, 17, 17, 0.45);
+  }
+  /* Na gaveta o limite de altura vem do próprio sheet: itens rolam, pagamento
+     e botão de finalizar ficam sempre no rodapé visível. */
+  .pdv__lines {
+    flex: 0 1 auto;
+    min-height: 4.5rem;
+    max-height: 30dvh;
+  }
 }
 @media (max-width: 560px) {
   .header__pdv-text { display: none; }
   .pdv__clock { display: none; }
-  .pdv__products { grid-template-columns: repeat(2, 1fr); }
+  .pdv__top { padding: 0.45rem 0.7rem; gap: 0.5rem; }
+  .pdv__brand small { display: none; }
+  /* A marca cede espaço (e trunca) para "Voltar à loja" e "Sair" caberem —
+     antes o "Sair" ficava fora da tela, cortado pelo clip do #root. */
+  .pdv__brand { flex: 0 1 auto; min-width: 0; }
+  .pdv__brand > div { min-width: 0; }
+  .pdv__brand strong {
+    display: block;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pdv__brand .brand__mark { width: 32px; height: 32px; font-size: 1rem; border-radius: 9px; flex: 0 0 auto; }
+  .pdv__exit,
+  .pdv__logout { flex: 0 0 auto; padding: 0.35rem 0.6rem; font-size: 0.72rem; white-space: nowrap; }
+  .pdv__exit { margin-left: auto; }
+  .backoffice__switch {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0.3rem 0.6rem;
+    gap: 0.3rem;
+  }
+  .backoffice__brand { display: none; }
+  .backoffice__tab,
+  .backoffice__role,
+  .backoffice__store {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    padding: 0.28rem 0.6rem;
+  }
+  .pdv__catalog { padding: 0.75rem; }
+  .pdv__cash label small { display: none; }
+  .pdv__products { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+  .pdv__lines { min-height: 3.75rem; max-height: 24dvh; }
+}
+/* Celulares pequenos/baixos: cupom mais enxuto para caber pagamento inteiro. */
+@media (max-width: 560px) and (max-height: 720px) {
+  .pdv__lines { max-height: 19dvh; }
+  .pdv__line { padding: 0.45rem 0; }
+  .pdv__sale-head { padding: 0.55rem 0.9rem; }
+  .pdv__sale-head h2 { font-size: 1rem; }
+  .pdv__method { padding: 0.45rem 0.2rem; font-size: 0.68rem; }
+  .pdv__method span { font-size: 1rem; }
+  .pdv__quickcash { gap: 0.25rem; }
+  .pdv__totals-grand dd { font-size: 1.25rem; }
+}
+
+/* ---------- Telas baixas (notebooks 768p/900p, monitores deitados) ---------- */
+@media (min-width: 901px) and (max-height: 820px) {
+  .pdv__top { padding: 0.55rem 1.25rem; }
+  .pdv__body { padding: 0.7rem 1rem; gap: 0.75rem; }
+  .pdv__catalog { padding: 0.75rem; }
+  .pdv__cats { margin: 0.55rem 0; max-height: 3.6rem; }
+  .pdv__search input { padding: 0.6rem 0.85rem; }
+  .pdv__sale-head { padding: 0.6rem 1rem; }
+  .pdv__sale-head h2 { font-size: 1rem; }
+  .pdv__pay-scroll { padding-top: 0.65rem; }
+  .pdv__discount, .pdv__cash { margin-bottom: 0.55rem; }
+  .pdv__methods {
+    grid-template-columns: repeat(5, 1fr);
+    margin-bottom: 0.5rem;
+    gap: 0.25rem;
+  }
+  .pdv__method { padding: 0.35rem 0.1rem; font-size: 0.6rem; gap: 0.1rem; }
+  .pdv__method span { font-size: 0.95rem; }
+  .pdv__cash label small { display: none; }
+  .pdv__lines { min-height: 5.5rem; }
+  .pdv__line { padding: 0.45rem 0; gap: 0.45rem; }
+  .pdv__totals { margin-bottom: 0.5rem; }
+  .pdv__totals-grand dd { font-size: 1.3rem; }
+  .pdv__finish { padding: 0.7rem; font-size: 0.95rem; }
+}
+@media (min-width: 901px) and (max-height: 680px) {
+  .pdv__products { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .pdv__lines { min-height: 4.6rem; }
+  .pdv__line { padding: 0.35rem 0; }
+  .pdv__sale-head { padding: 0.45rem 1rem; }
+  .pdv__totals div { font-size: 0.82rem; padding: 0.05rem 0; }
+  .pdv__totals-grand { padding-top: 0.35rem !important; }
+  .pdv__totals-grand dd { font-size: 1.15rem; }
+  .pdv__pay-actions { padding-top: 0.4rem; padding-bottom: 0.6rem; }
+  .pdv__cancel { margin-top: 0.3rem; }
+  .pdv__quickcash button { font-size: 0.66rem; }
+}
+
+/* ---------- Telas muito baixas (celular deitado, netbooks) ----------
+   Sem altura para a foto do produto: o catálogo vira uma lista compacta,
+   mantendo várias linhas visíveis na área rolável. */
+@media (max-height: 560px) {
+  .pdv__top { padding: 0.35rem 0.9rem; }
+  .pdv__brand small { display: none; }
+  .pdv__brand .brand__mark { width: 32px; height: 32px; font-size: 1rem; border-radius: 9px; }
+  .pdv__search input { padding: 0.5rem 0.8rem; font-size: 0.9rem; }
+  .pdv__cats { margin: 0.45rem 0; max-height: 2.5rem; }
+  .pdv__products { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 0.45rem; }
+  .pdv__product { padding: 0.45rem 0.55rem; gap: 0.1rem; }
+  .pdv__product-img { display: none; }
+  .pdv__product-name { font-size: 0.78rem; }
+  .pdv__product-add { font-size: 0.72rem; }
+  /* Pagamento e cupom no mínimo possível — o botão de finalizar continua fixo. */
+  .pdv__sale-head { padding: 0.4rem 0.9rem; }
+  .pdv__sale-head h2 { font-size: 0.95rem; }
+  .pdv__lines { min-height: 3.2rem; max-height: 6rem; flex: 0 1 auto; }
+  .pdv__line { padding: 0.3rem 0; }
+  .pdv__pay-scroll { padding-top: 0.5rem; }
+  .pdv__discount, .pdv__cash { margin-bottom: 0.45rem; }
+  .pdv__methods { grid-template-columns: repeat(5, 1fr); gap: 0.22rem; margin-bottom: 0.45rem; }
+  .pdv__method { padding: 0.3rem 0.08rem; font-size: 0.58rem; }
+  .pdv__method span { font-size: 0.85rem; }
+  .pdv__cash label small { display: none; }
+  .pdv__quickcash { margin-top: 0.3rem; }
+  .pdv__quickcash button { font-size: 0.64rem; padding: 0.24rem 0.15rem; }
+  .pdv__totals { margin-bottom: 0.35rem; }
+  .pdv__totals div { font-size: 0.78rem; padding: 0.03rem 0; }
+  .pdv__totals-grand dd { font-size: 1.05rem; }
+  .pdv__pay-actions { padding-top: 0.3rem; padding-bottom: 0.5rem; }
+  .pdv__finish { padding: 0.5rem; font-size: 0.82rem; }
+  .pdv__cancel { margin-top: 0.15rem; font-size: 0.74rem; }
+  /* Gaveta ocupa praticamente toda a tela deitada. */
+  .pdv__sale { max-height: 97dvh; }
 }
 
 /* ---------- PDV: operador + logout no topo ---------- */
@@ -2215,24 +2503,49 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .admin__gallery-add:hover { border-color: var(--red); }
 
 /* ---------- Admin: abas, custo/margem ---------- */
+/* São 8 abas: no celular elas não cabem na largura da tela. Como o #root usa
+   `overflow-x: clip`, sem rolagem horizontal aqui as abas seguintes ficavam
+   inalcançáveis. A faixa rola na horizontal e as abas nunca encolhem. */
 .admin__tabs {
   display: flex;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
   border-bottom: 2px solid var(--line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+.admin__tabs::-webkit-scrollbar {
+  height: 4px;
+}
+.admin__tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin__tabs::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
 }
 .admin__tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  scroll-snap-align: start;
   border: none;
   background: none;
-  padding: 0.7rem 1rem;
+  padding: 0.7rem 0.62rem;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--muted);
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
+  /* Sublinhado por dentro do botão: com a faixa rolando, uma borda "puxada"
+     para fora (margin negativa) seria cortada pelo overflow. */
+  box-shadow: inset 0 -3px 0 transparent;
 }
 .admin__tab--active {
   color: var(--red);
-  border-bottom-color: var(--red);
+  box-shadow: inset 0 -3px 0 var(--red);
 }
 .admin__margin {
   font-weight: 700;
@@ -3204,6 +3517,24 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 
 /* ---------- Backoffice (área da equipe: /gestao) ---------- */
+/* Com o PDV aberto o backoffice vira uma casca de altura fixa: a barra de
+   ferramentas ocupa o topo e o PDV recebe exatamente a altura restante — sem
+   rolagem da página em nenhuma resolução. */
+.backoffice--pdv {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.backoffice--pdv .backoffice__switch {
+  flex: 0 0 auto;
+}
+.backoffice--pdv .pdv {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
 .backoffice__switch {
   display: flex;
   align-items: center;
@@ -3367,9 +3698,10 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 /* ---------- Admin: categorias ---------- */
 .cats__head h3, .banners-admin .cats__head h3 { margin: 0 0 0.2rem; }
 .cats__head p { margin: 0 0 1rem; color: #666; font-size: 0.9rem; }
-.cats__add { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.cats__add { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
 .cats__add input {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   padding: 0.6rem 0.8rem;
   border: 1px solid #d9d9de;
   border-radius: 8px;
@@ -3396,7 +3728,15 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   line-height: 1;
 }
 .cats__order button:disabled { opacity: 0.35; cursor: default; }
-.cats__label { flex: 1; padding: 0.45rem 0.6rem; border: 1px solid #e2e2e5; border-radius: 7px; }
+.cats__label {
+  /* `min-width: 0` vence a largura intrínseca do input: sem isso a linha
+     estourava a tela no celular e o botão de excluir ficava inalcançável. */
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #e2e2e5;
+  border-radius: 7px;
+}
 .cats__id { color: #999; font-size: 0.8rem; font-family: monospace; }
 .cats__count { color: #666; font-size: 0.8rem; white-space: nowrap; }
 .cats__del {
@@ -3410,6 +3750,18 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 .cats__del:disabled { opacity: 0.4; cursor: default; }
 .cats__empty { color: #888; padding: 0.8rem; }
+
+/* No celular a linha da categoria quebra em duas: nome + ações em cima,
+   identificador e contagem embaixo. */
+@media (max-width: 560px) {
+  .cats__row { flex-wrap: wrap; gap: 0.5rem 0.6rem; }
+  .cats__order { order: 1; }
+  .cats__label { order: 2; flex: 1 1 120px; }
+  .cats__del { order: 3; }
+  .cats__id { order: 4; }
+  .cats__count { order: 5; }
+  .cats__add input { flex: 1 1 140px; min-width: 0; }
+}
 
 /* ---------- Admin: banners ---------- */
 .banners-admin__hint {
@@ -3475,6 +3827,39 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   .banners-admin__item { grid-template-columns: 1fr; }
   .banners-admin__thumb { width: 100%; }
   .banners-admin__actions { flex-direction: row; align-items: center; }
+}
+
+/* No celular/tablet as 8 seções viram "pílulas" que quebram em várias linhas:
+   todas ficam visíveis de uma vez, sem depender de rolagem lateral (que é
+   fácil de não perceber). Acima disso segue a faixa única rolável. */
+@media (max-width: 1024px) {
+  .admin__body { padding: 0.9rem; gap: 0.8rem; }
+  .admin__tabs {
+    flex-wrap: wrap;
+    /* `hidden` num eixo forçaria `auto` no outro; aqui não há rolagem. */
+    overflow-x: visible;
+    overflow-y: visible;
+    gap: 0.35rem;
+    padding-bottom: 0.6rem;
+  }
+  .admin__tab {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.82rem;
+    border-radius: 999px;
+    background: #f1f1f3;
+    box-shadow: none;
+  }
+  .admin__tab--active {
+    background: var(--red);
+    color: #fff;
+    box-shadow: none;
+  }
+}
+
+/* Celulares estreitos: em vez de truncar a marca em "MARTINI…", mostra só o
+   selo — a barra de ferramentas logo acima já diz Gestão / Ponto de Venda. */
+@media (max-width: 430px) {
+  .pdv__brand > div { display: none; }
 }
 
 /* ================================================================= */
