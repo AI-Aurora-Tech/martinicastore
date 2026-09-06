@@ -101,7 +101,20 @@ export function Purchases({ operatorEmail }: Props) {
   const [history, setHistory] = useState<PurchaseSummary[]>([])
 
   function loadHistory() {
-    listPurchases().then(setHistory).catch(() => {})
+    listPurchases()
+      .then(setHistory)
+      .catch((err) => {
+        // Engolir isso escondia falha de esquema (ex.: coluna `received` sem a
+        // migração 0023) atrás de uma lista vazia.
+        const m = err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err)
+        console.error('[compras] não foi possível carregar o histórico:', err)
+        setError(
+          /received|purchase_items|column/i.test(m)
+            ? 'Não consegui ler as compras: o banco parece estar sem as migrações 0021/0023. '
+              + `Detalhe: ${m}`
+            : `Não consegui carregar o histórico de compras: ${m}`,
+        )
+      })
   }
   useEffect(() => loadHistory(), [])
   useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])

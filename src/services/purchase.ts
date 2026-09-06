@@ -10,6 +10,28 @@ export interface InstallmentInput {
   dueDate: string
 }
 
+/**
+ * Mensagem legível de um erro vindo do Supabase. Os erros do PostgREST são
+ * objetos simples (`{message, details, hint, code}`), NÃO instâncias de Error —
+ * um `err instanceof Error` os descarta e some com o motivo real.
+ */
+function erroLegivel(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message
+  if (err && typeof err === 'object') {
+    const e = err as { message?: string; details?: string; hint?: string; code?: string }
+    const texto = [e.message, e.details, e.hint].filter(Boolean).join(' — ')
+    if (texto) {
+      // Função ausente = migração não aplicada. Diz isso em vez do erro cru.
+      if (/could not find the function|não existe|does not exist/i.test(texto)
+          && /update_purchase_items|receive_purchase_items|cancel_purchase|purchase_sync_status/.test(texto)) {
+        return 'O banco ainda não tem as funções de compra. Rode as migrações 0021 e 0023 no Supabase.'
+      }
+      return e.code ? `${texto} (${e.code})` : texto
+    }
+  }
+  return fallback
+}
+
 export interface PurchaseItemInput {
   productId: string
   name: string
@@ -128,9 +150,8 @@ export async function createPurchase(input: PurchaseInput): Promise<PurchaseResu
 
     return { number: data.number as number, id: data.id as string, error: null }
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erro ao registrar a compra.'
     console.error('[purchase] erro:', err)
-    return { number: null, id: null, error: message }
+    return { number: null, id: null, error: erroLegivel(err, 'Erro ao registrar a compra.') }
   }
 }
 
@@ -203,7 +224,7 @@ export async function cancelPurchase(p: PurchaseSummary): Promise<{ error: strin
     return { error: null }
   }
   const { error } = await supabase.rpc('cancel_purchase', { p_purchase_id: p.id })
-  return { error: error?.message ?? null }
+  return { error: error ? erroLegivel(error, 'Erro ao cancelar a compra.') : null }
 }
 
 /**
@@ -301,9 +322,8 @@ export async function updatePurchase(
     if (itemsErr) throw itemsErr
     return { error: null }
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erro ao salvar as alterações.'
     console.error('[purchase] erro ao editar:', err)
-    return { error: message }
+    return { error: erroLegivel(err, 'Erro ao salvar as alterações.') }
   }
 }
 
@@ -358,7 +378,7 @@ export async function receivePurchaseItems(
     p_purchase_id: p.id,
     p_items: validas.map((l) => ({ item_id: l.itemId ?? p.items[l.index]?.itemId, quantity: l.quantity })),
   })
-  if (error) return { error: error.message }
+  if (error) return { error: erroLegivel(error, 'Erro ao registrar o recebimento.') }
   return { error: null, status: (data as PurchaseSummary['status']) ?? undefined }
 }
 
