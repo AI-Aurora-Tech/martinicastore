@@ -4,12 +4,14 @@ import type { Product, ProductVariant, Supplier } from '../types'
 import { useCatalog } from '../context/CatalogContext'
 import {
   canEditPurchase,
+  canReceivePurchase,
   cancelPurchase,
   createPurchase,
+  faltaReceber,
   listPurchases,
   markPurchasePaid,
   notifyPurchase,
-  receivePurchase,
+  receivePurchaseItems,
   updatePurchase,
   type PurchaseSummary,
 } from '../services/purchase'
@@ -87,6 +89,9 @@ export function Purchases({ operatorEmail }: Props) {
   const [sendingWa, setSendingWa] = useState(false)
   /** Compra sendo editada (null = registrando uma nova). */
   const [editing, setEditing] = useState<PurchaseSummary | null>(null)
+  /** Compra com o painel de recebimento aberto, e o que foi digitado por item. */
+  const [receiving, setReceiving] = useState<PurchaseSummary | null>(null)
+  const [recQty, setRecQty] = useState<number[]>([])
   const [pick, setPick] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -263,10 +268,14 @@ export function Purchases({ operatorEmail }: Props) {
     setParcelas(Math.max(1, parc))
     setDueDates(h.installments?.length ? h.installments.map((i) => i.dueDate) : [todayISO()])
     setLastOrder(null)
-    setSuccess(null)
     setError(
       faltando.length
         ? `Itens que não estão mais no catálogo foram deixados de fora: ${faltando.join(', ')}.`
+        : null,
+    )
+    setSuccess(
+      h.status === 'parcial'
+        ? 'Esta compra tem itens já recebidos: eles não podem ser reduzidos abaixo do que entrou.'
         : null,
     )
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -284,8 +293,9 @@ export function Purchases({ operatorEmail }: Props) {
 
   async function cancel(h: PurchaseSummary) {
     if (busyId || h.status === 'cancelado') return
-    const devolve = h.status === 'entregue'
-      ? '\n\nO estoque que entrou com esta compra será DEVOLVIDO (retirado do estoque).'
+    const jaRecebeu = h.items.reduce((acc, i) => acc + Math.min(i.received ?? 0, i.quantity), 0)
+    const devolve = jaRecebeu > 0
+      ? `\n\nAs ${jaRecebeu} un. já recebidas serão DEVOLVIDAS (retiradas do estoque).`
       : ''
     if (!confirm(
       `Cancelar a compra nº ${String(h.number).padStart(6, '0')}?${devolve}`
@@ -297,7 +307,10 @@ export function Purchases({ operatorEmail }: Props) {
     setBusyId(null)
     if (err) { setError(err); return }
     if (editing?.id === h.id) cancelEdit()
-    if (h.status === 'entregue') removeStockLocal(h.items)
+    // Sai do estoque só o que realmente entrou (recebimento parcial incluído).
+    const recebidos = h.items.filter((i) => (i.received ?? 0) > 0)
+      .map((i) => ({ ...i, quantity: Math.min(i.received ?? 0, i.quantity) }))
+    if (recebidos.length) removeStockLocal(recebidos)
     setHistory((prev) => prev.map((x) => (x.id === h.id ? { ...x, status: 'cancelado' } : x)))
     setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} cancelada.`)
     loadHistory()
@@ -327,16 +340,52 @@ export function Purchases({ operatorEmail }: Props) {
     }
   }
 
-  async function deliver(h: PurchaseSummary) {
-    if (h.status === 'entregue' || busyId) return
-    if (!confirm(`Dar entrada no estoque da compra nº ${String(h.number).padStart(6, '0')}? (marca como entregue)`)) return
+  /** Abre o painel de recebimento já preenchido com o que falta de cada item. */
+  function startReceive(h: PurchaseSummary) {
+    if (!canReceivePurchase(h) || busyId) return
+    setReceiving(h)
+    setRecQty(h.items.map((i) => faltaReceber(i)))
+    setError(null)
+    setSuccess(null)
+  }
+
+  async function confirmReceive() {
+    const h = receiving
+    if (!h || busyId) return
+    const linhas = h.items.map((it, index) => ({
+      itemId: it.itemId,
+      index,
+      quantity: Math.max(0, Math.min(recQty[index] ?? 0, faltaReceber(it))),
+    }))
+    const total = linhas.reduce((s, l) => s + l.quantity, 0)
+    if (total === 0) { setError('Informe ao menos uma quantidade para receber.'); return }
+
     setBusyId(h.id)
-    const { error: err } = await receivePurchase(h)
+    setError(null)
+    const { error: err, status } = await receivePurchaseItems(h, linhas)
     setBusyId(null)
     if (err) { setError(err); return }
-    addStockLocal(h.items)
-    setHistory((prev) => prev.map((x) => (x.id === h.id ? { ...x, status: 'entregue' } : x)))
-    setSuccess(`Entrada dada na compra nº ${String(h.number).padStart(6, '0')} — estoque atualizado.`)
+
+    // Espelha no catálogo em memória só o que entrou agora.
+    addStockLocal(
+      linhas.filter((l) => l.quantity > 0).map((l) => ({ ...h.items[l.index], quantity: l.quantity })),
+    )
+    const novoStatus = status ?? (h.items.every((it, i) => (it.received ?? 0) + linhas[i].quantity >= it.quantity)
+      ? 'entregue' : 'parcial')
+    setHistory((prev) => prev.map((x) => (x.id === h.id
+      ? {
+          ...x,
+          status: novoStatus,
+          items: x.items.map((it, i) => ({ ...it, received: (it.received ?? 0) + linhas[i].quantity })),
+        }
+      : x)))
+    setReceiving(null)
+    setSuccess(
+      novoStatus === 'entregue'
+        ? `Compra nº ${String(h.number).padStart(6, '0')} recebida por completo — pedido fechado.`
+        : `Recebimento parcial registrado na compra nº ${String(h.number).padStart(6, '0')} — ${total} un. no estoque.`,
+    )
+    loadHistory()
   }
 
   async function pay(h: PurchaseSummary) {
@@ -595,11 +644,19 @@ export function Purchases({ operatorEmail }: Props) {
                   <div className="purch__badges">
                     {h.status === 'cancelado' ? (
                       <span className="purch__badge is-danger">✖ Cancelada</span>
-                    ) : (
-                      <span className={`purch__badge ${h.status === 'entregue' ? 'is-ok' : 'is-wait'}`}>
-                        {h.status === 'entregue' ? '✓ Entregue' : '⏳ Pendente de entrega'}
-                      </span>
-                    )}
+                    ) : h.status === 'entregue' ? (
+                      <span className="purch__badge is-ok">✓ Recebida por completo</span>
+                    ) : (() => {
+                      const pedido = h.items.reduce((s2, i) => s2 + i.quantity, 0)
+                      const recebido = h.items.reduce((s2, i) => s2 + Math.min(i.received ?? 0, i.quantity), 0)
+                      return (
+                        <span className="purch__badge is-wait">
+                          {recebido > 0
+                            ? `◑ Parcial — ${recebido} de ${pedido} un.`
+                            : '⏳ Pendente de entrega'}
+                        </span>
+                      )
+                    })()}
                     {h.status !== 'cancelado' && (
                       <span className={`purch__badge ${h.paid ? 'is-ok' : 'is-danger'}`}>
                         {h.paid ? '✓ Paga' : '💰 A pagar'}
@@ -627,8 +684,15 @@ export function Purchases({ operatorEmail }: Props) {
                       <span className="purch__meta-cancel">Compra cancelada — fora do financeiro.</span>
                     ) : (
                       <>
-                        {h.status !== 'entregue' && (
-                          <button className="btn btn--primary" disabled={busyId === h.id} onClick={() => deliver(h)}>↧ Entregue</button>
+                        {canReceivePurchase(h) && (
+                          <button
+                            className="btn btn--primary"
+                            disabled={busyId === h.id}
+                            onClick={() => startReceive(h)}
+                            title="Registrar o que chegou — pode ser só uma parte"
+                          >
+                            ↧ Receber
+                          </button>
                         )}
                         {!h.paid && (
                           <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
@@ -638,7 +702,9 @@ export function Purchases({ operatorEmail }: Props) {
                             className="btn btn--ghost"
                             disabled={busyId === h.id || saving}
                             onClick={() => startEdit(h)}
-                            title="Alterar itens, fornecedor, pagamento e parcelas"
+                            title={h.status === 'entregue'
+                              ? 'Alterar a compra — o estoque é ajustado pela diferença'
+                              : 'Alterar itens, fornecedor, pagamento e parcelas'}
                           >
                             ✎ Editar
                           </button>
@@ -658,6 +724,57 @@ export function Purchases({ operatorEmail }: Props) {
                   </div>
                 </div>
                 </div>
+
+                {receiving?.id === h.id && (
+                  <div className="purch__receive">
+                    <h4>Receber itens da compra nº {String(h.number).padStart(6, '0')}</h4>
+                    <p>Informe quanto chegou de cada item. Já vem preenchido com o que falta — ajuste para receber só uma parte.</p>
+                    <table className="purch__receive-table">
+                      <thead>
+                        <tr><th>Item</th><th>Pedido</th><th>Já recebido</th><th>Falta</th><th>Recebendo agora</th></tr>
+                      </thead>
+                      <tbody>
+                        {h.items.map((it, idx) => {
+                          const falta = faltaReceber(it)
+                          return (
+                            <tr key={`${it.productId}-${it.size ?? ''}-${idx}`}>
+                              <td><strong>{it.name}{it.size ? ` · ${it.size}` : ''}</strong></td>
+                              <td>{it.quantity}</td>
+                              <td>{Math.min(it.received ?? 0, it.quantity)}</td>
+                              <td>{falta}</td>
+                              <td>
+                                <input
+                                  className="purch__receive-qty"
+                                  inputMode="numeric"
+                                  disabled={falta === 0}
+                                  value={recQty[idx] ?? 0}
+                                  onChange={(e) => {
+                                    const v = Math.max(0, Math.min(falta, Math.round(Number(e.target.value) || 0)))
+                                    setRecQty((prev) => prev.map((x, i) => (i === idx ? v : x)))
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                    <div className="purch__receive-actions">
+                      <button type="button" className="checkout__link" onClick={() => setRecQty(h.items.map((i) => faltaReceber(i)))}>
+                        receber tudo o que falta
+                      </button>
+                      <button type="button" className="btn btn--ghost" onClick={() => setReceiving(null)}>Cancelar</button>
+                      <button
+                        type="button"
+                        className="btn btn--primary"
+                        disabled={busyId === h.id}
+                        onClick={confirmReceive}
+                      >
+                        {busyId === h.id ? 'Registrando…' : '↧ Confirmar recebimento'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="button"

@@ -46,7 +46,10 @@ export interface OrderRecord {
 export interface PurchaseItem {
   productId: string
   name: string
+  /** Quantidade pedida. */
   quantity: number
+  /** Quantidade já recebida (recebimento parcial). */
+  received?: number
   unitCost: number
   size?: string
 }
@@ -67,7 +70,7 @@ export interface PurchaseRecord {
   total: number
   paymentMethod?: string
   paid?: boolean
-  status?: 'pendente' | 'entregue' | 'cancelado'
+  status?: 'pendente' | 'parcial' | 'entregue' | 'cancelado'
   installments?: Installment[]
   items: PurchaseItem[]
 }

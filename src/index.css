@@ -3862,6 +3862,64 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   .pdv__brand > div { display: none; }
 }
 
+/* Compras: painel de recebimento (parcial ou total). */
+.purch__receive {
+  margin-top: 0.7rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--red, #ff6a00);
+  border-radius: 10px;
+  background: #fffaf6;
+}
+.purch__receive h4 { margin: 0 0 0.2rem; font-size: 0.92rem; }
+.purch__receive > p { margin: 0 0 0.7rem; font-size: 0.8rem; color: var(--muted); }
+.purch__receive-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.purch__receive-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  padding: 0 0.5rem 0.35rem 0;
+}
+.purch__receive-table td {
+  padding: 0.35rem 0.5rem 0.35rem 0;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+}
+.purch__receive-qty {
+  width: 4.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+}
+.purch__receive-qty:disabled { opacity: 0.45; }
+.purch__receive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.purch__receive-actions .checkout__link { margin-right: auto; }
+@media (max-width: 560px) {
+  .purch__receive-table thead { display: none; }
+  .purch__receive-table tr { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--line); }
+  .purch__receive-table td { border: none; padding: 0; }
+  .purch__receive-table td:nth-child(2)::before { content: 'Pedido: '; color: var(--muted); }
+  .purch__receive-table td:nth-child(3)::before { content: 'Recebido: '; color: var(--muted); }
+  .purch__receive-table td:nth-child(4)::before { content: 'Falta: '; color: var(--muted); }
+  .purch__receive-table td:first-child { grid-column: 1 / -1; }
+  .purch__receive-table td:last-child { grid-column: 2; grid-row: 2 / 5; align-self: center; }
+}
+
 /* Compras: aviso da compra cancelada e destaque do botão de cancelar. */
 .purch__meta-cancel {
   font-size: 0.78rem;
