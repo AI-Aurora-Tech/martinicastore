@@ -129,6 +129,48 @@ export async function createPurchase(input: PurchaseInput): Promise<PurchaseResu
   }
 }
 
+export interface NotifyPurchaseResult {
+  sent: boolean
+  /** Motivo quando não enviou: 'sem-grupo', 'sem-fornecedor', 'demo' ou o erro. */
+  reason: string | null
+}
+
+/**
+ * Envia o pedido de compra para o GRUPO de WhatsApp do fornecedor, via Edge
+ * Function `notify-purchase` (Evolution API). É best-effort: a compra já está
+ * registrada e nada é desfeito se o envio falhar. No modo demo (sem Supabase)
+ * não há backend — devolve sent:false.
+ */
+export async function notifyPurchase(purchaseId: string | null): Promise<NotifyPurchaseResult> {
+  if (!isSupabaseConfigured || !supabase || !purchaseId) return { sent: false, reason: 'demo' }
+  try {
+    const { data, error } = await supabase.functions.invoke('notify-purchase', {
+      body: { purchaseId },
+    })
+    if (error) {
+      let detail = error.message
+      // FunctionsHttpError guarda a resposta em `context`; lê o {error} do corpo.
+      const ctx = (error as { context?: unknown }).context
+      if (ctx && typeof (ctx as Response).json === 'function') {
+        try {
+          const body = await (ctx as Response).json()
+          if (body?.error) detail = body.error
+        } catch {
+          /* corpo não-JSON */
+        }
+      }
+      console.warn('[purchase] envio ao grupo falhou:', detail)
+      return { sent: false, reason: detail }
+    }
+    const d = data as { sent?: boolean; error?: string } | null
+    return { sent: Boolean(d?.sent), reason: d?.sent ? null : (d?.error ?? 'falha ao enviar') }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Falha ao enviar o pedido ao grupo.'
+    console.warn('[purchase] envio ao grupo falhou:', err)
+    return { sent: false, reason: message }
+  }
+}
+
 /** Marca a compra como ENTREGUE e dá entrada no estoque (por variação). */
 export async function receivePurchase(p: PurchaseSummary): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured || !supabase) {

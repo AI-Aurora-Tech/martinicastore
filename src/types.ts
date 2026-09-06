@@ -82,6 +82,11 @@ export interface Supplier {
   id: string
   name: string
   phone?: string
+  /**
+   * ID do grupo de WhatsApp do fornecedor (ex.: `120363XXXXXXXXXXXX@g.us`).
+   * Quando preenchido, o pedido de compra é enviado para esse grupo.
+   */
+  whatsappGroup?: string
   cnpj?: string
   email?: string
   contact?: string

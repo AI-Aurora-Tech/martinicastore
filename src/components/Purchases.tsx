@@ -6,6 +6,7 @@ import {
   createPurchase,
   listPurchases,
   markPurchasePaid,
+  notifyPurchase,
   receivePurchase,
   type PurchaseSummary,
 } from '../services/purchase'
@@ -152,7 +153,7 @@ export function Purchases({ operatorEmail }: Props) {
     setError(null)
     setSuccess(null)
 
-    const { number, error: err } = await createPurchase({
+    const { number, id, error: err } = await createPurchase({
       supplier: supplier?.name,
       supplierId: supplier?.id,
       supplierPhone: supplier?.phone,
@@ -178,9 +179,21 @@ export function Purchases({ operatorEmail }: Props) {
     const parcelaMsg = paid
       ? 'paga (à vista)'
       : `a pagar em ${parcelas}x`
+
+    // Fornecedor com grupo cadastrado → manda o pedido para lá. A compra já
+    // está registrada; um envio que falhe só vira aviso na tela.
+    let envioMsg = ' Agora você pode enviar o pedido pelo WhatsApp.'
+    if (supplier?.whatsappGroup?.trim()) {
+      const { sent, reason } = await notifyPurchase(id)
+      envioMsg = sent
+        ? ` Pedido enviado ao grupo de "${supplier.name}" no WhatsApp.`
+        : ` ⚠️ Não consegui enviar ao grupo de "${supplier.name}" (${reason ?? 'motivo desconhecido'}) —`
+          + ' envie pelo botão do WhatsApp.'
+    }
+
     setSuccess(
-      `Compra registrada${number ? ` (nº ${String(number).padStart(6, '0')})` : ''} — ${parcelaMsg}. `
-        + 'Agora você pode enviar o pedido pelo WhatsApp. O estoque será somado quando marcar como ENTREGUE.',
+      `Compra registrada${number ? ` (nº ${String(number).padStart(6, '0')})` : ''} — ${parcelaMsg}.`
+        + `${envioMsg} O estoque será somado quando marcar como ENTREGUE.`,
     )
     setLines([])
     setPaid(false)

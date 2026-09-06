@@ -7,7 +7,7 @@ interface Props {
   onChange: (list: Supplier[]) => void
 }
 
-const EMPTY: Supplier = { id: '', name: '', phone: '', cnpj: '', email: '', contact: '' }
+const EMPTY: Supplier = { id: '', name: '', phone: '', whatsappGroup: '', cnpj: '', email: '', contact: '' }
 
 export function SuppliersModal({ onClose, onChange }: Props) {
   const [list, setList] = useState<Supplier[]>([])
@@ -62,7 +62,7 @@ export function SuppliersModal({ onClose, onChange }: Props) {
               <li key={s.id} className="sup-modal__item">
                 <div>
                   <strong>{s.name}</strong>
-                  <small>{[s.phone && `📱 ${s.phone}`, s.contact, s.cnpj].filter(Boolean).join(' · ') || '—'}</small>
+                  <small>{[s.phone && `📱 ${s.phone}`, s.whatsappGroup && '👥 grupo', s.contact, s.cnpj].filter(Boolean).join(' · ') || '—'}</small>
                 </div>
                 <div className="sup-modal__actions">
                   <button onClick={() => setForm({ ...EMPTY, ...s })} title="Editar">✎</button>
@@ -76,6 +76,19 @@ export function SuppliersModal({ onClose, onChange }: Props) {
             <h4>{form.id ? 'Editar fornecedor' : 'Novo fornecedor'}</h4>
             <label>Nome *<input value={form.name} onChange={(e) => set('name', e.target.value)} /></label>
             <label>WhatsApp<input value={form.phone ?? ''} onChange={(e) => set('phone', e.target.value)} placeholder="(11) 90000-0000" /></label>
+            <label>
+              Grupo do WhatsApp
+              <input
+                value={form.whatsappGroup ?? ''}
+                onChange={(e) => set('whatsappGroup', e.target.value)}
+                placeholder="120363XXXXXXXXXXXX@g.us"
+              />
+              <small className="sup-modal__hint">
+                Opcional. Com o grupo preenchido, o pedido de compra é enviado para lá
+                automaticamente ao registrar. Sem ele, continua valendo o botão de enviar
+                pelo WhatsApp do contato.
+              </small>
+            </label>
             <label>Contato<input value={form.contact ?? ''} onChange={(e) => set('contact', e.target.value)} placeholder="Nome do vendedor" /></label>
             <label>CNPJ<input value={form.cnpj ?? ''} onChange={(e) => set('cnpj', e.target.value)} /></label>
             <label>E-mail<input value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} /></label>

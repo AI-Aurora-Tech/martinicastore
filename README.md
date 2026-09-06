@@ -113,6 +113,11 @@ Aba **"Compras"** para comprar de fornecedores e **dar entrada no estoque**:
 - No modo Supabase grava em `purchases`/`purchase_items` e um *trigger* soma ao
   estoque; no modo demo, tudo fica no navegador.
 
+> **Pedido de compra no grupo do fornecedor:** cadastrando o **grupo de
+> WhatsApp** no fornecedor (Gestão → Compras → Gerenciar), o pedido de compra é
+> enviado para o grupo assim que a compra é registrada. Veja
+> [`supabase/functions/notify-purchase/SETUP.md`](supabase/functions/notify-purchase/SETUP.md).
+
 > **Notificação de pedidos por WhatsApp (Evolution API):** com a Evolution API
 > configurada (segredos na Edge Function `notify-order`), cada pedido online
 > avisa a **loja** e o **cliente** por WhatsApp. Veja o SETUP.md.
@@ -175,7 +180,8 @@ Resumo (passo a passo completo em
 2. Publique a função — CLI `supabase functions deploy notify-order` **ou** pelo
    Dashboard (Edge Functions → Create → colar o `index.ts`).
 3. Configure os segredos: `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`,
-   `EVOLUTION_INSTANCE` e `STORE_WHATSAPP` (número da loja).
+   `EVOLUTION_INSTANCE` e `STORE_WHATSAPP` (número da loja; aceita vários
+   separados por vírgula, e todos recebem os avisos).
    `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem no ambiente da função.
 
 > No **modo demo** (sem Supabase) não há backend — o pedido é só registrado
