@@ -300,7 +300,22 @@ npm run build
 
 # pré-visualizar o build de produção
 npm run preview
+
+# regerar o sitemap a partir do catálogo da loja (public/sitemap.xml)
+npm run gen:sitemap
 ```
+
+### SEO — sitemap
+
+`public/sitemap.xml` é **gerado**, não editado à mão. O
+[`scripts/gen-sitemap.ts`](scripts/gen-sitemap.ts) lê os produtos **ativos**
+direto do Supabase (usando `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` do
+ambiente ou do `.env`) e, se o backend não estiver configurado/acessível, cai
+no catálogo local de `src/data/products.ts`. O arquivo lista a home e os
+deep-links `/produto/<id>` — as únicas URLs reais da loja (categorias e páginas
+institucionais são estados da SPA; `/gestao`, `/admin` e `/pdv` estão
+bloqueados no `robots.txt`). Rode o comando sempre que produtos forem
+incluídos, removidos ou desativados no painel.
 
 ## 📁 Estrutura
 
@@ -309,6 +324,7 @@ supabase/
 ├── migrations/0001_init.sql  # schema + Row Level Security
 └── seed.sql                  # categorias + produtos (gerado)
 scripts/gen-seed.ts           # gera o seed a partir de data/products.ts
+scripts/gen-sitemap.ts        # gera public/sitemap.xml (Supabase ou seed)
 src/
 ├── main.tsx                  # ponto de entrada + providers
 ├── App.tsx                   # layout, filtro e busca

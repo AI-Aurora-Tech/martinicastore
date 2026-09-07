@@ -3,16 +3,10 @@
 // permitindo rich results (preço, disponibilidade, avaliações).
 
 import type { Product } from '../types'
+import { SITE_URL, productPath, productUrl } from './site'
 
-/** Domínio do site. Ajuste se o domínio final for outro. */
-export const SITE_URL = 'https://www.martinicaoficial.com.br'
-
-export function productPath(id: string): string {
-  return `/produto/${encodeURIComponent(id)}`
-}
-export function productUrl(id: string): string {
-  return SITE_URL + productPath(id)
-}
+// Reexportado para manter os imports existentes (`from '../services/seo'`).
+export { SITE_URL, productPath, productUrl }
 
 function q<T extends Element>(sel: string): T | null {
   return document.head.querySelector(sel)
