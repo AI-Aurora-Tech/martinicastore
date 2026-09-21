@@ -510,7 +510,7 @@ export function Purchases({ operatorEmail }: Props) {
           </label>
           <label className="purch__paid">
             <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
-            Pago à vista (senão fica em <strong>contas a pagar</strong>)
+            <span>Pago à vista (senão fica em <strong>contas a pagar</strong>)</span>
           </label>
         </div>
 
@@ -541,7 +541,7 @@ export function Purchases({ operatorEmail }: Props) {
           <p className="purch__empty">Busque um produto acima para adicionar ao pedido.</p>
         ) : (
           <div className="admin__tablewrap" style={{ border: 'none' }}>
-            <table className="admin__table">
+            <table className="admin__table admin__table--cards">
               <thead>
                 <tr>
                   <th>Produto</th>
@@ -556,22 +556,22 @@ export function Purchases({ operatorEmail }: Props) {
                   const k = lineKey(l)
                   return (
                     <tr key={k}>
-                      <td><strong>{l.product.name}{l.size ? ` · ${l.size}` : ''}</strong><br /><small style={{ color: 'var(--muted)' }}>{l.product.id}</small></td>
-                      <td>
+                      <td className="admin__cell-prod" data-label="Produto"><strong>{l.product.name}{l.size ? ` · ${l.size}` : ''}</strong><br /><small style={{ color: 'var(--muted)' }}>{l.product.id}</small></td>
+                      <td data-label="Qtd.">
                         <div className="admin__stock">
                           <button onClick={() => patchLine(k, { quantity: Math.max(1, l.quantity - 1) })}>−</button>
                           <input inputMode="numeric" value={l.quantity} onChange={(e) => patchLine(k, { quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) })} />
                           <button onClick={() => patchLine(k, { quantity: l.quantity + 1 })}>+</button>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Custo unit.">
                         <div className="admin__price">
                           <span>R$</span>
                           <input inputMode="decimal" value={l.unitCost} onChange={(e) => patchLine(k, { unitCost: Math.max(0, Number(String(e.target.value).replace(',', '.')) || 0) })} />
                         </div>
                       </td>
-                      <td><strong>{BRL.format(l.unitCost * l.quantity)}</strong></td>
-                      <td><button className="admin__del" onClick={() => removeLine(k)} aria-label="Remover">🗑</button></td>
+                      <td data-label="Subtotal"><strong>{BRL.format(l.unitCost * l.quantity)}</strong></td>
+                      <td className="admin__cell-actions" data-label="Ações"><button className="admin__del" onClick={() => removeLine(k)} aria-label="Remover">🗑</button></td>
                     </tr>
                   )
                 })}

@@ -2321,13 +2321,19 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   box-shadow: var(--shadow-lg);
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .admin__modal h3 { margin-bottom: 1rem; }
 .admin__form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.8rem;
 }
+/* Nenhum campo pode forçar a grade a ficar mais larga que o modal. */
+.admin__form-grid > * { min-width: 0; }
+.admin__form-grid input,
+.admin__form-grid select,
+.admin__form-grid textarea { max-width: 100%; min-width: 0; }
 .admin__form-grid label {
   display: flex;
   flex-direction: column;
@@ -2362,7 +2368,106 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 
 @media (max-width: 760px) {
   .admin__stats { grid-template-columns: 1fr 1fr; }
-  .admin__form-grid { grid-template-columns: 1fr; }
+  .admin__form-grid { grid-template-columns: minmax(0, 1fr); }
+  .admin__modal { padding: 1.15rem; }
+}
+@media (max-width: 400px) {
+  /* Campos com select + botão: empilham para o select não ficar espremido. */
+  .admin__catfield,
+  .admin__newcat,
+  .admin__supplierfield { flex-direction: column; align-items: stretch; }
+  .admin__catfield .btn,
+  .admin__newcat .btn,
+  .admin__supplierfield .btn { width: 100%; }
+}
+@media (max-width: 460px) {
+  .admin__stats { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .admin__stat { padding: 0.75rem 0.85rem; }
+  .admin__stat strong { font-size: 1.4rem; }
+}
+
+/* ---------- Tabelas viram cartões nas telas estreitas ----------
+   Em vez de rolar a tabela na horizontal (escondendo colunas críticas
+   como estoque, ativar/desativar e excluir), cada linha vira um cartão
+   com rótulo (data-label) em cada campo. Vale até 960px, largura mínima
+   para a tabela de estoque caber inteira sem rolagem lateral. */
+@media (max-width: 960px) {
+  .admin__table--cards {
+    min-width: 0;
+    width: 100%;
+    display: block;
+  }
+  .admin__table--cards thead {
+    /* Esconde o cabeçalho sem quebrar acessibilidade (fora da tela). */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .admin__table--cards tbody { display: block; }
+  .admin__table--cards tr {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 0.4rem 0.85rem;
+    margin-bottom: 0.7rem;
+  }
+  .admin__table--cards td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9rem;
+    text-align: right;
+  }
+  .admin__table--cards tr td:last-child { border-bottom: none; }
+  .admin__table--cards td::before {
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+    text-align: left;
+    flex: 0 0 auto;
+  }
+  /* Campo "Produto/Descrição": vira o topo do cartão, ocupa a linha toda. */
+  .admin__table--cards .admin__cell-prod {
+    justify-content: flex-start;
+    text-align: left;
+    padding-top: 0.6rem;
+  }
+  .admin__table--cards .admin__cell-prod::before { display: none; }
+  .admin__table--cards .admin__cell-prod .admin__prod { width: 100%; }
+  /* Ações: botões alinhados à direita, sem espremer. */
+  .admin__table--cards .admin__cell-actions { justify-content: flex-end; }
+  .admin__table--cards .admin__empty { justify-content: center; text-align: center; }
+  .admin__table--cards .admin__empty::before { display: none; }
+  /* Inputs de custo/preço/estoque não encolhem demais. */
+  .admin__table--cards .admin__price input { width: 90px; }
+  .despesas__table.admin__table--cards .despesas__actions { flex-wrap: wrap; gap: 0.4rem; }
+}
+
+/* Tablets (641–960px): o cartão fica largo demais numa coluna só, então os
+   campos se distribuem em duas colunas. Produto e Ações ocupam a linha toda. */
+@media (min-width: 641px) and (max-width: 960px) {
+  .admin__table--cards tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+    padding: 0.4rem 1.1rem 0.7rem;
+  }
+  .admin__table--cards .admin__cell-prod,
+  .admin__table--cards .admin__cell-actions,
+  .admin__table--cards .admin__empty { grid-column: 1 / -1; }
+  /* A última célula (Ações) não perde a borda inferior das células acima. */
+  .admin__table--cards td { border-bottom: 1px solid var(--line); }
+  .admin__table--cards .admin__cell-actions { border-bottom: none; padding-top: 0.6rem; }
 }
 
 /* ---------- Admin: imagem do produto ---------- */
@@ -3156,12 +3261,13 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 .purch__paid {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   font-size: 0.85rem;
   color: var(--muted);
   padding-bottom: 0.55rem;
 }
+.purch__paid span { line-height: 1.3; }
 .purch__paid input { width: 1.05rem; height: 1.05rem; }
 .purch__paid strong { color: var(--text); }
 .purch__hint { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--muted); }
@@ -3744,7 +3850,9 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border: 1px solid #e2e2e5;
   border-radius: 7px;
 }
-.cats__id { color: #999; font-size: 0.8rem; font-family: monospace; }
+/* No desktop os filhos participam direto do flex da linha (layout original). */
+.cats__meta { display: contents; }
+.cats__id { color: #999; font-size: 0.8rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cats__count { color: #666; font-size: 0.8rem; white-space: nowrap; }
 .cats__del {
   border: none;
@@ -3765,8 +3873,15 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   .cats__order { order: 1; }
   .cats__label { order: 2; flex: 1 1 120px; }
   .cats__del { order: 3; }
-  .cats__id { order: 4; }
-  .cats__count { order: 5; }
+  /* Identificador + contagem descem juntos para a segunda linha. */
+  .cats__meta {
+    display: flex;
+    order: 4;
+    flex: 1 1 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+  }
   .cats__add input { flex: 1 1 140px; min-width: 0; }
 }
 
