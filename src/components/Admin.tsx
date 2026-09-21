@@ -310,7 +310,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
         </div>
 
         <div className="admin__tablewrap">
-          <table className="admin__table">
+          <table className="admin__table admin__table--cards">
             <thead>
               <tr>
                 <th>Produto</th>
@@ -440,7 +440,7 @@ function AdminRow({
 
   return (
     <tr className={product.active === false ? 'admin__row--inactive' : ''}>
-      <td>
+      <td className="admin__cell-prod" data-label="Produto">
         <div className="admin__prod">
           <label className="admin__thumb" title="Enviar/trocar imagem (JPG ou PNG)">
             {product.image ? (
@@ -466,8 +466,8 @@ function AdminRow({
           </div>
         </div>
       </td>
-      <td>{categoryLabel}</td>
-      <td>
+      <td data-label="Categoria">{categoryLabel}</td>
+      <td data-label="Custo">
         <div className="admin__price">
           <span>R$</span>
           <input
@@ -479,7 +479,7 @@ function AdminRow({
           />
         </div>
       </td>
-      <td>
+      <td data-label="Preço">
         <div className="admin__price">
           <span>R$</span>
           <input
@@ -491,12 +491,12 @@ function AdminRow({
           />
         </div>
       </td>
-      <td>
+      <td data-label="Margem">
         <span className={`admin__margin ${marginClass}`}>
           {(margin * 100).toFixed(0)}%
         </span>
       </td>
-      <td>
+      <td data-label="Estoque">
         {hasVariants(product) ? (
           <div className={`admin__stock ${level}`} title="Estoque por variação — edite em ✏️">
             <span className="admin__stock-variants">{stock} · por variação</span>
@@ -515,7 +515,7 @@ function AdminRow({
           </div>
         )}
       </td>
-      <td>
+      <td data-label="Ativo">
         <label className="admin__switch">
           <input
             type="checkbox"
@@ -525,7 +525,7 @@ function AdminRow({
           <span />
         </label>
       </td>
-      <td>
+      <td className="admin__cell-actions" data-label="Ações">
         <div className="admin__rowactions">
           <button className="admin__edit" onClick={onEdit} aria-label={`Editar ${product.name}`} title="Editar informações do produto">
             ✏️

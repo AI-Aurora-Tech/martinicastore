@@ -264,27 +264,27 @@ export function Despesas({ operatorEmail }: Props) {
         <div className="reports__empty"><span>🧾</span><p>Nenhuma conta neste filtro.</p></div>
       ) : (
         <div className="admin__tablewrap">
-          <table className="admin__table despesas__table">
+          <table className="admin__table admin__table--cards despesas__table">
             <thead>
               <tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.key}>
-                  <td>{when(c.when)}</td>
-                  <td>
+                  <td data-label="Vencimento">{when(c.when)}</td>
+                  <td className="admin__cell-prod" data-label="Descrição">
                     <strong>{c.description}</strong>
                     {c.source === 'compra' && <span className="despesas__src">compra</span>}
                     {c.recurring && <span className="despesas__src despesas__src--rec">recorrente</span>}
                   </td>
-                  <td>{c.category}</td>
-                  <td><strong>{BRL.format(c.amount)}</strong></td>
-                  <td>
+                  <td data-label="Categoria">{c.category}</td>
+                  <td data-label="Valor"><strong>{BRL.format(c.amount)}</strong></td>
+                  <td data-label="Status">
                     <span className={`purch__badge ${c.paid ? 'is-ok' : 'is-danger'}`}>
                       {c.paid ? '✓ Paga' : '💰 A pagar'}
                     </span>
                   </td>
-                  <td className="despesas__actions">
+                  <td className="despesas__actions admin__cell-actions" data-label="Ações">
                     {c.paid
                       ? c.source === 'despesa' && (
                           <button className="btn btn--ghost" disabled={busy === c.key} onClick={() => togglePaid(c)}>Reabrir</button>
