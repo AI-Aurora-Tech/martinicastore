@@ -702,7 +702,7 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.25s ease;
-  z-index: 50;
+  z-index: 1000;
 }
 .overlay--show {
   opacity: 1;
@@ -713,9 +713,13 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   top: 0;
   right: 0;
   height: 100%;
+  /* No celular, 100% pode passar da área visível (barra do Safari/Chrome)
+     e o rodapé com "Finalizar compra" fica sob a barra, sem receber o toque. */
+  height: 100dvh;
   width: min(420px, 100%);
   background: var(--surface);
-  z-index: 60;
+  /* Acima de qualquer outro elemento fixo da página. */
+  z-index: 1001;
   transform: translateX(100%);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -781,6 +785,10 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border-bottom: 1px solid var(--line);
 }
 .drawer__thumb {
+  /* A foto do produto é position:absolute (ProductImage): sem isto ela se
+     estendia sobre a sacola inteira e bloqueava todos os cliques. */
+  position: relative;
+  overflow: hidden;
   width: 72px;
   height: 72px;
   border-radius: 10px;
@@ -851,6 +859,9 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .drawer__foot {
   border-top: 1px solid var(--line);
   padding: 1.1rem 1.25rem 1.4rem;
+  /* Respeita a área do "home indicator" do iPhone. */
+  padding-bottom: calc(1.4rem + env(safe-area-inset-bottom, 0px));
+  flex-shrink: 0;
 }
 .drawer__total {
   display: flex;
@@ -870,7 +881,8 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .drawer__continue {
   display: block;
   width: 100%;
-  margin-top: 0.7rem;
+  margin-top: 0.4rem;
+  padding: 0.5rem 0;
   border: none;
   background: none;
   color: var(--muted);
@@ -2937,7 +2949,8 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .checkout__summary h3 { font-size: 1.05rem; margin-bottom: 0.9rem; }
 .checkout__items { list-style: none; margin: 0 0 0.9rem; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; max-height: 260px; overflow-y: auto; }
 .checkout__items li { display: grid; grid-template-columns: 44px 1fr auto; gap: 0.6rem; align-items: center; }
-.checkout__item-img { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; padding: 5px; }
+/* position: relative prende a foto (absolute) na miniatura — sem isso ela cobria o resumo e o botão "Confirmar e pagar". */
+.checkout__item-img { position: relative; overflow: hidden; width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; padding: 5px; }
 .checkout__item-info span { display: block; font-size: 0.82rem; font-weight: 600; line-height: 1.2; }
 .checkout__item-info small { color: var(--muted); font-size: 0.74rem; }
 .checkout__totals { margin: 0 0 1rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
@@ -3999,6 +4012,10 @@ body { overflow-x: hidden; }
   max-width: 1100px;
   margin: 0 auto;
   padding: 1rem 1.25rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 .pdp__back {
   background: var(--surface);
