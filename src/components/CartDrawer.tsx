@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { BRL } from '../data/products'
 import { ProductImage } from './ProductImage'
@@ -9,6 +10,17 @@ interface Props {
 
 export function CartDrawer({ onCheckout }: Props) {
   const { items, isOpen, closeCart, removeItem, setQuantity, subtotal, count } = useCart()
+
+  // Trava a rolagem da página atrás da sacola: no celular, rolar o fundo faz a
+  // barra do navegador aparecer/sumir e o toque nos botões do rodapé se perde.
+  useEffect(() => {
+    if (!isOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isOpen])
 
   function goCheckout() {
     closeCart()
