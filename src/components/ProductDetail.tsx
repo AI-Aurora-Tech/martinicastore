@@ -15,7 +15,7 @@ interface Props {
 
 /** Página de detalhes do produto. As informações vêm do cadastro no painel. */
 export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
-  const { addItem } = useCart()
+  const { addItem, count, openCart, closeCart } = useCart()
   const { categories } = useCatalog()
 
   const variantMode = hasVariants(product)
@@ -53,13 +53,22 @@ export function ProductDetail({ product, onExit, onGoCheckout }: Props) {
     for (let i = 0; i < n; i++) addItem(product, size)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1400)
-    if (goToCheckout) onGoCheckout()
+    if (goToCheckout) {
+      // "Comprar agora" vai direto ao checkout — não deixa a sacola aberta por trás.
+      closeCart()
+      onGoCheckout()
+    }
   }
 
   return (
     <div className="pdp">
       <header className="pdp__top">
         <button className="pdp__back" onClick={onExit}>← Voltar à loja</button>
+        <button type="button" className="header__cart" onClick={openCart} aria-label="Abrir sacola">
+          <span aria-hidden="true">🛍️</span>
+          <span>Sacola</span>
+          {count > 0 && <span className="header__cart-count">{count}</span>}
+        </button>
       </header>
 
       <div className="pdp__body">

@@ -3999,6 +3999,10 @@ body { overflow-x: hidden; }
   max-width: 1100px;
   margin: 0 auto;
   padding: 1rem 1.25rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 .pdp__back {
   background: var(--surface);

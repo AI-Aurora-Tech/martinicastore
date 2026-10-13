@@ -148,11 +148,16 @@ export default function App() {
 
   if (view === 'produto' && selectedProduct) {
     return (
-      <ProductDetail
-        product={selectedProduct}
-        onExit={() => setView('loja')}
-        onGoCheckout={() => setView('checkout')}
-      />
+      <>
+        <ProductDetail
+          product={selectedProduct}
+          onExit={() => setView('loja')}
+          onGoCheckout={() => setView('checkout')}
+        />
+        {/* A sacola também precisa existir na página do produto: sem ela o item
+            era adicionado mas o cliente não tinha como seguir para o checkout. */}
+        <CartDrawer onCheckout={() => setView('checkout')} />
+      </>
     )
   }
 
