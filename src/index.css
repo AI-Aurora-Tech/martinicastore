@@ -785,6 +785,10 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border-bottom: 1px solid var(--line);
 }
 .drawer__thumb {
+  /* A foto do produto é position:absolute (ProductImage): sem isto ela se
+     estendia sobre a sacola inteira e bloqueava todos os cliques. */
+  position: relative;
+  overflow: hidden;
   width: 72px;
   height: 72px;
   border-radius: 10px;
@@ -2945,7 +2949,8 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .checkout__summary h3 { font-size: 1.05rem; margin-bottom: 0.9rem; }
 .checkout__items { list-style: none; margin: 0 0 0.9rem; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; max-height: 260px; overflow-y: auto; }
 .checkout__items li { display: grid; grid-template-columns: 44px 1fr auto; gap: 0.6rem; align-items: center; }
-.checkout__item-img { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; padding: 5px; }
+/* position: relative prende a foto (absolute) na miniatura — sem isso ela cobria o resumo e o botão "Confirmar e pagar". */
+.checkout__item-img { position: relative; overflow: hidden; width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; padding: 5px; }
 .checkout__item-info span { display: block; font-size: 0.82rem; font-weight: 600; line-height: 1.2; }
 .checkout__item-info small { color: var(--muted); font-size: 0.74rem; }
 .checkout__totals { margin: 0 0 1rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
