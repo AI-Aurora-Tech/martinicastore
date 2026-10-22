@@ -654,7 +654,7 @@ export function Purchases({ operatorEmail }: Props) {
               !lastOrder
                 ? 'Registre o pedido de compra primeiro'
                 : lastOrder.hasDestino
-                  ? 'Envia o pedido pelo WhatsApp da loja, sem abrir o navegador'
+                  ? 'Envia o PDF do pedido pelo WhatsApp da loja, sem abrir o navegador'
                   : 'O fornecedor não tem grupo nem WhatsApp cadastrado'
             }
           >
@@ -804,7 +804,7 @@ export function Purchases({ operatorEmail }: Props) {
                           className="btn btn--ghost"
                           disabled={busyId === h.id}
                           onClick={() => resendWhatsApp(h)}
-                          title="Reenviar a lista deste pedido ao fornecedor pelo WhatsApp (pode enviar quantas vezes precisar)"
+                          title="Enviar o PDF deste pedido ao fornecedor pelo WhatsApp (pode enviar quantas vezes precisar)"
                         >
                           📲 WhatsApp
                         </button>

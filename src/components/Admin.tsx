@@ -785,10 +785,10 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
                   onClick={sendWhatsApp}
                   disabled={sendingWa || !created.hasDestino}
                   title={created.hasDestino
-                    ? 'Envia a lista do pedido pelo WhatsApp da loja, direto ao fornecedor'
+                    ? 'Envia o PDF do pedido pelo WhatsApp da loja, direto ao fornecedor'
                     : 'O fornecedor não tem grupo nem WhatsApp cadastrado'}
                 >
-                  {sendingWa ? 'Enviando…' : '📲 Enviar pelo WhatsApp'}
+                  {sendingWa ? 'Enviando…' : '📲 Enviar PDF pelo WhatsApp'}
                 </button>
               </div>
             </footer>
