@@ -453,6 +453,26 @@ export function Purchases({ operatorEmail }: Props) {
     setError(MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
   }
 
+  /**
+   * Reenvia pelo WhatsApp uma compra já registrada (direto do histórico). Pode
+   * ser disparado quantas vezes forem necessárias — a Edge Function é
+   * best-effort e nada muda na compra.
+   */
+  async function resendWhatsApp(h: PurchaseSummary) {
+    if (busyId) return
+    setError(null)
+    setSuccess(null)
+    setBusyId(h.id)
+    const { sent, reason } = await notifyPurchase(h.id)
+    setBusyId(null)
+    const quem = h.supplier ? `"${h.supplier}"` : 'o fornecedor'
+    if (sent) {
+      setSuccess(`Pedido nº ${String(h.number).padStart(6, '0')} reenviado para ${quem} no WhatsApp.`)
+      return
+    }
+    setError(MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
+  }
+
   return (
     <div className="purch">
       <section className="purch__new admin__tablewrap" style={{ padding: '1.1rem 1.2rem' }}>
@@ -735,6 +755,14 @@ export function Purchases({ operatorEmail }: Props) {
                             ↧ Receber
                           </button>
                         )}
+                        <button
+                          className="btn btn--ghost"
+                          disabled={busyId === h.id}
+                          onClick={() => resendWhatsApp(h)}
+                          title="Reenviar a lista deste pedido ao fornecedor pelo WhatsApp (pode enviar quantas vezes precisar)"
+                        >
+                          📲 WhatsApp
+                        </button>
                         {!h.paid && (
                           <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
                         )}
