@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BRL, CLUB } from '../data/products'
 import type { Category, CategoryId, Product, ProductKind, Supplier } from '../types'
 import { listSuppliers } from '../services/suppliers'
+import { createPurchase, notifyPurchase, type PurchaseSummary } from '../services/purchase'
+import { downloadPurchasePdf } from '../services/purchasePdf'
 import { saveCategory, slugify } from '../services/categories'
 import { SuppliersModal } from './SuppliersModal'
 import { useCatalog } from '../context/CatalogContext'
@@ -54,6 +56,18 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   const [editing, setEditing] = useState<Product | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [flashMsg, setFlashMsg] = useState<string | null>(null)
+  /** Produtos marcados (por id) para montar um pedido de compra rápido. */
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [orderingPurchase, setOrderingPurchase] = useState(false)
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function flash(msg: string) {
@@ -310,9 +324,27 @@ export function Admin({ operator, onExit, onLogout }: Props) {
         </div>
 
         <div className="admin__tablewrap">
-          <table className="admin__table">
+          <table className="admin__table admin__table--cards">
             <thead>
               <tr>
+                <th className="admin__col-sel">
+                  <input
+                    type="checkbox"
+                    aria-label="Selecionar todos os produtos filtrados"
+                    checked={list.length > 0 && list.every((p) => selected.has(p.id))}
+                    ref={(el) => {
+                      if (el) el.indeterminate = list.some((p) => selected.has(p.id)) && !list.every((p) => selected.has(p.id))
+                    }}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      setSelected((prev) => {
+                        const next = new Set(prev)
+                        for (const p of list) { if (on) next.add(p.id); else next.delete(p.id) }
+                        return next
+                      })
+                    }}
+                  />
+                </th>
                 <th>Produto</th>
                 <th>Categoria</th>
                 <th>Custo</th>
@@ -328,6 +360,8 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                 <AdminRow
                   key={p.id}
                   product={p}
+                  selected={selected.has(p.id)}
+                  onToggleSelect={() => toggleSelected(p.id)}
                   categoryLabel={categories.find((c) => c.id === p.category)?.label ?? p.category}
                   onChangeStock={(v) => changeStock(p, v)}
                   onSavePrice={(price) => confirmField(p, { price }, `Alterar o preço de "${p.name}" para ${BRL.format(price)}?`, 'Preço atualizado.')}
@@ -340,14 +374,41 @@ export function Admin({ operator, onExit, onLogout }: Props) {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="admin__empty">Nenhum produto encontrado.</td>
+                  <td colSpan={9} className="admin__empty">Nenhum produto encontrado.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {selected.size > 0 && (
+          <div className="admin__selbar" role="region" aria-label="Produtos selecionados">
+            <span className="admin__selbar-count">
+              {selected.size} {selected.size === 1 ? 'produto selecionado' : 'produtos selecionados'}
+            </span>
+            <div className="admin__selbar-actions">
+              <button className="btn btn--ghost" onClick={() => setSelected(new Set())}>Limpar</button>
+              <button className="btn btn--primary" onClick={() => setOrderingPurchase(true)}>
+                🛒 Pedir compra
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
+
+      {orderingPurchase && (
+        <PurchaseFromStockModal
+          products={products.filter((p) => selected.has(p.id))}
+          operatorEmail={operator.email}
+          onClose={() => setOrderingPurchase(false)}
+          onDone={(msg) => {
+            setOrderingPurchase(false)
+            setSelected(new Set())
+            flash(msg)
+          }}
+        />
+      )}
 
       {creating && (
         <ProductModal
@@ -391,6 +452,8 @@ export function Admin({ operator, onExit, onLogout }: Props) {
 
 interface RowProps {
   product: Product
+  selected: boolean
+  onToggleSelect: () => void
   categoryLabel: string
   onChangeStock: (value: number) => void
   onSavePrice: (price: number) => void
@@ -402,7 +465,7 @@ interface RowProps {
 }
 
 function AdminRow({
-  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete,
+  product, selected, onToggleSelect, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete,
 }: RowProps) {
   const stock = product.stock ?? 0
   const cost = product.cost ?? 0
@@ -439,8 +502,16 @@ function AdminRow({
   }
 
   return (
-    <tr className={product.active === false ? 'admin__row--inactive' : ''}>
-      <td>
+    <tr className={`${product.active === false ? 'admin__row--inactive' : ''}${selected ? ' admin__row--selected' : ''}`}>
+      <td className="admin__col-sel" data-label="Selecionar">
+        <input
+          type="checkbox"
+          aria-label={`Selecionar ${product.name}`}
+          checked={selected}
+          onChange={onToggleSelect}
+        />
+      </td>
+      <td className="admin__cell-prod" data-label="Produto">
         <div className="admin__prod">
           <label className="admin__thumb" title="Enviar/trocar imagem (JPG ou PNG)">
             {product.image ? (
@@ -466,8 +537,8 @@ function AdminRow({
           </div>
         </div>
       </td>
-      <td>{categoryLabel}</td>
-      <td>
+      <td data-label="Categoria">{categoryLabel}</td>
+      <td data-label="Custo">
         <div className="admin__price">
           <span>R$</span>
           <input
@@ -479,7 +550,7 @@ function AdminRow({
           />
         </div>
       </td>
-      <td>
+      <td data-label="Preço">
         <div className="admin__price">
           <span>R$</span>
           <input
@@ -491,12 +562,12 @@ function AdminRow({
           />
         </div>
       </td>
-      <td>
+      <td data-label="Margem">
         <span className={`admin__margin ${marginClass}`}>
           {(margin * 100).toFixed(0)}%
         </span>
       </td>
-      <td>
+      <td data-label="Estoque">
         {hasVariants(product) ? (
           <div className={`admin__stock ${level}`} title="Estoque por variação — edite em ✏️">
             <span className="admin__stock-variants">{stock} · por variação</span>
@@ -515,7 +586,7 @@ function AdminRow({
           </div>
         )}
       </td>
-      <td>
+      <td data-label="Ativo">
         <label className="admin__switch">
           <input
             type="checkbox"
@@ -525,7 +596,7 @@ function AdminRow({
           <span />
         </label>
       </td>
-      <td>
+      <td className="admin__cell-actions" data-label="Ações">
         <div className="admin__rowactions">
           <button className="admin__edit" onClick={onEdit} aria-label={`Editar ${product.name}`} title="Editar informações do produto">
             ✏️
@@ -536,6 +607,307 @@ function AdminRow({
         </div>
       </td>
     </tr>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+interface PurchaseFromStockProps {
+  products: Product[]
+  operatorEmail?: string
+  onClose: () => void
+  onDone: (message: string) => void
+}
+
+/**
+ * Pedido de compra rápido a partir dos produtos marcados no estoque. Só a
+ * QUANTIDADE é ajustável — o custo unitário vem do cadastro do produto. Cria a
+ * compra como pendente (conta a pagar); detalhes finos (pagamento, parcelas,
+ * fornecedor) podem ser ajustados depois na aba Compras.
+ */
+interface PurchaseRow { key: string; product: Product; size?: string; label: string; stock: number; unitCost: number }
+
+/** Traduz os motivos de falha que a Edge Function de WhatsApp devolve. */
+const WA_MOTIVO: Record<string, string> = {
+  demo: 'Modo demo: sem backend para enviar o WhatsApp. Configure o Supabase.',
+  'sem-destino': 'O fornecedor não tem grupo nem WhatsApp cadastrado. Preencha em "Gerenciar fornecedores".',
+  'sem-fornecedor': 'O pedido foi criado sem fornecedor, então não há para quem enviar.',
+  'sem-grupo': 'O fornecedor não tem grupo de WhatsApp cadastrado.',
+}
+
+function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: PurchaseFromStockProps) {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [supplierId, setSupplierId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  /** Pedido já criado — habilita o envio pelo WhatsApp. */
+  const [created, setCreated] = useState<
+    { id: string | null; number: number | null; supplierName?: string; hasDestino: boolean; count: number; units: number } | null
+  >(null)
+  const [sendingWa, setSendingWa] = useState(false)
+  const [waMsg, setWaMsg] = useState<string | null>(null)
+
+  useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
+
+  // Quando todos os produtos marcados são do mesmo fornecedor, já seleciona
+  // esse fornecedor — assim o envio pelo WhatsApp fica disponível sem escolher
+  // na mão (o número/grupo vem do cadastro do fornecedor).
+  const sharedSupplierId = useMemo(() => {
+    const ids = new Set(products.map((p) => p.supplierId).filter(Boolean) as string[])
+    return ids.size === 1 ? [...ids][0] : ''
+  }, [products])
+  useEffect(() => {
+    if (sharedSupplierId && suppliers.some((s) => s.id === sharedSupplierId)) {
+      setSupplierId((cur) => cur || sharedSupplierId)
+    }
+  }, [suppliers, sharedSupplierId])
+
+  const selSupplier = suppliers.find((s) => s.id === supplierId) ?? null
+  const selDestino = selSupplier
+    ? (selSupplier.whatsappGroup?.trim()
+        ? 'grupo de WhatsApp'
+        : selSupplier.phone?.trim()
+          ? `WhatsApp ${selSupplier.phone}`
+          : null)
+    : null
+
+  // Uma linha por VARIAÇÃO (ou uma única linha quando o produto não tem
+  // variações). Cada linha carrega o estoque atual e a quantidade a pedir.
+  const rows: PurchaseRow[] = useMemo(() => {
+    const acc: PurchaseRow[] = []
+    for (const p of products) {
+      const unitCost = p.cost ?? 0
+      if (hasVariants(p)) {
+        for (const v of p.variants ?? []) {
+          acc.push({ key: `${p.id}__${v.label}`, product: p, size: v.label, label: v.label, stock: v.stock ?? 0, unitCost })
+        }
+      } else {
+        acc.push({ key: `${p.id}__`, product: p, label: 'sem variação', stock: p.stock ?? 0, unitCost })
+      }
+    }
+    return acc
+  }, [products])
+
+  // Toda variação começa com 0 — o operador preenche a quantidade manualmente.
+  const [qty, setQty] = useState<Record<string, number>>(
+    () => Object.fromEntries(rows.map((r) => [r.key, 0])),
+  )
+  function setQtyFor(key: string, raw: number) {
+    const v = Math.max(0, Math.round(raw || 0))
+    setQty((prev) => ({ ...prev, [key]: v }))
+  }
+
+  const totalUn = rows.reduce((s, r) => s + (qty[r.key] ?? 0), 0)
+  const totalCost = rows.reduce((s, r) => s + (qty[r.key] ?? 0) * r.unitCost, 0)
+  const validRows = rows.filter((r) => (qty[r.key] ?? 0) > 0)
+
+  async function confirm() {
+    if (validRows.length === 0) { setError('Informe a quantidade a pedir em ao menos uma variação.'); return }
+    setSaving(true)
+    setError(null)
+    const sup = suppliers.find((s) => s.id === supplierId) ?? null
+    const { id, number, error: err } = await createPurchase({
+      supplier: sup?.name,
+      supplierId: sup?.id,
+      supplierPhone: sup?.phone,
+      operatorEmail,
+      paid: false,
+      items: validRows.map((r) => ({
+        productId: r.product.id,
+        name: r.product.name,
+        quantity: qty[r.key] ?? 0,
+        unitCost: r.unitCost,
+        size: r.size,
+      })),
+    })
+    setSaving(false)
+    if (err) { setError(err); return }
+    // Não fecha ainda: mostra o pedido criado e habilita o envio pelo WhatsApp.
+    setCreated({
+      id,
+      number,
+      supplierName: sup?.name,
+      hasDestino: Boolean(sup?.whatsappGroup?.trim() || sup?.phone?.trim()),
+      count: validRows.length,
+      units: totalUn,
+    })
+  }
+
+  async function sendWhatsApp() {
+    if (!created) return
+    setWaMsg(null)
+    setError(null)
+    setSendingWa(true)
+    const { sent, reason } = await notifyPurchase(created.id)
+    setSendingWa(false)
+    const quem = created.supplierName ? `"${created.supplierName}"` : 'o fornecedor'
+    if (sent) { setWaMsg(`Pedido enviado para ${quem} no WhatsApp.`); return }
+    setError(WA_MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
+  }
+
+  async function downloadPdf() {
+    if (!created) return
+    setError(null)
+    const sup = suppliers.find((s) => s.id === supplierId) ?? null
+    const summary: PurchaseSummary = {
+      id: created.id ?? '',
+      number: created.number ?? 0,
+      when: new Date().toISOString(),
+      supplier: sup?.name,
+      total: validRows.reduce((s, r) => s + (qty[r.key] ?? 0) * r.unitCost, 0),
+      paid: false,
+      status: 'pendente',
+      items: validRows.map((r) => ({
+        productId: r.product.id,
+        name: r.product.name,
+        quantity: qty[r.key] ?? 0,
+        received: 0,
+        unitCost: r.unitCost,
+        size: r.size,
+      })),
+    }
+    try {
+      await downloadPurchasePdf(summary)
+    } catch (err) {
+      setError(`Não consegui gerar o PDF: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  function finish() {
+    if (!created) return
+    onDone(
+      `Pedido de compra nº ${String(created.number ?? 0).padStart(6, '0')} criado com ${created.count} ${created.count === 1 ? 'item' : 'itens'} (${created.units} un.). Ajuste pagamento e recebimento na aba Compras.`,
+    )
+  }
+
+  return (
+    <div className="pdv__receipt-overlay" onClick={onClose}>
+      <div className="admin__modal admin__modal--purchase" onClick={(e) => e.stopPropagation()}>
+        <header className="admin__modal-head">
+          <h3>Pedido de compra — {products.length} {products.length === 1 ? 'produto' : 'produtos'}</h3>
+          <button className="admin__modal-close" onClick={onClose} aria-label="Fechar">✕</button>
+        </header>
+
+        {created ? (
+          <>
+            <div className="admin__purchase-body admin__purchase-done">
+              <p className="admin__purchase-okmsg">
+                ✓ Pedido de compra nº {String(created.number ?? 0).padStart(6, '0')} criado — {created.count} {created.count === 1 ? 'item' : 'itens'} ({created.units} un.).
+              </p>
+              <p className="admin__purchase-hint">
+                {created.supplierName
+                  ? (created.hasDestino
+                      ? `Envie a lista do pedido para "${created.supplierName}" pelo WhatsApp.`
+                      : `"${created.supplierName}" não tem grupo nem WhatsApp cadastrado — cadastre em "Gerenciar fornecedores" para poder enviar.`)
+                  : 'Sem fornecedor no pedido: escolha um fornecedor com WhatsApp para poder enviar a lista.'}
+              </p>
+              {waMsg && <p className="admin__purchase-okmsg">✓ {waMsg}</p>}
+            </div>
+
+            {error && <p className="admin__modal-error">{error}</p>}
+
+            <footer className="admin__purchase-foot">
+              <div className="admin__purchase-btns">
+                <button className="btn btn--ghost" onClick={finish} disabled={sendingWa}>Concluir</button>
+                <button className="btn btn--ghost" onClick={downloadPdf} title="Baixar o arquivo PDF deste pedido">
+                  📄 Baixar PDF
+                </button>
+                <button
+                  className="btn btn--primary"
+                  onClick={sendWhatsApp}
+                  disabled={sendingWa || !created.hasDestino}
+                  title={created.hasDestino
+                    ? 'Envia o PDF do pedido pelo WhatsApp da loja, direto ao fornecedor'
+                    : 'O fornecedor não tem grupo nem WhatsApp cadastrado'}
+                >
+                  {sendingWa ? 'Enviando…' : '📲 Enviar PDF pelo WhatsApp'}
+                </button>
+              </div>
+            </footer>
+          </>
+        ) : (
+          <>
+            <div className="admin__purchase-body">
+              <label className="admin__purchase-sup">
+                <span>Fornecedor (necessário para enviar pelo WhatsApp)</span>
+                <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+                  <option value="">— sem fornecedor —</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {supplierId && (
+                  <small className={`admin__purchase-sup-hint ${selDestino ? 'is-ok' : 'is-warn'}`}>
+                    {selDestino
+                      ? `📲 Envio pelo WhatsApp para ${selDestino}.`
+                      : '⚠️ Este fornecedor não tem grupo nem WhatsApp cadastrado — cadastre em "Gerenciar fornecedores" para poder enviar.'}
+                  </small>
+                )}
+              </label>
+
+              <p className="admin__purchase-hint">Toda variação começa com 0 — preencha a quantidade a pedir de cada uma.</p>
+
+              <div className="admin__purchase-groups">
+                {products.map((p) => {
+                  const prodRows = rows.filter((r) => r.product.id === p.id)
+                  return (
+                    <div key={p.id} className="admin__purchase-group">
+                      <div className="admin__purchase-group-head">
+                        <strong>{p.name}</strong>
+                        <small>{p.id} · {BRL.format(p.cost ?? 0)}/un</small>
+                      </div>
+                      <table className="admin__purchase-table">
+                        <thead>
+                          <tr><th>Variação</th><th>Estoque atual</th><th>Pedir</th><th>Subtotal</th></tr>
+                        </thead>
+                        <tbody>
+                          {prodRows.map((r) => {
+                            const q = qty[r.key] ?? 0
+                            return (
+                              <tr key={r.key} className={q === 0 ? 'is-zero' : ''}>
+                                <td data-label="Variação">{r.label}</td>
+                                <td data-label="Estoque atual">{r.stock}</td>
+                                <td data-label="Pedir">
+                                  <div className="admin__qty">
+                                    <button type="button" onClick={() => setQtyFor(r.key, q - 1)} aria-label="Diminuir">−</button>
+                                    <input
+                                      inputMode="numeric"
+                                      value={q}
+                                      onChange={(e) => setQtyFor(r.key, Number(e.target.value))}
+                                    />
+                                    <button type="button" onClick={() => setQtyFor(r.key, q + 1)} aria-label="Aumentar">+</button>
+                                  </div>
+                                </td>
+                                <td data-label="Subtotal">{BRL.format(q * r.unitCost)}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {error && <p className="admin__modal-error">{error}</p>}
+
+            <footer className="admin__purchase-foot">
+              <div className="admin__purchase-total">
+                <span>{totalUn} un.</span>
+                <strong>{BRL.format(totalCost)}</strong>
+              </div>
+              <div className="admin__purchase-btns">
+                <button className="btn btn--ghost" onClick={onClose} disabled={saving}>Cancelar</button>
+                <button className="btn btn--primary" onClick={confirm} disabled={saving || validRows.length === 0}>
+                  {saving ? 'Criando…' : '🛒 Criar pedido de compra'}
+                </button>
+              </div>
+            </footer>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

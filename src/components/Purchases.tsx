@@ -18,6 +18,7 @@ import {
 import { hasVariants } from '../services/variants'
 import { listSuppliers } from '../services/suppliers'
 import { pdfTable, printReport } from '../services/exportPdf'
+import { downloadPurchasePdf } from '../services/purchasePdf'
 import { SuppliersModal } from './SuppliersModal'
 
 interface Props {
@@ -438,6 +439,21 @@ export function Purchases({ operatorEmail }: Props) {
     printReport('Compras (pedidos)', body)
   }
 
+  /**
+   * Gera o PDF de UM pedido de compra e baixa o arquivo (.pdf), pronto para
+   * salvar/compartilhar. Mostra itens, variação, custo, recebido/falta e total.
+   */
+  async function exportPurchasePdf(h: PurchaseSummary) {
+    setError(null)
+    try {
+      await downloadPurchasePdf(h)
+      setSuccess(`PDF do pedido nº ${String(h.number).padStart(6, '0')} gerado para download.`)
+    } catch (err) {
+      const m = err instanceof Error ? err.message : String(err)
+      setError(`Não consegui gerar o PDF do pedido: ${m}`)
+    }
+  }
+
   /** Envia o pedido pela Evolution — direto, sem abrir o WhatsApp no navegador. */
   async function sendWhatsApp() {
     if (!lastOrder) { setError('Registre o pedido antes de enviar pelo WhatsApp.'); return }
@@ -448,6 +464,26 @@ export function Purchases({ operatorEmail }: Props) {
     const quem = lastOrder.supplierName ? `"${lastOrder.supplierName}"` : 'o fornecedor'
     if (sent) {
       setSuccess(`Pedido enviado para ${quem} no WhatsApp.`)
+      return
+    }
+    setError(MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
+  }
+
+  /**
+   * Reenvia pelo WhatsApp uma compra já registrada (direto do histórico). Pode
+   * ser disparado quantas vezes forem necessárias — a Edge Function é
+   * best-effort e nada muda na compra.
+   */
+  async function resendWhatsApp(h: PurchaseSummary) {
+    if (busyId) return
+    setError(null)
+    setSuccess(null)
+    setBusyId(h.id)
+    const { sent, reason } = await notifyPurchase(h.id)
+    setBusyId(null)
+    const quem = h.supplier ? `"${h.supplier}"` : 'o fornecedor'
+    if (sent) {
+      setSuccess(`Pedido nº ${String(h.number).padStart(6, '0')} reenviado para ${quem} no WhatsApp.`)
       return
     }
     setError(MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
@@ -510,7 +546,7 @@ export function Purchases({ operatorEmail }: Props) {
           </label>
           <label className="purch__paid">
             <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
-            Pago à vista (senão fica em <strong>contas a pagar</strong>)
+            <span>Pago à vista (senão fica em <strong>contas a pagar</strong>)</span>
           </label>
         </div>
 
@@ -541,7 +577,7 @@ export function Purchases({ operatorEmail }: Props) {
           <p className="purch__empty">Busque um produto acima para adicionar ao pedido.</p>
         ) : (
           <div className="admin__tablewrap" style={{ border: 'none' }}>
-            <table className="admin__table">
+            <table className="admin__table admin__table--cards">
               <thead>
                 <tr>
                   <th>Produto</th>
@@ -556,22 +592,22 @@ export function Purchases({ operatorEmail }: Props) {
                   const k = lineKey(l)
                   return (
                     <tr key={k}>
-                      <td><strong>{l.product.name}{l.size ? ` · ${l.size}` : ''}</strong><br /><small style={{ color: 'var(--muted)' }}>{l.product.id}</small></td>
-                      <td>
+                      <td className="admin__cell-prod" data-label="Produto"><strong>{l.product.name}{l.size ? ` · ${l.size}` : ''}</strong><br /><small style={{ color: 'var(--muted)' }}>{l.product.id}</small></td>
+                      <td data-label="Qtd.">
                         <div className="admin__stock">
                           <button onClick={() => patchLine(k, { quantity: Math.max(1, l.quantity - 1) })}>−</button>
                           <input inputMode="numeric" value={l.quantity} onChange={(e) => patchLine(k, { quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) })} />
                           <button onClick={() => patchLine(k, { quantity: l.quantity + 1 })}>+</button>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Custo unit.">
                         <div className="admin__price">
                           <span>R$</span>
                           <input inputMode="decimal" value={l.unitCost} onChange={(e) => patchLine(k, { unitCost: Math.max(0, Number(String(e.target.value).replace(',', '.')) || 0) })} />
                         </div>
                       </td>
-                      <td><strong>{BRL.format(l.unitCost * l.quantity)}</strong></td>
-                      <td><button className="admin__del" onClick={() => removeLine(k)} aria-label="Remover">🗑</button></td>
+                      <td data-label="Subtotal"><strong>{BRL.format(l.unitCost * l.quantity)}</strong></td>
+                      <td className="admin__cell-actions" data-label="Ações"><button className="admin__del" onClick={() => removeLine(k)} aria-label="Remover">🗑</button></td>
                     </tr>
                   )
                 })}
@@ -596,7 +632,7 @@ export function Purchases({ operatorEmail }: Props) {
               !lastOrder
                 ? 'Registre o pedido de compra primeiro'
                 : lastOrder.hasDestino
-                  ? 'Envia o pedido pelo WhatsApp da loja, sem abrir o navegador'
+                  ? 'Envia o PDF do pedido pelo WhatsApp da loja, sem abrir o navegador'
                   : 'O fornecedor não tem grupo nem WhatsApp cadastrado'
             }
           >
@@ -681,6 +717,34 @@ export function Purchases({ operatorEmail }: Props) {
                       </span>
                     )}
                   </div>
+                  {h.status === 'parcial' && (() => {
+                    const faltando = h.items
+                      .map((i) => ({ i, falta: faltaReceber(i) }))
+                      .filter((x) => x.falta > 0)
+                    const custoPedido = h.items.reduce((s2, i) => s2 + i.unitCost * i.quantity, 0)
+                    const custoRecebido = h.items.reduce((s2, i) => s2 + i.unitCost * Math.min(i.received ?? 0, i.quantity), 0)
+                    return (
+                      <div className="purch__missing">
+                        <div className="purch__missing-cost">
+                          <span>Custo recebido</span>
+                          <strong>{BRL.format(custoRecebido)} <span className="purch__missing-cost-of">de {BRL.format(custoPedido)}</span></strong>
+                        </div>
+                        {faltando.length > 0 && (
+                          <>
+                            <small className="purch__missing-head">Faltam chegar:</small>
+                            <ul className="purch__missing-list">
+                              {faltando.map(({ i, falta }, k) => (
+                                <li key={`miss-${i.productId}-${i.size ?? ''}-${k}`}>
+                                  <span>{i.name}{i.size ? ` · ${i.size}` : ''}</span>
+                                  <strong>{falta} un.</strong>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {h.installments && h.installments.length > 1 && !h.paid && (
                     <small className="purch__next-venc">
                       Próx. venc.: {(() => {
@@ -707,6 +771,21 @@ export function Purchases({ operatorEmail }: Props) {
                             ↧ Receber
                           </button>
                         )}
+                        <button
+                          className="btn btn--ghost"
+                          onClick={() => exportPurchasePdf(h)}
+                          title="Baixar o arquivo PDF deste pedido"
+                        >
+                          📄 Baixar PDF
+                        </button>
+                        <button
+                          className="btn btn--ghost"
+                          disabled={busyId === h.id}
+                          onClick={() => resendWhatsApp(h)}
+                          title="Enviar o PDF deste pedido ao fornecedor pelo WhatsApp (pode enviar quantas vezes precisar)"
+                        >
+                          📲 WhatsApp
+                        </button>
                         {!h.paid && (
                           <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
                         )}
@@ -800,14 +879,22 @@ export function Purchases({ operatorEmail }: Props) {
                 </button>
                 {openId === h.id && (
                   <ul className="purch__hist-items">
-                    {h.items.map((it, idx) => (
-                      <li key={idx}>
-                        <span>{it.quantity}x {it.name}{it.size ? ` · ${it.size}` : ''}</span>
-                        <span className="purch__hist-itemcost">
-                          {BRL.format(it.unitCost)}/un · {BRL.format(it.unitCost * it.quantity)}
-                        </span>
-                      </li>
-                    ))}
+                    {h.items.map((it, idx) => {
+                      const falta = h.status === 'cancelado' ? 0 : faltaReceber(it)
+                      return (
+                        <li key={idx}>
+                          <span>
+                            {it.quantity}x {it.name}{it.size ? ` · ${it.size}` : ''}
+                            {falta > 0 && (
+                              <span className="purch__hist-falta"> · faltam {falta} un.</span>
+                            )}
+                          </span>
+                          <span className="purch__hist-itemcost">
+                            {BRL.format(it.unitCost)}/un · {BRL.format(it.unitCost * it.quantity)}
+                          </span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </li>

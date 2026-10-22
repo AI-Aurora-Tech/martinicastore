@@ -198,6 +198,28 @@ export async function notifyPurchase(purchaseId: string | null): Promise<NotifyP
 }
 
 /**
+ * Pede à Edge Function o PDF do pedido (mesmo arquivo enviado pelo WhatsApp),
+ * em base64, para baixar. Devolve `null` quando não há backend ou a função
+ * falha — aí o chamador gera o PDF no próprio navegador.
+ */
+export async function fetchPurchasePdf(
+  purchaseId: string,
+): Promise<{ base64: string; fileName: string } | null> {
+  if (!isSupabaseConfigured || !supabase || !purchaseId) return null
+  try {
+    const { data, error } = await supabase.functions.invoke('notify-purchase', {
+      body: { purchaseId, download: true },
+    })
+    if (error) return null
+    const d = data as { ok?: boolean; pdfBase64?: string; fileName?: string } | null
+    if (d?.ok && d.pdfBase64) return { base64: d.pdfBase64, fileName: d.fileName || 'pedido.pdf' }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Editar e receber valem enquanto a compra está ABERTA — pendente ou
  * parcialmente recebida. Depois de 100% recebida ela fecha e não muda mais.
  */
