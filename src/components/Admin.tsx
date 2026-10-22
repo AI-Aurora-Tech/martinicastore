@@ -624,29 +624,48 @@ interface PurchaseFromStockProps {
  * compra como pendente (conta a pagar); detalhes finos (pagamento, parcelas,
  * fornecedor) podem ser ajustados depois na aba Compras.
  */
+interface PurchaseRow { key: string; product: Product; size?: string; label: string; stock: number; unitCost: number }
+
 function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: PurchaseFromStockProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState('')
-  const [qty, setQty] = useState<Record<string, number>>(
-    () => Object.fromEntries(products.map((p) => [p.id, 1])),
-  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
 
-  function setQtyFor(id: string, raw: number) {
+  // Uma linha por VARIAÇÃO (ou uma única linha quando o produto não tem
+  // variações). Cada linha carrega o estoque atual e a quantidade a pedir.
+  const rows: PurchaseRow[] = useMemo(() => {
+    const acc: PurchaseRow[] = []
+    for (const p of products) {
+      const unitCost = p.cost ?? 0
+      if (hasVariants(p)) {
+        for (const v of p.variants ?? []) {
+          acc.push({ key: `${p.id}__${v.label}`, product: p, size: v.label, label: v.label, stock: v.stock ?? 0, unitCost })
+        }
+      } else {
+        acc.push({ key: `${p.id}__`, product: p, label: 'sem variação', stock: p.stock ?? 0, unitCost })
+      }
+    }
+    return acc
+  }, [products])
+
+  // Toda variação começa com 0 — o operador preenche a quantidade manualmente.
+  const [qty, setQty] = useState<Record<string, number>>(
+    () => Object.fromEntries(rows.map((r) => [r.key, 0])),
+  )
+  function setQtyFor(key: string, raw: number) {
     const v = Math.max(0, Math.round(raw || 0))
-    setQty((prev) => ({ ...prev, [id]: v }))
+    setQty((prev) => ({ ...prev, [key]: v }))
   }
 
-  const linhas = products.map((p) => ({ p, quantity: qty[p.id] ?? 0, unitCost: p.cost ?? 0 }))
-  const totalUn = linhas.reduce((s, l) => s + l.quantity, 0)
-  const totalCost = linhas.reduce((s, l) => s + l.quantity * l.unitCost, 0)
-  const validLines = linhas.filter((l) => l.quantity > 0)
+  const totalUn = rows.reduce((s, r) => s + (qty[r.key] ?? 0), 0)
+  const totalCost = rows.reduce((s, r) => s + (qty[r.key] ?? 0) * r.unitCost, 0)
+  const validRows = rows.filter((r) => (qty[r.key] ?? 0) > 0)
 
   async function confirm() {
-    if (validLines.length === 0) { setError('Ajuste a quantidade de ao menos um produto.'); return }
+    if (validRows.length === 0) { setError('Informe a quantidade a pedir em ao menos uma variação.'); return }
     setSaving(true)
     setError(null)
     const sup = suppliers.find((s) => s.id === supplierId) ?? null
@@ -656,17 +675,18 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
       supplierPhone: sup?.phone,
       operatorEmail,
       paid: false,
-      items: validLines.map((l) => ({
-        productId: l.p.id,
-        name: l.p.name,
-        quantity: l.quantity,
-        unitCost: l.unitCost,
+      items: validRows.map((r) => ({
+        productId: r.product.id,
+        name: r.product.name,
+        quantity: qty[r.key] ?? 0,
+        unitCost: r.unitCost,
+        size: r.size,
       })),
     })
     setSaving(false)
     if (err) { setError(err); return }
     onDone(
-      `Pedido de compra nº ${String(number ?? 0).padStart(6, '0')} criado com ${validLines.length} ${validLines.length === 1 ? 'item' : 'itens'} (${totalUn} un.). Ajuste pagamento e recebimento na aba Compras.`,
+      `Pedido de compra nº ${String(number ?? 0).padStart(6, '0')} criado com ${validRows.length} ${validRows.length === 1 ? 'item' : 'itens'} (${totalUn} un.). Ajuste pagamento e recebimento na aba Compras.`,
     )
   }
 
@@ -689,31 +709,49 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
             </select>
           </label>
 
-          <table className="admin__purchase-table">
-            <thead>
-              <tr><th>Produto</th><th>Custo un.</th><th>Qtd.</th><th>Subtotal</th></tr>
-            </thead>
-            <tbody>
-              {linhas.map(({ p, quantity, unitCost }) => (
-                <tr key={p.id} className={quantity === 0 ? 'is-zero' : ''}>
-                  <td data-label="Produto"><strong>{p.name}</strong><small>{p.id}</small></td>
-                  <td data-label="Custo un.">{BRL.format(unitCost)}</td>
-                  <td data-label="Qtd.">
-                    <div className="admin__qty">
-                      <button type="button" onClick={() => setQtyFor(p.id, quantity - 1)} aria-label="Diminuir">−</button>
-                      <input
-                        inputMode="numeric"
-                        value={quantity}
-                        onChange={(e) => setQtyFor(p.id, Number(e.target.value))}
-                      />
-                      <button type="button" onClick={() => setQtyFor(p.id, quantity + 1)} aria-label="Aumentar">+</button>
-                    </div>
-                  </td>
-                  <td data-label="Subtotal">{BRL.format(quantity * unitCost)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <p className="admin__purchase-hint">Toda variação começa com 0 — preencha a quantidade a pedir de cada uma.</p>
+
+          <div className="admin__purchase-groups">
+            {products.map((p) => {
+              const prodRows = rows.filter((r) => r.product.id === p.id)
+              return (
+                <div key={p.id} className="admin__purchase-group">
+                  <div className="admin__purchase-group-head">
+                    <strong>{p.name}</strong>
+                    <small>{p.id} · {BRL.format(p.cost ?? 0)}/un</small>
+                  </div>
+                  <table className="admin__purchase-table">
+                    <thead>
+                      <tr><th>Variação</th><th>Estoque atual</th><th>Pedir</th><th>Subtotal</th></tr>
+                    </thead>
+                    <tbody>
+                      {prodRows.map((r) => {
+                        const q = qty[r.key] ?? 0
+                        return (
+                          <tr key={r.key} className={q === 0 ? 'is-zero' : ''}>
+                            <td data-label="Variação">{r.label}</td>
+                            <td data-label="Estoque atual">{r.stock}</td>
+                            <td data-label="Pedir">
+                              <div className="admin__qty">
+                                <button type="button" onClick={() => setQtyFor(r.key, q - 1)} aria-label="Diminuir">−</button>
+                                <input
+                                  inputMode="numeric"
+                                  value={q}
+                                  onChange={(e) => setQtyFor(r.key, Number(e.target.value))}
+                                />
+                                <button type="button" onClick={() => setQtyFor(r.key, q + 1)} aria-label="Aumentar">+</button>
+                              </div>
+                            </td>
+                            <td data-label="Subtotal">{BRL.format(q * r.unitCost)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {error && <p className="admin__modal-error">{error}</p>}
@@ -725,7 +763,7 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
           </div>
           <div className="admin__purchase-btns">
             <button className="btn btn--ghost" onClick={onClose} disabled={saving}>Cancelar</button>
-            <button className="btn btn--primary" onClick={confirm} disabled={saving || validLines.length === 0}>
+            <button className="btn btn--primary" onClick={confirm} disabled={saving || validRows.length === 0}>
               {saving ? 'Criando…' : '🛒 Criar pedido de compra'}
             </button>
           </div>
