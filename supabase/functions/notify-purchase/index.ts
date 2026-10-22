@@ -1,9 +1,16 @@
 // Supabase Edge Function: notify-purchase
-// Envia o PEDIDO DE COMPRA pelo WhatsApp (Evolution API). Lê a compra no banco
-// com a service role — o Admin só informa o purchaseId.
+// Lê a compra no banco com a service role — o Admin só informa o purchaseId.
 //
-// Destino: o GRUPO do fornecedor (`suppliers.whatsapp_group`, migração 0020) e,
-// quando não houver grupo, o telefone dele (`suppliers.phone`).
+// Dois modos (corpo JSON):
+//   { purchaseId }                  -> envia o PEDIDO pelo WhatsApp (Evolution).
+//                                      Gera o PDF (pdf-lib) e manda como DOCUMENTO
+//                                      (sendMedia) com o texto do pedido na legenda;
+//                                      se o PDF/mídia falhar, cai para texto (sendText).
+//   { purchaseId, download: true }  -> NÃO envia nada; devolve o PDF em base64
+//                                      ({ ok, fileName, pdfBase64 }) para baixar.
+//
+// Destino do WhatsApp: o GRUPO do fornecedor (`suppliers.whatsapp_group`,
+// migração 0020) e, sem grupo, o telefone dele (`suppliers.phone`).
 //
 // Deploy:  supabase functions deploy notify-purchase
 // Segredos: EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE
