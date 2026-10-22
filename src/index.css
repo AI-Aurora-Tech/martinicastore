@@ -2283,6 +2283,8 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .admin__purchase-group-head { display: flex; flex-direction: column; gap: 0.1rem; margin-bottom: 0.35rem; }
 .admin__purchase-group-head strong { font-size: 0.95rem; }
 .admin__purchase-group-head small { color: var(--muted); font-size: 0.72rem; }
+.admin__purchase-done { gap: 0.5rem; }
+.admin__purchase-okmsg { margin: 0; font-weight: 700; color: #1b7a3d; font-size: 0.9rem; }
 .admin__purchase-sup { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); }
 .admin__purchase-sup select { padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 .admin__purchase-table { width: 100%; border-collapse: collapse; }

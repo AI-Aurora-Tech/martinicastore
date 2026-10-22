@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BRL, CLUB } from '../data/products'
 import type { Category, CategoryId, Product, ProductKind, Supplier } from '../types'
 import { listSuppliers } from '../services/suppliers'
-import { createPurchase } from '../services/purchase'
+import { createPurchase, notifyPurchase } from '../services/purchase'
 import { saveCategory, slugify } from '../services/categories'
 import { SuppliersModal } from './SuppliersModal'
 import { useCatalog } from '../context/CatalogContext'
@@ -626,11 +626,25 @@ interface PurchaseFromStockProps {
  */
 interface PurchaseRow { key: string; product: Product; size?: string; label: string; stock: number; unitCost: number }
 
+/** Traduz os motivos de falha que a Edge Function de WhatsApp devolve. */
+const WA_MOTIVO: Record<string, string> = {
+  demo: 'Modo demo: sem backend para enviar o WhatsApp. Configure o Supabase.',
+  'sem-destino': 'O fornecedor não tem grupo nem WhatsApp cadastrado. Preencha em "Gerenciar fornecedores".',
+  'sem-fornecedor': 'O pedido foi criado sem fornecedor, então não há para quem enviar.',
+  'sem-grupo': 'O fornecedor não tem grupo de WhatsApp cadastrado.',
+}
+
 function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: PurchaseFromStockProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Pedido já criado — habilita o envio pelo WhatsApp. */
+  const [created, setCreated] = useState<
+    { id: string | null; number: number | null; supplierName?: string; hasDestino: boolean; count: number; units: number } | null
+  >(null)
+  const [sendingWa, setSendingWa] = useState(false)
+  const [waMsg, setWaMsg] = useState<string | null>(null)
 
   useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
 
@@ -669,7 +683,7 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
     setSaving(true)
     setError(null)
     const sup = suppliers.find((s) => s.id === supplierId) ?? null
-    const { number, error: err } = await createPurchase({
+    const { id, number, error: err } = await createPurchase({
       supplier: sup?.name,
       supplierId: sup?.id,
       supplierPhone: sup?.phone,
@@ -685,8 +699,33 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
     })
     setSaving(false)
     if (err) { setError(err); return }
+    // Não fecha ainda: mostra o pedido criado e habilita o envio pelo WhatsApp.
+    setCreated({
+      id,
+      number,
+      supplierName: sup?.name,
+      hasDestino: Boolean(sup?.whatsappGroup?.trim() || sup?.phone?.trim()),
+      count: validRows.length,
+      units: totalUn,
+    })
+  }
+
+  async function sendWhatsApp() {
+    if (!created) return
+    setWaMsg(null)
+    setError(null)
+    setSendingWa(true)
+    const { sent, reason } = await notifyPurchase(created.id)
+    setSendingWa(false)
+    const quem = created.supplierName ? `"${created.supplierName}"` : 'o fornecedor'
+    if (sent) { setWaMsg(`Pedido enviado para ${quem} no WhatsApp.`); return }
+    setError(WA_MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
+  }
+
+  function finish() {
+    if (!created) return
     onDone(
-      `Pedido de compra nº ${String(number ?? 0).padStart(6, '0')} criado com ${validRows.length} ${validRows.length === 1 ? 'item' : 'itens'} (${totalUn} un.). Ajuste pagamento e recebimento na aba Compras.`,
+      `Pedido de compra nº ${String(created.number ?? 0).padStart(6, '0')} criado com ${created.count} ${created.count === 1 ? 'item' : 'itens'} (${created.units} un.). Ajuste pagamento e recebimento na aba Compras.`,
     )
   }
 
@@ -698,76 +737,114 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
           <button className="admin__modal-close" onClick={onClose} aria-label="Fechar">✕</button>
         </header>
 
-        <div className="admin__purchase-body">
-          <label className="admin__purchase-sup">
-            <span>Fornecedor (opcional)</span>
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-              <option value="">— sem fornecedor —</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </label>
+        {created ? (
+          <>
+            <div className="admin__purchase-body admin__purchase-done">
+              <p className="admin__purchase-okmsg">
+                ✓ Pedido de compra nº {String(created.number ?? 0).padStart(6, '0')} criado — {created.count} {created.count === 1 ? 'item' : 'itens'} ({created.units} un.).
+              </p>
+              <p className="admin__purchase-hint">
+                {created.supplierName
+                  ? (created.hasDestino
+                      ? `Envie a lista do pedido para "${created.supplierName}" pelo WhatsApp.`
+                      : `"${created.supplierName}" não tem grupo nem WhatsApp cadastrado — cadastre em "Gerenciar fornecedores" para poder enviar.`)
+                  : 'Sem fornecedor no pedido: escolha um fornecedor com WhatsApp para poder enviar a lista.'}
+              </p>
+              {waMsg && <p className="admin__purchase-okmsg">✓ {waMsg}</p>}
+            </div>
 
-          <p className="admin__purchase-hint">Toda variação começa com 0 — preencha a quantidade a pedir de cada uma.</p>
+            {error && <p className="admin__modal-error">{error}</p>}
 
-          <div className="admin__purchase-groups">
-            {products.map((p) => {
-              const prodRows = rows.filter((r) => r.product.id === p.id)
-              return (
-                <div key={p.id} className="admin__purchase-group">
-                  <div className="admin__purchase-group-head">
-                    <strong>{p.name}</strong>
-                    <small>{p.id} · {BRL.format(p.cost ?? 0)}/un</small>
-                  </div>
-                  <table className="admin__purchase-table">
-                    <thead>
-                      <tr><th>Variação</th><th>Estoque atual</th><th>Pedir</th><th>Subtotal</th></tr>
-                    </thead>
-                    <tbody>
-                      {prodRows.map((r) => {
-                        const q = qty[r.key] ?? 0
-                        return (
-                          <tr key={r.key} className={q === 0 ? 'is-zero' : ''}>
-                            <td data-label="Variação">{r.label}</td>
-                            <td data-label="Estoque atual">{r.stock}</td>
-                            <td data-label="Pedir">
-                              <div className="admin__qty">
-                                <button type="button" onClick={() => setQtyFor(r.key, q - 1)} aria-label="Diminuir">−</button>
-                                <input
-                                  inputMode="numeric"
-                                  value={q}
-                                  onChange={(e) => setQtyFor(r.key, Number(e.target.value))}
-                                />
-                                <button type="button" onClick={() => setQtyFor(r.key, q + 1)} aria-label="Aumentar">+</button>
-                              </div>
-                            </td>
-                            <td data-label="Subtotal">{BRL.format(q * r.unitCost)}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+            <footer className="admin__purchase-foot">
+              <div className="admin__purchase-btns">
+                <button className="btn btn--ghost" onClick={finish} disabled={sendingWa}>Concluir</button>
+                <button
+                  className="btn btn--primary"
+                  onClick={sendWhatsApp}
+                  disabled={sendingWa || !created.hasDestino}
+                  title={created.hasDestino
+                    ? 'Envia a lista do pedido pelo WhatsApp da loja, direto ao fornecedor'
+                    : 'O fornecedor não tem grupo nem WhatsApp cadastrado'}
+                >
+                  {sendingWa ? 'Enviando…' : '📲 Enviar pelo WhatsApp'}
+                </button>
+              </div>
+            </footer>
+          </>
+        ) : (
+          <>
+            <div className="admin__purchase-body">
+              <label className="admin__purchase-sup">
+                <span>Fornecedor (opcional)</span>
+                <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+                  <option value="">— sem fornecedor —</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </label>
 
-        {error && <p className="admin__modal-error">{error}</p>}
+              <p className="admin__purchase-hint">Toda variação começa com 0 — preencha a quantidade a pedir de cada uma.</p>
 
-        <footer className="admin__purchase-foot">
-          <div className="admin__purchase-total">
-            <span>{totalUn} un.</span>
-            <strong>{BRL.format(totalCost)}</strong>
-          </div>
-          <div className="admin__purchase-btns">
-            <button className="btn btn--ghost" onClick={onClose} disabled={saving}>Cancelar</button>
-            <button className="btn btn--primary" onClick={confirm} disabled={saving || validRows.length === 0}>
-              {saving ? 'Criando…' : '🛒 Criar pedido de compra'}
-            </button>
-          </div>
-        </footer>
+              <div className="admin__purchase-groups">
+                {products.map((p) => {
+                  const prodRows = rows.filter((r) => r.product.id === p.id)
+                  return (
+                    <div key={p.id} className="admin__purchase-group">
+                      <div className="admin__purchase-group-head">
+                        <strong>{p.name}</strong>
+                        <small>{p.id} · {BRL.format(p.cost ?? 0)}/un</small>
+                      </div>
+                      <table className="admin__purchase-table">
+                        <thead>
+                          <tr><th>Variação</th><th>Estoque atual</th><th>Pedir</th><th>Subtotal</th></tr>
+                        </thead>
+                        <tbody>
+                          {prodRows.map((r) => {
+                            const q = qty[r.key] ?? 0
+                            return (
+                              <tr key={r.key} className={q === 0 ? 'is-zero' : ''}>
+                                <td data-label="Variação">{r.label}</td>
+                                <td data-label="Estoque atual">{r.stock}</td>
+                                <td data-label="Pedir">
+                                  <div className="admin__qty">
+                                    <button type="button" onClick={() => setQtyFor(r.key, q - 1)} aria-label="Diminuir">−</button>
+                                    <input
+                                      inputMode="numeric"
+                                      value={q}
+                                      onChange={(e) => setQtyFor(r.key, Number(e.target.value))}
+                                    />
+                                    <button type="button" onClick={() => setQtyFor(r.key, q + 1)} aria-label="Aumentar">+</button>
+                                  </div>
+                                </td>
+                                <td data-label="Subtotal">{BRL.format(q * r.unitCost)}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {error && <p className="admin__modal-error">{error}</p>}
+
+            <footer className="admin__purchase-foot">
+              <div className="admin__purchase-total">
+                <span>{totalUn} un.</span>
+                <strong>{BRL.format(totalCost)}</strong>
+              </div>
+              <div className="admin__purchase-btns">
+                <button className="btn btn--ghost" onClick={onClose} disabled={saving}>Cancelar</button>
+                <button className="btn btn--primary" onClick={confirm} disabled={saving || validRows.length === 0}>
+                  {saving ? 'Criando…' : '🛒 Criar pedido de compra'}
+                </button>
+              </div>
+            </footer>
+          </>
+        )}
       </div>
     </div>
   )
