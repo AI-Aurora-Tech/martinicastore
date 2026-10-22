@@ -3251,6 +3251,20 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .purch__hist-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
 .purch__hist-actions .btn { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
 
+/* Itens que ainda faltam chegar numa compra parcial */
+.purch__missing {
+  margin-top: 0.15rem;
+  padding: 0.4rem 0.6rem;
+  background: #fff4e0;
+  border: 1px solid #f2dca8;
+  border-radius: 8px;
+}
+.purch__missing-head { color: #9a6400 !important; font-weight: 700; font-size: 0.72rem !important; text-transform: uppercase; letter-spacing: 0.02em; }
+.purch__missing-list { list-style: none; margin: 0.25rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.purch__missing-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.8rem; color: #7a5200; }
+.purch__missing-list strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.purch__hist-falta { color: #9a6400; font-weight: 600; }
+
 /* Forma de pagamento + à vista (novo pedido de compra) */
 .purch__pay {
   display: grid;

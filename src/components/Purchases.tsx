@@ -681,6 +681,25 @@ export function Purchases({ operatorEmail }: Props) {
                       </span>
                     )}
                   </div>
+                  {h.status === 'parcial' && (() => {
+                    const faltando = h.items
+                      .map((i) => ({ i, falta: faltaReceber(i) }))
+                      .filter((x) => x.falta > 0)
+                    if (faltando.length === 0) return null
+                    return (
+                      <div className="purch__missing">
+                        <small className="purch__missing-head">Faltam chegar:</small>
+                        <ul className="purch__missing-list">
+                          {faltando.map(({ i, falta }, k) => (
+                            <li key={`miss-${i.productId}-${i.size ?? ''}-${k}`}>
+                              <span>{i.name}{i.size ? ` · ${i.size}` : ''}</span>
+                              <strong>{falta} un.</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })()}
                   {h.installments && h.installments.length > 1 && !h.paid && (
                     <small className="purch__next-venc">
                       Próx. venc.: {(() => {
@@ -800,14 +819,22 @@ export function Purchases({ operatorEmail }: Props) {
                 </button>
                 {openId === h.id && (
                   <ul className="purch__hist-items">
-                    {h.items.map((it, idx) => (
-                      <li key={idx}>
-                        <span>{it.quantity}x {it.name}{it.size ? ` · ${it.size}` : ''}</span>
-                        <span className="purch__hist-itemcost">
-                          {BRL.format(it.unitCost)}/un · {BRL.format(it.unitCost * it.quantity)}
-                        </span>
-                      </li>
-                    ))}
+                    {h.items.map((it, idx) => {
+                      const falta = h.status === 'cancelado' ? 0 : faltaReceber(it)
+                      return (
+                        <li key={idx}>
+                          <span>
+                            {it.quantity}x {it.name}{it.size ? ` · ${it.size}` : ''}
+                            {falta > 0 && (
+                              <span className="purch__hist-falta"> · faltam {falta} un.</span>
+                            )}
+                          </span>
+                          <span className="purch__hist-itemcost">
+                            {BRL.format(it.unitCost)}/un · {BRL.format(it.unitCost * it.quantity)}
+                          </span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </li>
