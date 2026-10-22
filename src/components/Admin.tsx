@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BRL, CLUB } from '../data/products'
 import type { Category, CategoryId, Product, ProductKind, Supplier } from '../types'
 import { listSuppliers } from '../services/suppliers'
-import { createPurchase, notifyPurchase } from '../services/purchase'
+import { createPurchase, notifyPurchase, type PurchaseSummary } from '../services/purchase'
+import { downloadPurchasePdf } from '../services/purchasePdf'
 import { saveCategory, slugify } from '../services/categories'
 import { SuppliersModal } from './SuppliersModal'
 import { useCatalog } from '../context/CatalogContext'
@@ -744,6 +745,34 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
     setError(WA_MOTIVO[reason ?? ''] ?? `Não consegui enviar o pedido: ${reason ?? 'motivo desconhecido'}.`)
   }
 
+  async function downloadPdf() {
+    if (!created) return
+    setError(null)
+    const sup = suppliers.find((s) => s.id === supplierId) ?? null
+    const summary: PurchaseSummary = {
+      id: created.id ?? '',
+      number: created.number ?? 0,
+      when: new Date().toISOString(),
+      supplier: sup?.name,
+      total: validRows.reduce((s, r) => s + (qty[r.key] ?? 0) * r.unitCost, 0),
+      paid: false,
+      status: 'pendente',
+      items: validRows.map((r) => ({
+        productId: r.product.id,
+        name: r.product.name,
+        quantity: qty[r.key] ?? 0,
+        received: 0,
+        unitCost: r.unitCost,
+        size: r.size,
+      })),
+    }
+    try {
+      await downloadPurchasePdf(summary)
+    } catch (err) {
+      setError(`Não consegui gerar o PDF: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   function finish() {
     if (!created) return
     onDone(
@@ -780,6 +809,9 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
             <footer className="admin__purchase-foot">
               <div className="admin__purchase-btns">
                 <button className="btn btn--ghost" onClick={finish} disabled={sendingWa}>Concluir</button>
+                <button className="btn btn--ghost" onClick={downloadPdf} title="Baixar o arquivo PDF deste pedido">
+                  📄 Baixar PDF
+                </button>
                 <button
                   className="btn btn--primary"
                   onClick={sendWhatsApp}
