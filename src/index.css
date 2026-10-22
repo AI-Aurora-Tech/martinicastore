@@ -2287,6 +2287,9 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .admin__purchase-okmsg { margin: 0; font-weight: 700; color: #1b7a3d; font-size: 0.9rem; }
 .admin__purchase-sup { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); }
 .admin__purchase-sup select { padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.admin__purchase-sup-hint { font-weight: 600; font-size: 0.75rem; }
+.admin__purchase-sup-hint.is-ok { color: #1b7a3d; }
+.admin__purchase-sup-hint.is-warn { color: #9a6400; }
 .admin__purchase-table { width: 100%; border-collapse: collapse; }
 .admin__purchase-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--line); }
 .admin__purchase-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--line); font-size: 0.88rem; vertical-align: middle; }

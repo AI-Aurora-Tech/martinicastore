@@ -648,6 +648,28 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
 
   useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
 
+  // Quando todos os produtos marcados são do mesmo fornecedor, já seleciona
+  // esse fornecedor — assim o envio pelo WhatsApp fica disponível sem escolher
+  // na mão (o número/grupo vem do cadastro do fornecedor).
+  const sharedSupplierId = useMemo(() => {
+    const ids = new Set(products.map((p) => p.supplierId).filter(Boolean) as string[])
+    return ids.size === 1 ? [...ids][0] : ''
+  }, [products])
+  useEffect(() => {
+    if (sharedSupplierId && suppliers.some((s) => s.id === sharedSupplierId)) {
+      setSupplierId((cur) => cur || sharedSupplierId)
+    }
+  }, [suppliers, sharedSupplierId])
+
+  const selSupplier = suppliers.find((s) => s.id === supplierId) ?? null
+  const selDestino = selSupplier
+    ? (selSupplier.whatsappGroup?.trim()
+        ? 'grupo de WhatsApp'
+        : selSupplier.phone?.trim()
+          ? `WhatsApp ${selSupplier.phone}`
+          : null)
+    : null
+
   // Uma linha por VARIAÇÃO (ou uma única linha quando o produto não tem
   // variações). Cada linha carrega o estoque atual e a quantidade a pedir.
   const rows: PurchaseRow[] = useMemo(() => {
@@ -775,13 +797,20 @@ function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: Pu
           <>
             <div className="admin__purchase-body">
               <label className="admin__purchase-sup">
-                <span>Fornecedor (opcional)</span>
+                <span>Fornecedor (necessário para enviar pelo WhatsApp)</span>
                 <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
                   <option value="">— sem fornecedor —</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
+                {supplierId && (
+                  <small className={`admin__purchase-sup-hint ${selDestino ? 'is-ok' : 'is-warn'}`}>
+                    {selDestino
+                      ? `📲 Envio pelo WhatsApp para ${selDestino}.`
+                      : '⚠️ Este fornecedor não tem grupo nem WhatsApp cadastrado — cadastre em "Gerenciar fornecedores" para poder enviar.'}
+                  </small>
+                )}
               </label>
 
               <p className="admin__purchase-hint">Toda variação começa com 0 — preencha a quantidade a pedir de cada uma.</p>
