@@ -3259,6 +3259,9 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   border: 1px solid #f2dca8;
   border-radius: 8px;
 }
+.purch__missing-cost { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: 0.82rem; color: #7a5200; padding-bottom: 0.3rem; margin-bottom: 0.3rem; border-bottom: 1px dashed #f2dca8; }
+.purch__missing-cost strong { font-variant-numeric: tabular-nums; white-space: nowrap; color: #7a5200; }
+.purch__missing-cost-of { font-weight: 500; color: #9a6400; }
 .purch__missing-head { color: #9a6400 !important; font-weight: 700; font-size: 0.72rem !important; text-transform: uppercase; letter-spacing: 0.02em; }
 .purch__missing-list { list-style: none; margin: 0.25rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
 .purch__missing-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.8rem; color: #7a5200; }

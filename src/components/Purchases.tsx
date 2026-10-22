@@ -685,18 +685,27 @@ export function Purchases({ operatorEmail }: Props) {
                     const faltando = h.items
                       .map((i) => ({ i, falta: faltaReceber(i) }))
                       .filter((x) => x.falta > 0)
-                    if (faltando.length === 0) return null
+                    const custoPedido = h.items.reduce((s2, i) => s2 + i.unitCost * i.quantity, 0)
+                    const custoRecebido = h.items.reduce((s2, i) => s2 + i.unitCost * Math.min(i.received ?? 0, i.quantity), 0)
                     return (
                       <div className="purch__missing">
-                        <small className="purch__missing-head">Faltam chegar:</small>
-                        <ul className="purch__missing-list">
-                          {faltando.map(({ i, falta }, k) => (
-                            <li key={`miss-${i.productId}-${i.size ?? ''}-${k}`}>
-                              <span>{i.name}{i.size ? ` · ${i.size}` : ''}</span>
-                              <strong>{falta} un.</strong>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="purch__missing-cost">
+                          <span>Custo recebido</span>
+                          <strong>{BRL.format(custoRecebido)} <span className="purch__missing-cost-of">de {BRL.format(custoPedido)}</span></strong>
+                        </div>
+                        {faltando.length > 0 && (
+                          <>
+                            <small className="purch__missing-head">Faltam chegar:</small>
+                            <ul className="purch__missing-list">
+                              {faltando.map(({ i, falta }, k) => (
+                                <li key={`miss-${i.productId}-${i.size ?? ''}-${k}`}>
+                                  <span>{i.name}{i.size ? ` · ${i.size}` : ''}</span>
+                                  <strong>{falta} un.</strong>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
                       </div>
                     )
                   })()}
