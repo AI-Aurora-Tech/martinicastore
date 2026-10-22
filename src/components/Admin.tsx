@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BRL, CLUB } from '../data/products'
 import type { Category, CategoryId, Product, ProductKind, Supplier } from '../types'
 import { listSuppliers } from '../services/suppliers'
+import { createPurchase } from '../services/purchase'
 import { saveCategory, slugify } from '../services/categories'
 import { SuppliersModal } from './SuppliersModal'
 import { useCatalog } from '../context/CatalogContext'
@@ -54,6 +55,18 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   const [editing, setEditing] = useState<Product | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [flashMsg, setFlashMsg] = useState<string | null>(null)
+  /** Produtos marcados (por id) para montar um pedido de compra rápido. */
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [orderingPurchase, setOrderingPurchase] = useState(false)
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function flash(msg: string) {
@@ -313,6 +326,24 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           <table className="admin__table admin__table--cards">
             <thead>
               <tr>
+                <th className="admin__col-sel">
+                  <input
+                    type="checkbox"
+                    aria-label="Selecionar todos os produtos filtrados"
+                    checked={list.length > 0 && list.every((p) => selected.has(p.id))}
+                    ref={(el) => {
+                      if (el) el.indeterminate = list.some((p) => selected.has(p.id)) && !list.every((p) => selected.has(p.id))
+                    }}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      setSelected((prev) => {
+                        const next = new Set(prev)
+                        for (const p of list) { if (on) next.add(p.id); else next.delete(p.id) }
+                        return next
+                      })
+                    }}
+                  />
+                </th>
                 <th>Produto</th>
                 <th>Categoria</th>
                 <th>Custo</th>
@@ -328,6 +359,8 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                 <AdminRow
                   key={p.id}
                   product={p}
+                  selected={selected.has(p.id)}
+                  onToggleSelect={() => toggleSelected(p.id)}
                   categoryLabel={categories.find((c) => c.id === p.category)?.label ?? p.category}
                   onChangeStock={(v) => changeStock(p, v)}
                   onSavePrice={(price) => confirmField(p, { price }, `Alterar o preço de "${p.name}" para ${BRL.format(price)}?`, 'Preço atualizado.')}
@@ -340,14 +373,41 @@ export function Admin({ operator, onExit, onLogout }: Props) {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="admin__empty">Nenhum produto encontrado.</td>
+                  <td colSpan={9} className="admin__empty">Nenhum produto encontrado.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {selected.size > 0 && (
+          <div className="admin__selbar" role="region" aria-label="Produtos selecionados">
+            <span className="admin__selbar-count">
+              {selected.size} {selected.size === 1 ? 'produto selecionado' : 'produtos selecionados'}
+            </span>
+            <div className="admin__selbar-actions">
+              <button className="btn btn--ghost" onClick={() => setSelected(new Set())}>Limpar</button>
+              <button className="btn btn--primary" onClick={() => setOrderingPurchase(true)}>
+                🛒 Pedir compra
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
+
+      {orderingPurchase && (
+        <PurchaseFromStockModal
+          products={products.filter((p) => selected.has(p.id))}
+          operatorEmail={operator.email}
+          onClose={() => setOrderingPurchase(false)}
+          onDone={(msg) => {
+            setOrderingPurchase(false)
+            setSelected(new Set())
+            flash(msg)
+          }}
+        />
+      )}
 
       {creating && (
         <ProductModal
@@ -391,6 +451,8 @@ export function Admin({ operator, onExit, onLogout }: Props) {
 
 interface RowProps {
   product: Product
+  selected: boolean
+  onToggleSelect: () => void
   categoryLabel: string
   onChangeStock: (value: number) => void
   onSavePrice: (price: number) => void
@@ -402,7 +464,7 @@ interface RowProps {
 }
 
 function AdminRow({
-  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete,
+  product, selected, onToggleSelect, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete,
 }: RowProps) {
   const stock = product.stock ?? 0
   const cost = product.cost ?? 0
@@ -439,7 +501,15 @@ function AdminRow({
   }
 
   return (
-    <tr className={product.active === false ? 'admin__row--inactive' : ''}>
+    <tr className={`${product.active === false ? 'admin__row--inactive' : ''}${selected ? ' admin__row--selected' : ''}`}>
+      <td className="admin__col-sel" data-label="Selecionar">
+        <input
+          type="checkbox"
+          aria-label={`Selecionar ${product.name}`}
+          checked={selected}
+          onChange={onToggleSelect}
+        />
+      </td>
       <td className="admin__cell-prod" data-label="Produto">
         <div className="admin__prod">
           <label className="admin__thumb" title="Enviar/trocar imagem (JPG ou PNG)">
@@ -536,6 +606,132 @@ function AdminRow({
         </div>
       </td>
     </tr>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+interface PurchaseFromStockProps {
+  products: Product[]
+  operatorEmail?: string
+  onClose: () => void
+  onDone: (message: string) => void
+}
+
+/**
+ * Pedido de compra rápido a partir dos produtos marcados no estoque. Só a
+ * QUANTIDADE é ajustável — o custo unitário vem do cadastro do produto. Cria a
+ * compra como pendente (conta a pagar); detalhes finos (pagamento, parcelas,
+ * fornecedor) podem ser ajustados depois na aba Compras.
+ */
+function PurchaseFromStockModal({ products, operatorEmail, onClose, onDone }: PurchaseFromStockProps) {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [supplierId, setSupplierId] = useState('')
+  const [qty, setQty] = useState<Record<string, number>>(
+    () => Object.fromEntries(products.map((p) => [p.id, 1])),
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { listSuppliers().then(setSuppliers).catch(() => {}) }, [])
+
+  function setQtyFor(id: string, raw: number) {
+    const v = Math.max(0, Math.round(raw || 0))
+    setQty((prev) => ({ ...prev, [id]: v }))
+  }
+
+  const linhas = products.map((p) => ({ p, quantity: qty[p.id] ?? 0, unitCost: p.cost ?? 0 }))
+  const totalUn = linhas.reduce((s, l) => s + l.quantity, 0)
+  const totalCost = linhas.reduce((s, l) => s + l.quantity * l.unitCost, 0)
+  const validLines = linhas.filter((l) => l.quantity > 0)
+
+  async function confirm() {
+    if (validLines.length === 0) { setError('Ajuste a quantidade de ao menos um produto.'); return }
+    setSaving(true)
+    setError(null)
+    const sup = suppliers.find((s) => s.id === supplierId) ?? null
+    const { number, error: err } = await createPurchase({
+      supplier: sup?.name,
+      supplierId: sup?.id,
+      supplierPhone: sup?.phone,
+      operatorEmail,
+      paid: false,
+      items: validLines.map((l) => ({
+        productId: l.p.id,
+        name: l.p.name,
+        quantity: l.quantity,
+        unitCost: l.unitCost,
+      })),
+    })
+    setSaving(false)
+    if (err) { setError(err); return }
+    onDone(
+      `Pedido de compra nº ${String(number ?? 0).padStart(6, '0')} criado com ${validLines.length} ${validLines.length === 1 ? 'item' : 'itens'} (${totalUn} un.). Ajuste pagamento e recebimento na aba Compras.`,
+    )
+  }
+
+  return (
+    <div className="pdv__receipt-overlay" onClick={onClose}>
+      <div className="admin__modal admin__modal--purchase" onClick={(e) => e.stopPropagation()}>
+        <header className="admin__modal-head">
+          <h3>Pedido de compra — {products.length} {products.length === 1 ? 'produto' : 'produtos'}</h3>
+          <button className="admin__modal-close" onClick={onClose} aria-label="Fechar">✕</button>
+        </header>
+
+        <div className="admin__purchase-body">
+          <label className="admin__purchase-sup">
+            <span>Fornecedor (opcional)</span>
+            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+              <option value="">— sem fornecedor —</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <table className="admin__purchase-table">
+            <thead>
+              <tr><th>Produto</th><th>Custo un.</th><th>Qtd.</th><th>Subtotal</th></tr>
+            </thead>
+            <tbody>
+              {linhas.map(({ p, quantity, unitCost }) => (
+                <tr key={p.id} className={quantity === 0 ? 'is-zero' : ''}>
+                  <td data-label="Produto"><strong>{p.name}</strong><small>{p.id}</small></td>
+                  <td data-label="Custo un.">{BRL.format(unitCost)}</td>
+                  <td data-label="Qtd.">
+                    <div className="admin__qty">
+                      <button type="button" onClick={() => setQtyFor(p.id, quantity - 1)} aria-label="Diminuir">−</button>
+                      <input
+                        inputMode="numeric"
+                        value={quantity}
+                        onChange={(e) => setQtyFor(p.id, Number(e.target.value))}
+                      />
+                      <button type="button" onClick={() => setQtyFor(p.id, quantity + 1)} aria-label="Aumentar">+</button>
+                    </div>
+                  </td>
+                  <td data-label="Subtotal">{BRL.format(quantity * unitCost)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {error && <p className="admin__modal-error">{error}</p>}
+
+        <footer className="admin__purchase-foot">
+          <div className="admin__purchase-total">
+            <span>{totalUn} un.</span>
+            <strong>{BRL.format(totalCost)}</strong>
+          </div>
+          <div className="admin__purchase-btns">
+            <button className="btn btn--ghost" onClick={onClose} disabled={saving}>Cancelar</button>
+            <button className="btn btn--primary" onClick={confirm} disabled={saving || validLines.length === 0}>
+              {saving ? 'Criando…' : '🛒 Criar pedido de compra'}
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
   )
 }
 
