@@ -2,7 +2,7 @@
 // download do arquivo. Mesmo layout do PDF enviado pelo WhatsApp (Edge
 // Function notify-purchase), mas aqui o arquivo fica pronto para baixar.
 import { BRL } from '../data/products'
-import { faltaReceber, type PurchaseSummary } from './purchase'
+import { faltaReceber, fetchPurchasePdf, type PurchaseSummary } from './purchase'
 
 /** Monta os bytes do PDF de um pedido de compra. */
 export async function buildPurchasePdfBytes(
@@ -87,18 +87,38 @@ export async function buildPurchasePdfBytes(
   return await doc.save()
 }
 
-/** Gera e baixa o PDF do pedido. */
-export async function downloadPurchasePdf(p: PurchaseSummary, storeName = 'Martinica Store'): Promise<void> {
-  const bytes = await buildPurchasePdfBytes(p, storeName)
-  // Cópia num ArrayBuffer "limpo" para o Blob (evita tipagem SharedArrayBuffer).
-  const buf = new Uint8Array(bytes)
+/** Dispara o download de um arquivo PDF (a partir dos bytes). */
+function triggerDownload(bytes: Uint8Array, fileName: string) {
+  const buf = new Uint8Array(bytes) // cópia num ArrayBuffer "limpo" para o Blob
   const blob = new Blob([buf], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `pedido-${String(p.number).padStart(6, '0')}.pdf`
+  a.download = fileName
   document.body.appendChild(a)
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return arr
+}
+
+/**
+ * Baixa o PDF do pedido. Prefere o arquivo gerado pela Edge Function (mesmo
+ * que vai pelo WhatsApp); se não houver backend ou a função falhar, gera o PDF
+ * no próprio navegador.
+ */
+export async function downloadPurchasePdf(p: PurchaseSummary, storeName = 'Martinica Store'): Promise<void> {
+  const fallbackName = `pedido-${String(p.number).padStart(6, '0')}.pdf`
+  if (p.id) {
+    const server = await fetchPurchasePdf(p.id)
+    if (server) { triggerDownload(base64ToBytes(server.base64), server.fileName || fallbackName); return }
+  }
+  const bytes = await buildPurchasePdfBytes(p, storeName)
+  triggerDownload(new Uint8Array(bytes), fallbackName)
 }

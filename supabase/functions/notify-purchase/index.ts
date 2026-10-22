@@ -184,7 +184,7 @@ Deno.serve(async (req: Request) => {
     const { data: adminRow } = await supabase.from('admins').select('id').eq('id', uid).maybeSingle()
     if (!adminRow) return json({ sent: false, error: 'forbidden' }, 403)
 
-    const { purchaseId } = await req.json()
+    const { purchaseId, download } = await req.json()
     if (!purchaseId) return json({ sent: false, error: 'purchaseId é obrigatório.' }, 400)
 
     const { data: purchase } = await supabase
@@ -193,6 +193,20 @@ Deno.serve(async (req: Request) => {
       .eq('id', purchaseId)
       .single()
     if (!purchase) return json({ sent: false, error: 'compra não encontrada' })
+
+    const { data: items } = await supabase
+      .from('purchase_items')
+      .select('name, size, quantity, unit_cost')
+      .eq('purchase_id', purchaseId)
+    if (!items?.length) return json({ sent: false, error: 'compra sem itens' })
+
+    // Modo DOWNLOAD: gera o PDF e devolve em base64 (não envia WhatsApp, não
+    // exige fornecedor/destino). O front monta o arquivo e baixa.
+    if (download) {
+      const pdf = await buildPurchasePdf(purchase, items, 'Martinica Store')
+      const num = String(purchase.number ?? '').padStart(6, '0')
+      return json({ ok: true, fileName: `pedido-${num}.pdf`, pdfBase64: encodeBase64(pdf) })
+    }
 
     // Destino: o grupo cadastrado no fornecedor; sem grupo, o WhatsApp dele.
     if (!purchase.supplier_id) return json({ sent: false, error: 'sem-fornecedor' })
@@ -206,12 +220,6 @@ Deno.serve(async (req: Request) => {
     const destino = grupo || telefone
     const via = grupo ? 'grupo' : 'telefone'
     if (!destino) return json({ sent: false, error: 'sem-destino' })
-
-    const { data: items } = await supabase
-      .from('purchase_items')
-      .select('name, size, quantity, unit_cost')
-      .eq('purchase_id', purchaseId)
-    if (!items?.length) return json({ sent: false, error: 'compra sem itens' })
 
     const texto = purchaseText(purchase, items, 'Martinica Store')
     // Preferência: enviar o PDF do pedido como documento (legenda = texto do
