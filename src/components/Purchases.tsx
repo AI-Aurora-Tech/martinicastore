@@ -438,6 +438,44 @@ export function Purchases({ operatorEmail }: Props) {
     printReport('Compras (pedidos)', body)
   }
 
+  /**
+   * Gera o PDF de UM pedido de compra (via diálogo de impressão do navegador —
+   * dá para "Salvar como PDF" e então compartilhar o arquivo). Mostra itens,
+   * variação, custo, o que já foi recebido/falta e os totais.
+   */
+  function exportPurchasePdf(h: PurchaseSummary) {
+    const parcial = h.status === 'parcial' || h.status === 'entregue'
+    const cols = parcial
+      ? ['Item', 'Variação', 'Qtd.', 'Recebido', 'Falta', 'Custo un.', 'Subtotal']
+      : ['Item', 'Variação', 'Qtd.', 'Custo un.', 'Subtotal']
+    const aligns = parcial
+      ? ['l', 'l', 'c', 'c', 'c', 'r', 'r']
+      : ['l', 'l', 'c', 'r', 'r']
+    const rows = h.items.map((i) => {
+      const base = [i.name, i.size || '—', String(i.quantity)]
+      const money = [BRL.format(i.unitCost), BRL.format(i.unitCost * i.quantity)]
+      return parcial
+        ? [...base, String(Math.min(i.received ?? 0, i.quantity)), String(faltaReceber(i)), ...money]
+        : [...base, ...money]
+    })
+    const situacao = h.status === 'cancelado' ? 'Cancelada'
+      : h.status === 'entregue' ? 'Recebida por completo'
+        : h.status === 'parcial' ? 'Parcialmente recebida'
+          : 'Pendente de entrega'
+    const info = [
+      `<p><strong>Fornecedor:</strong> ${h.supplier || '—'}</p>`,
+      `<p><strong>Data:</strong> ${whenDate(h.when)}</p>`,
+      `<p><strong>Pagamento:</strong> ${h.paymentMethod || '—'}${h.installments && h.installments.length > 1 ? ` · ${h.installments.length}x` : ''} · ${h.paid ? 'Paga' : 'A pagar'}</p>`,
+      `<p><strong>Situação:</strong> ${situacao}</p>`,
+    ].join('')
+    const body =
+      info +
+      pdfTable(cols, rows, aligns as Parameters<typeof pdfTable>[2]) +
+      `<p style="text-align:right;font-weight:700;margin-top:6px">Total do pedido: ${BRL.format(h.total)}</p>` +
+      '<p style="margin-top:10px">Pode confirmar disponibilidade e prazo de entrega, por favor?</p>'
+    printReport(`Pedido de compra nº ${String(h.number).padStart(6, '0')}`, body, h.supplier || undefined)
+  }
+
   /** Envia o pedido pela Evolution — direto, sem abrir o WhatsApp no navegador. */
   async function sendWhatsApp() {
     if (!lastOrder) { setError('Registre o pedido antes de enviar pelo WhatsApp.'); return }
@@ -755,6 +793,13 @@ export function Purchases({ operatorEmail }: Props) {
                             ↧ Receber
                           </button>
                         )}
+                        <button
+                          className="btn btn--ghost"
+                          onClick={() => exportPurchasePdf(h)}
+                          title="Gerar o PDF deste pedido (dá para salvar e compartilhar o arquivo)"
+                        >
+                          📄 PDF
+                        </button>
                         <button
                           className="btn btn--ghost"
                           disabled={busyId === h.id}
