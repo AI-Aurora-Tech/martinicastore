@@ -2141,7 +2141,7 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 .admin__stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 .admin__stat {
@@ -2163,6 +2163,9 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 }
 .admin__stat--warn strong { color: var(--red); }
 .admin__stat--danger strong { color: #b3261e; }
+/* Cards de valor em R$: fonte menor para caber valores grandes. */
+.admin__stat--money strong { font-size: 1.35rem; }
+.admin__stat--sale strong { color: var(--green); }
 .admin__toolbar {
   display: flex;
   gap: 0.6rem;
