@@ -165,7 +165,7 @@ export async function listContas(): Promise<Conta[]> {
     recurring: e.recurring,
     recurrence: e.recurrence,
   }))
-  const fromPurchases: Conta[] = purchases.flatMap((p) => {
+  const fromPurchases: Conta[] = purchases.flatMap((p): Conta[] => {
     // Compra cancelada não é conta a pagar nem despesa do período.
     if (p.status === 'cancelado') return []
     const label = `Compra nº ${String(p.number).padStart(6, '0')}${p.supplier ? ` · ${p.supplier}` : ''}`
@@ -186,15 +186,38 @@ export async function listContas(): Promise<Conta[]> {
         installmentN: par.n,
       }))
     }
+    // À vista (paga na compra): a despesa já foi incorrida — entra pelo total.
+    if (p.paid) {
+      return [{
+        key: `c-${p.id}`,
+        source: 'compra' as const,
+        refId: p.id,
+        description: label,
+        category: 'Compras',
+        amount: p.total,
+        when: p.when,
+        paid: true,
+        recurring: false,
+        purchaseNumber: p.number,
+      }]
+    }
+    // A prazo sem parcelas: a despesa é reconhecida conforme o RECEBIMENTO.
+    // Só o que já chegou vira conta; o restante entra quando for recebido.
+    const recebidoVal = p.items.reduce(
+      (s, i) => s + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
+    if (recebidoVal <= 0) return [] // pendente: nada recebido ainda, sem despesa
+    const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
+    const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
+    const parcial = recebidoUn < pedidoUn
     return [{
       key: `c-${p.id}`,
       source: 'compra' as const,
       refId: p.id,
-      description: label,
+      description: parcial ? `${label} · recebidos (${recebidoUn} de ${pedidoUn} un.)` : label,
       category: 'Compras',
-      amount: p.total,
+      amount: recebidoVal,
       when: p.when,
-      paid: !!p.paid,
+      paid: false,
       recurring: false,
       purchaseNumber: p.number,
     }]
