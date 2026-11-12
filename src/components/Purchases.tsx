@@ -10,6 +10,8 @@ import {
   faltaReceber,
   listPurchases,
   markPurchasePaid,
+  unmarkPurchasePaid,
+  schedulePurchasePayment,
   notifyPurchase,
   receivePurchaseItems,
   updatePurchase,
@@ -92,6 +94,10 @@ export function Purchases({ operatorEmail }: Props) {
   /** Compra com o painel de recebimento aberto, e o que foi digitado por item. */
   const [receiving, setReceiving] = useState<PurchaseSummary | null>(null)
   const [recQty, setRecQty] = useState<number[]>([])
+  // Prompt de pagamento após um recebimento parcial (compra ainda não paga).
+  const [payPrompt, setPayPrompt] = useState<{ h: PurchaseSummary; recebidoVal: number } | null>(null)
+  const [schedMode, setSchedMode] = useState(false)
+  const [schedDate, setSchedDate] = useState('')
   const [pick, setPick] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -398,6 +404,45 @@ export function Purchases({ operatorEmail }: Props) {
         ? `Compra nº ${String(h.number).padStart(6, '0')} recebida por completo — pedido fechado.`
         : `Recebimento parcial registrado na compra nº ${String(h.number).padStart(6, '0')} — ${total} un. no estoque.`,
     )
+    // Recebimento parcial de uma compra ainda NÃO paga: pergunta se os itens
+    // recebidos já estão pagos ou se quer agendar o vencimento do pagamento.
+    if (novoStatus === 'parcial' && !h.paid) {
+      const recebidoVal = h.items.reduce((s, it, i) => {
+        const rec = Math.min((it.received ?? 0) + (linhas[i]?.quantity ?? 0), it.quantity)
+        return s + rec * it.unitCost
+      }, 0)
+      if (recebidoVal > 0) {
+        setSchedMode(false)
+        setSchedDate(todayISO())
+        setPayPrompt({ h: { ...h, status: novoStatus }, recebidoVal })
+      }
+    }
+    loadHistory()
+  }
+
+  async function confirmPaidNow() {
+    const pp = payPrompt
+    if (!pp || busyId) return
+    setBusyId(pp.h.id)
+    const { error: err } = await markPurchasePaid(pp.h)
+    setBusyId(null)
+    if (err) { setError(err); return }
+    setHistory((prev) => prev.map((x) => (x.id === pp.h.id ? { ...x, paid: true } : x)))
+    setPayPrompt(null)
+    setSuccess(`Itens recebidos marcados como pagos — compra nº ${String(pp.h.number).padStart(6, '0')}.`)
+    loadHistory()
+  }
+
+  async function confirmSchedule() {
+    const pp = payPrompt
+    if (!pp || busyId) return
+    if (!schedDate) { setError('Informe a data de vencimento.'); return }
+    setBusyId(pp.h.id)
+    const { error: err } = await schedulePurchasePayment(pp.h, schedDate)
+    setBusyId(null)
+    if (err) { setError(err); return }
+    setPayPrompt(null)
+    setSuccess(`Pagamento agendado para ${whenDate(schedDate)} — compra nº ${String(pp.h.number).padStart(6, '0')}.`)
     loadHistory()
   }
 
@@ -410,6 +455,19 @@ export function Purchases({ operatorEmail }: Props) {
     if (err) { setError(err); return }
     setHistory((prev) => prev.map((x) => (x.id === h.id ? { ...x, paid: true } : x)))
     setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} marcada como paga.`)
+  }
+
+  async function unpay(h: PurchaseSummary) {
+    if (!h.paid || busyId) return
+    if (!confirm(`Desmarcar o pagamento da compra nº ${String(h.number).padStart(6, '0')}? Ela volta para "a pagar".`)) return
+    setBusyId(h.id)
+    const { error: err } = await unmarkPurchasePaid(h)
+    setBusyId(null)
+    if (err) { setError(err); return }
+    setHistory((prev) => prev.map((x) => (x.id === h.id
+      ? { ...x, paid: false, installments: x.installments?.map((i) => ({ ...i, paid: false })) }
+      : x)))
+    setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} voltou para "a pagar".`)
   }
 
   function exportPdf() {
@@ -722,6 +780,9 @@ export function Purchases({ operatorEmail }: Props) {
                         {!h.paid && (
                           <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
                         )}
+                        {h.paid && (
+                          <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => unpay(h)} title="Voltar a compra para 'a pagar'">Desmarcar pago</button>
+                        )}
                         {canEditPurchase(h) && (
                           <button
                             className="btn btn--ghost"
@@ -805,6 +866,38 @@ export function Purchases({ operatorEmail }: Props) {
                         {busyId === h.id ? 'Registrando…' : '↧ Confirmar recebimento'}
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {payPrompt?.h.id === h.id && (
+                  <div className="purch__receive">
+                    <h4>Pagamento dos itens recebidos — compra nº {String(h.number).padStart(6, '0')}</h4>
+                    <p>
+                      Você recebeu <strong>{BRL.format(payPrompt.recebidoVal)}</strong> em itens.
+                      {' '}Esse valor já está pago ou quer agendar o vencimento?
+                    </p>
+                    {!schedMode ? (
+                      <div className="purch__receive-actions">
+                        <button type="button" className="btn btn--primary" disabled={busyId === h.id} onClick={confirmPaidNow}>
+                          Já está pago
+                        </button>
+                        <button type="button" className="btn btn--ghost" disabled={busyId === h.id} onClick={() => setSchedMode(true)}>
+                          Agendar pagamento
+                        </button>
+                        <button type="button" className="checkout__link" onClick={() => setPayPrompt(null)}>agora não</button>
+                      </div>
+                    ) : (
+                      <div className="purch__receive-actions">
+                        <label className="checkout__field purch__sched-field">
+                          <span>Vencimento</span>
+                          <input type="date" value={schedDate} onChange={(e) => setSchedDate(e.target.value)} />
+                        </label>
+                        <button type="button" className="btn btn--primary" disabled={busyId === h.id} onClick={confirmSchedule}>
+                          Confirmar vencimento
+                        </button>
+                        <button type="button" className="checkout__link" onClick={() => setSchedMode(false)}>voltar</button>
+                      </div>
+                    )}
                   </div>
                 )}
 
