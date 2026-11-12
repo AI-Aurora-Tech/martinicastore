@@ -410,6 +410,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           onSave={async (p) => {
             if (!confirm(`Criar o produto "${p.name}"?`)) return
             await persist(p, 'Produto criado.')
+            if ((p.stock ?? 0) > 0) void logStockAdjustment(p.id, p.stock ?? 0, { note: 'estoque inicial' })
             setCreating(false)
           }}
         />
@@ -424,7 +425,9 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           onClose={() => setEditing(null)}
           onSave={async (p) => {
             if (!confirm(`Salvar as alterações de "${p.name}"?`)) return
+            const stockDelta = (p.stock ?? 0) - (editing.stock ?? 0)
             await persist(p, 'Alterações salvas.')
+            if (stockDelta !== 0) void logStockAdjustment(p.id, stockDelta, { note: 'ajuste (edição)' })
             setEditing(null)
           }}
         />
