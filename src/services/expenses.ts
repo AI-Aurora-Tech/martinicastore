@@ -169,7 +169,51 @@ export async function listContas(): Promise<Conta[]> {
     // Compra cancelada não é conta a pagar nem despesa do período.
     if (p.status === 'cancelado') return []
     const label = `Compra nº ${String(p.number).padStart(6, '0')}${p.supplier ? ` · ${p.supplier}` : ''}`
-    // Compra parcelada (não à vista) => uma conta por parcela, com o seu vencimento.
+
+    // À vista ou já totalmente paga: a despesa já foi incorrida — entra pelo total.
+    if (p.paid) {
+      return [{
+        key: `c-${p.id}`,
+        source: 'compra' as const,
+        refId: p.id,
+        description: label,
+        category: 'Compras',
+        amount: p.total,
+        when: p.when,
+        paid: true,
+        recurring: false,
+        purchaseNumber: p.number,
+      }]
+    }
+
+    // Valor efetivamente recebido (recebido × custo) e contagem de unidades.
+    const recebidoVal = p.items.reduce(
+      (s, i) => s + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
+    const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
+    const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
+    const algumaParcelaPaga = p.installments?.some((i) => i.paid) ?? false
+
+    // Recebida parcialmente e NADA foi pago: a despesa segue o RECEBIMENTO —
+    // só o que já chegou vira conta; o restante entra quando for recebido.
+    // (Mesmo parcelada: enquanto nenhuma parcela foi quitada, não cobra o total.)
+    if (p.status === 'parcial' && !algumaParcelaPaga) {
+      if (recebidoVal <= 0) return []
+      return [{
+        key: `c-${p.id}`,
+        source: 'compra' as const,
+        refId: p.id,
+        description: `${label} · recebidos (${recebidoUn} de ${pedidoUn} un.)`,
+        category: 'Compras',
+        amount: recebidoVal,
+        when: p.when,
+        paid: false,
+        recurring: false,
+        purchaseNumber: p.number,
+      }]
+    }
+
+    // Parcelada (pendente/entregue, ou com parcela já paga): uma conta por
+    // parcela, com o seu vencimento.
     if (p.installments && p.installments.length > 0) {
       const n = p.installments.length
       return p.installments.map((par) => ({
@@ -186,28 +230,9 @@ export async function listContas(): Promise<Conta[]> {
         installmentN: par.n,
       }))
     }
-    // À vista (paga na compra): a despesa já foi incorrida — entra pelo total.
-    if (p.paid) {
-      return [{
-        key: `c-${p.id}`,
-        source: 'compra' as const,
-        refId: p.id,
-        description: label,
-        category: 'Compras',
-        amount: p.total,
-        when: p.when,
-        paid: true,
-        recurring: false,
-        purchaseNumber: p.number,
-      }]
-    }
+
     // A prazo sem parcelas: a despesa é reconhecida conforme o RECEBIMENTO.
-    // Só o que já chegou vira conta; o restante entra quando for recebido.
-    const recebidoVal = p.items.reduce(
-      (s, i) => s + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
     if (recebidoVal <= 0) return [] // pendente: nada recebido ainda, sem despesa
-    const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
-    const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
     const parcial = recebidoUn < pedidoUn
     return [{
       key: `c-${p.id}`,
