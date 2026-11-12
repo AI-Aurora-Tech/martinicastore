@@ -17,6 +17,7 @@ import { SponsorsManager } from './SponsorsManager'
 import { CategoriesManager } from './CategoriesManager'
 import { pdfKpis, pdfSection, pdfTable, printReport } from '../services/exportPdf'
 import { isSupabaseConfigured } from '../lib/supabase'
+import { listStockMovements, logStockAdjustment, type StockMovement } from '../services/stock'
 
 interface Props {
   operator: Operator
@@ -29,6 +30,17 @@ const LOW_STOCK = 5
 const KINDS: ProductKind[] = [
   'jersey', 'jacket', 'shorts', 'cap', 'ball', 'scarf', 'mug', 'backpack', 'shoe', 'pet',
 ]
+
+const MOV_LABEL: Record<string, string> = {
+  venda: 'Venda', pedido: 'Pedido (loja)', compra: 'Compra', estorno: 'Estorno', ajuste: 'Ajuste manual',
+}
+function movKindLabel(kind: string): string {
+  return MOV_LABEL[kind] ?? (kind.charAt(0).toUpperCase() + kind.slice(1))
+}
+function movWhen(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
 
 export function Admin({ operator, onExit, onLogout }: Props) {
   const { products, categories, source, error: catalogError, upsertLocal, upsertCategoryLocal, removeLocal } = useCatalog()
@@ -54,6 +66,29 @@ export function Admin({ operator, onExit, onLogout }: Props) {
   const [editing, setEditing] = useState<Product | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [flashMsg, setFlashMsg] = useState<string | null>(null)
+  // Movimentação de estoque de um produto (modal ao clicar em "Movimentações").
+  const [movProduct, setMovProduct] = useState<Product | null>(null)
+  const [movs, setMovs] = useState<StockMovement[]>([])
+  const [movLoading, setMovLoading] = useState(false)
+  const [movError, setMovError] = useState<string | null>(null)
+
+  async function openMovements(p: Product) {
+    setMovProduct(p)
+    setMovs([])
+    setMovError(null)
+    if (!isSupabaseConfigured) {
+      setMovError('O histórico de movimentação fica disponível com o backend configurado.')
+      return
+    }
+    setMovLoading(true)
+    try {
+      setMovs(await listStockMovements(p.id))
+    } catch (e) {
+      setMovError(e instanceof Error ? e.message : 'Não foi possível carregar a movimentação.')
+    } finally {
+      setMovLoading(false)
+    }
+  }
 
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function flash(msg: string) {
@@ -128,10 +163,14 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     const stock = Math.max(0, Math.round(value))
     if (stock === (p.stock ?? 0)) return
     if (!confirm(`Alterar o estoque de "${p.name}" de ${p.stock ?? 0} para ${stock}?`)) return
+    const delta = stock - (p.stock ?? 0)
     upsertLocal({ ...p, stock })
     const { error: err } = await setStock(p.id, stock)
     if (err) setError(err)
-    else flash(`Estoque de "${p.name}" atualizado (${stock}).`)
+    else {
+      void logStockAdjustment(p.id, delta, { note: 'ajuste manual' })
+      flash(`Estoque de "${p.name}" atualizado (${stock}).`)
+    }
   }
 
   /** Salva um campo do produto com confirmação. */
@@ -348,6 +387,7 @@ export function Admin({ operator, onExit, onLogout }: Props) {
                   onUploadImage={(file) => changeImage(p, file)}
                   onEdit={() => setEditing(p)}
                   onDelete={() => remove(p)}
+                  onMovements={() => openMovements(p)}
                 />
               ))}
               {list.length === 0 && (
@@ -390,6 +430,43 @@ export function Admin({ operator, onExit, onLogout }: Props) {
         />
       )}
 
+      {movProduct && (
+        <div className="pdv__receipt-overlay" onClick={() => setMovProduct(null)}>
+          <div className="admin__modal admin__modal--mov" onClick={(e) => e.stopPropagation()}>
+            <div className="admin__modal-head">
+              <h3>Movimentação de estoque</h3>
+              <button type="button" className="admin__modal-close" onClick={() => setMovProduct(null)} aria-label="Fechar">✕</button>
+            </div>
+            <p className="admin__mov-sub">{movProduct.name} · estoque atual: <strong>{movProduct.stock ?? 0}</strong></p>
+            {movError && <p className="admin__modal-error">{movError}</p>}
+            {movLoading ? (
+              <p className="admin__mov-empty">Carregando…</p>
+            ) : movs.length === 0 ? (
+              !movError && <p className="admin__mov-empty">Sem movimentação registrada para este produto.</p>
+            ) : (
+              <div className="admin__mov-wrap">
+                <table className="admin__mov-table">
+                  <thead>
+                    <tr><th>Data</th><th>Tipo</th><th>Variação</th><th className="admin__mov-qty">Qtd.</th><th>Ref.</th></tr>
+                  </thead>
+                  <tbody>
+                    {movs.map((m) => (
+                      <tr key={m.id}>
+                        <td>{movWhen(m.when)}</td>
+                        <td><span className={`admin__mov-kind admin__mov-kind--${m.delta >= 0 ? 'in' : 'out'}`}>{movKindLabel(m.kind)}</span></td>
+                        <td>{m.size || '—'}</td>
+                        <td className={`admin__mov-qty ${m.delta >= 0 ? 'is-in' : 'is-out'}`}>{m.delta > 0 ? `+${m.delta}` : m.delta}</td>
+                        <td>{m.ref ? (/^\d+$/.test(m.ref) ? `nº ${m.ref.padStart(6, '0')}` : m.ref) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {flashMsg && (
         <div className="admin__flash" role="status" onClick={() => setFlashMsg(null)}>
           ✓ {flashMsg}
@@ -411,10 +488,11 @@ interface RowProps {
   onUploadImage: (file: File) => void
   onEdit: () => void
   onDelete: () => void
+  onMovements: () => void
 }
 
 function AdminRow({
-  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete,
+  product, categoryLabel, onChangeStock, onSavePrice, onSaveCost, onToggleActive, onUploadImage, onEdit, onDelete, onMovements,
 }: RowProps) {
   const stock = product.stock ?? 0
   const cost = product.cost ?? 0
@@ -539,6 +617,9 @@ function AdminRow({
       </td>
       <td>
         <div className="admin__rowactions">
+          <button className="admin__edit" onClick={onMovements} aria-label={`Movimentação de ${product.name}`} title="Ver movimentação de estoque">
+            📊
+          </button>
           <button className="admin__edit" onClick={onEdit} aria-label={`Editar ${product.name}`} title="Editar informações do produto">
             ✏️
           </button>

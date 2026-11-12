@@ -2326,6 +2326,30 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   overflow-y: auto;
 }
 .admin__modal h3 { margin-bottom: 1rem; }
+/* ---- Modal de movimentação de estoque ---- */
+.admin__modal--mov { width: min(680px, 100%); }
+.admin__modal-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.4rem; }
+.admin__modal-head h3 { margin: 0; }
+.admin__modal-close {
+  background: none; border: none; cursor: pointer; font-size: 1.1rem; color: var(--muted);
+  width: 2rem; height: 2rem; border-radius: 8px;
+}
+.admin__modal-close:hover { background: var(--bg); color: var(--ink); }
+.admin__modal-error { color: #b3261e; font-weight: 600; margin: 0.3rem 0; }
+.admin__mov-sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.8rem; }
+.admin__mov-empty { color: var(--muted); padding: 1.2rem 0; text-align: center; }
+.admin__mov-wrap { max-height: 60vh; overflow-y: auto; }
+.admin__mov-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.admin__mov-table th, .admin__mov-table td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--line); }
+.admin__mov-table th { color: var(--muted); font-weight: 700; position: sticky; top: 0; background: var(--surface); }
+.admin__mov-table th.admin__mov-qty, .admin__mov-table td.admin__mov-qty { text-align: right; }
+.admin__mov-qty.is-in { color: var(--green); font-weight: 800; }
+.admin__mov-qty.is-out { color: #b3261e; font-weight: 800; }
+.admin__mov-kind {
+  display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.76rem; font-weight: 700;
+}
+.admin__mov-kind--in { background: rgba(31, 143, 78, 0.12); color: var(--green); }
+.admin__mov-kind--out { background: rgba(179, 38, 30, 0.1); color: #b3261e; }
 .admin__form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
