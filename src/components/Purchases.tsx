@@ -10,6 +10,7 @@ import {
   faltaReceber,
   listPurchases,
   markPurchasePaid,
+  unmarkPurchasePaid,
   notifyPurchase,
   receivePurchaseItems,
   updatePurchase,
@@ -412,6 +413,19 @@ export function Purchases({ operatorEmail }: Props) {
     setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} marcada como paga.`)
   }
 
+  async function unpay(h: PurchaseSummary) {
+    if (!h.paid || busyId) return
+    if (!confirm(`Desmarcar o pagamento da compra nº ${String(h.number).padStart(6, '0')}? Ela volta para "a pagar".`)) return
+    setBusyId(h.id)
+    const { error: err } = await unmarkPurchasePaid(h)
+    setBusyId(null)
+    if (err) { setError(err); return }
+    setHistory((prev) => prev.map((x) => (x.id === h.id
+      ? { ...x, paid: false, installments: x.installments?.map((i) => ({ ...i, paid: false })) }
+      : x)))
+    setSuccess(`Compra nº ${String(h.number).padStart(6, '0')} voltou para "a pagar".`)
+  }
+
   function exportPdf() {
     const rows = history.map((h) => {
       const itens = h.items.map((i) => `${i.quantity}x ${i.name}${i.size ? ` (${i.size})` : ''}`).join('; ')
@@ -721,6 +735,9 @@ export function Purchases({ operatorEmail }: Props) {
                         )}
                         {!h.paid && (
                           <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => pay(h)}>Marcar pago</button>
+                        )}
+                        {h.paid && (
+                          <button className="btn btn--ghost" disabled={busyId === h.id} onClick={() => unpay(h)} title="Voltar a compra para 'a pagar'">Desmarcar pago</button>
                         )}
                         {canEditPurchase(h) && (
                           <button

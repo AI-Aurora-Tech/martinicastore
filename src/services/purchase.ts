@@ -407,6 +407,22 @@ export async function markPurchasePaid(p: PurchaseSummary): Promise<{ error: str
   return { error: error?.message ?? null }
 }
 
+/** DESFAZ o pagamento da compra INTEIRA (volta de paga para a pagar). */
+export async function unmarkPurchasePaid(p: PurchaseSummary): Promise<{ error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    const all = readPurchases().find((r) => r.number === p.number)
+    const installments = all?.installments?.map((i) => ({ ...i, paid: false, paidAt: undefined }))
+    updatePurchaseLocal(p.number, { paid: false, ...(installments ? { installments } : {}) })
+    return { error: null }
+  }
+  const installments = p.installments?.map((i) => ({ ...i, paid: false, paidAt: undefined }))
+  const { error } = await supabase
+    .from('purchases')
+    .update({ paid: false, paid_at: null, ...(installments ? { installments } : {}) })
+    .eq('id', p.id)
+  return { error: error?.message ?? null }
+}
+
 /** Baixa UMA parcela de uma compra parcelada. */
 export async function payPurchaseInstallment(
   p: { id: string; number?: number },
