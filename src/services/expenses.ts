@@ -187,17 +187,21 @@ export async function listContas(): Promise<Conta[]> {
     }
 
     // Valor efetivamente recebido (recebido × custo) e contagem de unidades.
+    // A detecção de "parcial" é pela QUANTIDADE recebida (não pelo texto do
+    // status), para não depender de o banco ter gravado 'parcial' exatamente.
     const recebidoVal = p.items.reduce(
       (s, i) => s + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
     const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
     const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
     const algumaParcelaPaga = p.installments?.some((i) => i.paid) ?? false
+    const recebidoParcialmente = recebidoUn > 0 && recebidoUn < pedidoUn
 
     // Recebida parcialmente e NADA foi pago: a despesa segue o RECEBIMENTO —
     // só o que já chegou vira conta; o restante entra quando for recebido.
     // (Mesmo parcelada: enquanto nenhuma parcela foi quitada, não cobra o total.)
-    if (p.status === 'parcial' && !algumaParcelaPaga) {
-      if (recebidoVal <= 0) return []
+    // Só quando há valor a reconhecer; se o custo for 0, cai para as parcelas
+    // abaixo — assim a compra nunca some do financeiro.
+    if (recebidoParcialmente && !algumaParcelaPaga && recebidoVal > 0) {
       return [{
         key: `c-${p.id}`,
         source: 'compra' as const,
@@ -212,8 +216,8 @@ export async function listContas(): Promise<Conta[]> {
       }]
     }
 
-    // Parcelada (pendente/entregue, ou com parcela já paga): uma conta por
-    // parcela, com o seu vencimento.
+    // Parcelada (pendente/entregue, com parcela já paga, ou recebido sem custo):
+    // uma conta por parcela, com o seu vencimento.
     if (p.installments && p.installments.length > 0) {
       const n = p.installments.length
       return p.installments.map((par) => ({
