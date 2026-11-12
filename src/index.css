@@ -3924,6 +3924,8 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
   margin-top: 0.7rem;
 }
 .purch__receive-actions .checkout__link { margin-right: auto; }
+.purch__sched-field { margin-right: auto; min-width: 180px; }
+.purch__sched-field span { font-size: 0.78rem; color: var(--muted); }
 @media (max-width: 560px) {
   .purch__receive-table thead { display: none; }
   .purch__receive-table tr { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; padding: 0.4rem 0; border-top: 1px solid var(--line); }

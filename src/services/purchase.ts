@@ -407,6 +407,35 @@ export async function markPurchasePaid(p: PurchaseSummary): Promise<{ error: str
   return { error: error?.message ?? null }
 }
 
+/**
+ * Agenda o vencimento do pagamento de uma compra (a pagar). Define a data na
+ * 1ª parcela em aberto; se a compra não tiver parcelas, cria uma única parcela
+ * com o total. Usado ao receber parcial, quando o operador escolhe "agendar".
+ */
+export async function schedulePurchasePayment(
+  p: PurchaseSummary,
+  dueDate: string,
+): Promise<{ error: string | null }> {
+  const build = (inst: Installment[] | undefined): Installment[] => {
+    const list = inst && inst.length > 0
+      ? inst.map((i) => ({ ...i }))
+      : [{ n: 1, amount: p.total, dueDate, paid: false }]
+    const alvo = list.find((i) => !i.paid) ?? list[0]
+    alvo.dueDate = dueDate
+    return list
+  }
+  if (!isSupabaseConfigured || !supabase) {
+    const rec = readPurchases().find((r) => r.number === p.number)
+    updatePurchaseLocal(p.number, { paid: false, installments: build(rec?.installments) })
+    return { error: null }
+  }
+  const { error } = await supabase
+    .from('purchases')
+    .update({ paid: false, paid_at: null, installments: build(p.installments) })
+    .eq('id', p.id)
+  return { error: error?.message ?? null }
+}
+
 /** DESFAZ o pagamento da compra INTEIRA (volta de paga para a pagar). */
 export async function unmarkPurchasePaid(p: PurchaseSummary): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured || !supabase) {

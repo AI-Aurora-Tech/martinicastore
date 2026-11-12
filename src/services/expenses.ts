@@ -178,6 +178,12 @@ export async function listContas(): Promise<Conta[]> {
     const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
     const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
     const recebidoParcialmente = recebidoUn > 0 && recebidoUn < pedidoUn
+    // Vencimento da despesa: a 1ª parcela em aberto (agendada no recebimento),
+    // senão a data da compra.
+    const proxVenc = (p.installments ?? [])
+      .filter((i) => !i.paid && i.dueDate)
+      .map((i) => i.dueDate)
+      .sort()[0]
 
     // Recebida parcialmente: a despesa é só do que CHEGOU (recebido × custo),
     // esteja a compra paga ou não; o restante vira despesa quando for recebido.
@@ -191,7 +197,7 @@ export async function listContas(): Promise<Conta[]> {
         description: `${label} · recebidos (${recebidoUn} de ${pedidoUn} un.)`,
         category: 'Compras',
         amount: recebidoVal,
-        when: p.when,
+        when: proxVenc || p.when,
         paid: !!p.paid,
         recurring: false,
         purchaseNumber: p.number,
