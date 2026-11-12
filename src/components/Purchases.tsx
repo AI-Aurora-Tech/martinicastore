@@ -681,6 +681,18 @@ export function Purchases({ operatorEmail }: Props) {
                       </span>
                     )}
                   </div>
+                  {h.status === 'parcial' && (() => {
+                    // Recebimento parcial: valor a pagar só pelo que realmente chegou
+                    // (recebido × custo unitário), com o total do pedido como referência.
+                    const recebidoVal = h.items.reduce(
+                      (s2, i) => s2 + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
+                    return (
+                      <small className="purch__hist-recebido">
+                        A pagar pelos recebidos: <strong>{BRL.format(recebidoVal)}</strong>
+                        <span> de {BRL.format(h.total)}</span>
+                      </small>
+                    )
+                  })()}
                   {h.installments && h.installments.length > 1 && !h.paid && (
                     <small className="purch__next-venc">
                       Próx. venc.: {(() => {
@@ -772,6 +784,13 @@ export function Purchases({ operatorEmail }: Props) {
                         })}
                       </tbody>
                     </table>
+                    <p className="purch__receive-total">
+                      Valor a pagar pelos itens recebidos agora:{' '}
+                      <strong>
+                        {BRL.format(h.items.reduce(
+                          (s2, it, idx) => s2 + Math.max(0, Math.min(recQty[idx] ?? 0, faltaReceber(it))) * it.unitCost, 0))}
+                      </strong>
+                    </p>
                     <div className="purch__receive-actions">
                       <button type="button" className="checkout__link" onClick={() => setRecQty(h.items.map((i) => faltaReceber(i)))}>
                         receber tudo o que falta

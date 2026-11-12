@@ -3185,6 +3185,11 @@ a.sponsors__item:hover img { transform: translateY(-2px); opacity: 1; }
 .purch__venc { min-width: 190px; }
 .purch__venc span { font-size: 0.78rem; }
 .purch__next-venc { color: #9a6400 !important; font-weight: 600; }
+.purch__hist-recebido { color: var(--green); font-weight: 600; }
+.purch__hist-recebido strong { font-weight: 800; }
+.purch__hist-recebido span { color: var(--muted); font-weight: 500; }
+.purch__receive-total { margin: 0.6rem 0 0; text-align: right; }
+.purch__receive-total strong { color: var(--green); font-weight: 800; }
 
 @media (max-width: 640px) {
   .purch__parcelas { grid-template-columns: 1fr; }
