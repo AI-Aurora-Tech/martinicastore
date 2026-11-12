@@ -170,6 +170,34 @@ export async function listContas(): Promise<Conta[]> {
     if (p.status === 'cancelado') return []
     const label = `Compra nº ${String(p.number).padStart(6, '0')}${p.supplier ? ` · ${p.supplier}` : ''}`
 
+    // Valor efetivamente recebido (recebido × custo) e contagem de unidades.
+    // A detecção de "parcial" é pela QUANTIDADE recebida (não pelo texto do
+    // status), para não depender de o banco ter gravado 'parcial' exatamente.
+    const recebidoVal = p.items.reduce(
+      (s, i) => s + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
+    const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
+    const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
+    const recebidoParcialmente = recebidoUn > 0 && recebidoUn < pedidoUn
+
+    // Recebida parcialmente: a despesa é só do que CHEGOU (recebido × custo),
+    // esteja a compra paga ou não; o restante vira despesa quando for recebido.
+    // Vem ANTES do "paga pelo total" para não lançar itens que ainda não
+    // chegaram. (Se o custo for 0, cai para os ramos abaixo e nunca some.)
+    if (recebidoParcialmente && recebidoVal > 0) {
+      return [{
+        key: `c-${p.id}`,
+        source: 'compra' as const,
+        refId: p.id,
+        description: `${label} · recebidos (${recebidoUn} de ${pedidoUn} un.)`,
+        category: 'Compras',
+        amount: recebidoVal,
+        when: p.when,
+        paid: !!p.paid,
+        recurring: false,
+        purchaseNumber: p.number,
+      }]
+    }
+
     // À vista ou já totalmente paga: a despesa já foi incorrida — entra pelo total.
     if (p.paid) {
       return [{
@@ -181,36 +209,6 @@ export async function listContas(): Promise<Conta[]> {
         amount: p.total,
         when: p.when,
         paid: true,
-        recurring: false,
-        purchaseNumber: p.number,
-      }]
-    }
-
-    // Valor efetivamente recebido (recebido × custo) e contagem de unidades.
-    // A detecção de "parcial" é pela QUANTIDADE recebida (não pelo texto do
-    // status), para não depender de o banco ter gravado 'parcial' exatamente.
-    const recebidoVal = p.items.reduce(
-      (s, i) => s + Math.min(i.received ?? 0, i.quantity) * i.unitCost, 0)
-    const pedidoUn = p.items.reduce((s, i) => s + i.quantity, 0)
-    const recebidoUn = p.items.reduce((s, i) => s + Math.min(i.received ?? 0, i.quantity), 0)
-    const algumaParcelaPaga = p.installments?.some((i) => i.paid) ?? false
-    const recebidoParcialmente = recebidoUn > 0 && recebidoUn < pedidoUn
-
-    // Recebida parcialmente e NADA foi pago: a despesa segue o RECEBIMENTO —
-    // só o que já chegou vira conta; o restante entra quando for recebido.
-    // (Mesmo parcelada: enquanto nenhuma parcela foi quitada, não cobra o total.)
-    // Só quando há valor a reconhecer; se o custo for 0, cai para as parcelas
-    // abaixo — assim a compra nunca some do financeiro.
-    if (recebidoParcialmente && !algumaParcelaPaga && recebidoVal > 0) {
-      return [{
-        key: `c-${p.id}`,
-        source: 'compra' as const,
-        refId: p.id,
-        description: `${label} · recebidos (${recebidoUn} de ${pedidoUn} un.)`,
-        category: 'Compras',
-        amount: recebidoVal,
-        when: p.when,
-        paid: false,
         recurring: false,
         purchaseNumber: p.number,
       }]
