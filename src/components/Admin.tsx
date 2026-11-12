@@ -74,7 +74,11 @@ export function Admin({ operator, onExit, onLogout }: Props) {
     const units = products.reduce((s, p) => s + (p.stock ?? 0), 0)
     const out = products.filter((p) => (p.stock ?? 0) === 0).length
     const low = products.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= LOW_STOCK).length
-    return { total: products.length, units, out, low }
+    // Valor da mercadoria parada: estoque × custo (investido) e estoque × preço
+    // de venda (faturamento potencial se vender tudo).
+    const costValue = products.reduce((s, p) => s + (p.stock ?? 0) * (p.cost ?? 0), 0)
+    const saleValue = products.reduce((s, p) => s + (p.stock ?? 0) * (p.price ?? 0), 0)
+    return { total: products.length, units, out, low, costValue, saleValue }
   }, [products])
 
   function exportProductsPdf() {
@@ -286,6 +290,14 @@ export function Admin({ operator, onExit, onLogout }: Props) {
           </div>
           <div className="admin__stat admin__stat--danger">
             <strong>{stats.out}</strong><span>esgotados</span>
+          </div>
+          <div className="admin__stat admin__stat--money">
+            <strong>{BRL.format(stats.costValue)}</strong>
+            <span>valor em estoque (custo)</span>
+          </div>
+          <div className="admin__stat admin__stat--money admin__stat--sale">
+            <strong>{BRL.format(stats.saleValue)}</strong>
+            <span>valor em estoque (venda)</span>
           </div>
         </section>
 
