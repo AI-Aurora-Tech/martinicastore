@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCart } from '../context/CartContext'
 import { useCustomer } from '../context/CustomerContext'
 import { useCatalog } from '../context/CatalogContext'
@@ -51,6 +51,8 @@ export function Checkout({ onExit }: Props) {
   const [notifyErr, setNotifyErr] = useState<string | null>(null)
 
   const weight = useMemo(() => cartWeight(items), [items])
+  const identRef = useRef<HTMLElement>(null)
+  const deliveryRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (customer?.address) setAddr({ ...EMPTY_ADDR, ...customer.address })
@@ -105,7 +107,20 @@ export function Checkout({ onExit }: Props) {
   async function confirm() {
     setError('')
     const pickup = delivery === 'retirada'
-    if (!selected) return setError('Calcule e escolha o frete.')
+    if (!customer) {
+      setError('Entre ou crie a sua conta na etapa 1 para finalizar o pedido.')
+      identRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    if (!selected) {
+      setError(
+        delivery === 'correios'
+          ? 'Informe o CEP e clique em “Calcular frete” na etapa 2 para escolher a entrega.'
+          : 'Escolha a forma de entrega na etapa 2.',
+      )
+      deliveryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (!pickup) {
       const required: (keyof Address)[] = ['cep', 'street', 'number', 'neighborhood', 'city', 'uf']
       if (required.some((k) => !String(addr[k]).trim())) {
@@ -208,7 +223,7 @@ export function Checkout({ onExit }: Props) {
       <div className="checkout__body">
         <div className="checkout__main">
           {/* 1. Identificação */}
-          <section className="checkout__card">
+          <section className="checkout__card" ref={identRef}>
             <h3><span className="checkout__step">1</span> Identificação</h3>
             {customer ? (
               <p className="checkout__ident">
@@ -224,7 +239,7 @@ export function Checkout({ onExit }: Props) {
           </section>
 
           {/* 2. Entrega */}
-          <section className={`checkout__card ${!customer ? 'checkout__card--disabled' : ''}`}>
+          <section ref={deliveryRef} className={`checkout__card ${!customer ? 'checkout__card--disabled' : ''}`}>
             <h3><span className="checkout__step">2</span> Entrega</h3>
 
             <div className="checkout__delivery" role="group" aria-label="Forma de entrega">
@@ -396,14 +411,15 @@ export function Checkout({ onExit }: Props) {
           <button
             className="btn btn--primary btn--block checkout__confirm"
             onClick={confirm}
-            disabled={!customer || !selected || placing}
+            disabled={placing}
           >
             {placing ? 'Processando…' : 'Confirmar e pagar'}
           </button>
-          {!customer && <p className="checkout__hint">Entre na etapa 1 para continuar.</p>}
-          {customer && delivery === 'correios' && !selected && (
-            <p className="checkout__hint">Calcule o frete na etapa 2.</p>
-          )}
+          {!customer ? (
+            <p className="checkout__hint">Entre ou crie a sua conta na etapa 1 para continuar.</p>
+          ) : delivery === 'correios' && !selected ? (
+            <p className="checkout__hint">Calcule o frete na etapa 2 para continuar.</p>
+          ) : null}
         </aside>
       </div>
     </div>

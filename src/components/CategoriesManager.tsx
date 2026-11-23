@@ -131,8 +131,10 @@ export function CategoriesManager({ onFlash }: { onFlash?: (msg: string) => void
               onBlur={() => rename(cat)}
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
             />
-            <span className="cats__id">/{cat.id}</span>
-            <span className="cats__count">{countProducts(cat.id)} produto(s)</span>
+            <div className="cats__meta">
+              <span className="cats__id">/{cat.id}</span>
+              <span className="cats__count">{countProducts(cat.id)} produto(s)</span>
+            </div>
             <button className="cats__del" onClick={() => remove(cat)} disabled={busy} aria-label="Excluir">🗑</button>
           </li>
         ))}
