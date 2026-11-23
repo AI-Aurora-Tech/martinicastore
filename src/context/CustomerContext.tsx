@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from 'react'
 import type { Address, Customer } from '../types'
+import { supabase } from '../lib/supabase'
 import {
+  customerAuthMode,
   getCurrentCustomer,
   saveCustomerProfile,
   signInCustomer,
@@ -39,8 +41,21 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setCustomer(c)
       setLoading(false)
     })
+    // Mantém o login em sincronia com o Supabase: restauração da sessão ao abrir,
+    // refresh de token, login/logout em outra aba e retorno do fluxo de pagamento.
+    // Sem isto, um usuário já logado podia aparecer como deslogado no checkout.
+    let unsubscribe: (() => void) | undefined
+    if (customerAuthMode === 'supabase' && supabase) {
+      const { data } = supabase.auth.onAuthStateChange(() => {
+        getCurrentCustomer().then((c) => {
+          if (alive) setCustomer(c)
+        })
+      })
+      unsubscribe = () => data.subscription.unsubscribe()
+    }
     return () => {
       alive = false
+      unsubscribe?.()
     }
   }, [])
 
