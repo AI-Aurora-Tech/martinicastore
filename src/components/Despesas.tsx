@@ -300,7 +300,7 @@ export function Despesas({ operatorEmail }: Props) {
           </table>
         </div>
       )}
-      <p className="purch__hint">As <strong>compras a pagar</strong> aparecem aqui automaticamente. A entrada de estoque continua no módulo <strong>Compras</strong>.</p>
+      <p className="purch__hint">As <strong>compras a pagar</strong> aparecem aqui automaticamente. As compras a prazo entram conforme vão sendo <strong>recebidas</strong> — só o que já chegou vira despesa; o restante entra quando for recebido. A entrada de estoque continua no módulo <strong>Compras</strong>.</p>
     </div>
   )
 }
